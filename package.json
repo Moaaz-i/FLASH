@@ -1,0 +1,75 @@
+{
+  "name": "flash-db",
+  "version": "1.0.0",
+  "description": "Next-Gen Ultra-Fast Zero-Knowledge Encrypted Embedded Document Database Engine",
+  "type": "module",
+  "main": "src/index.mjs",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.mjs"
+    },
+    "./engine/*": "./src/engine/*.mjs",
+    "./crypto/*": "./src/crypto/*.mjs",
+    "./client/*": "./src/client/*.mjs",
+    "./vector/*": "./src/vector/*.mjs",
+    "./ai/*": "./src/ai/*.mjs",
+    "./server/*": "./src/server/*.mjs"
+  },
+  "bin": {
+    "flashsh": "./bin/flashsh.mjs",
+    "flash-server": "./bin/flash-server.mjs"
+  },
+  "files": [
+    "src/",
+    "bin/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "benchmark": "node benchmarks/benchmark.mjs",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.3"
+  },
+  "keywords": [
+    "database",
+    "encrypted-database",
+    "embedded-database",
+    "zero-knowledge",
+    "lsm-tree",
+    "blind-index",
+    "mongodb-alternative",
+    "high-performance",
+    "zero-copy",
+    "vector-search",
+    "hnsw",
+    "ai-database",
+    "homomorphic-encryption",
+    "merkle-tree",
+    "document-db",
+    "nosql",
+    "typescript",
+    "crash-recovery",
+    "transaction",
+    "acid"
+  ],
+  "author": "Moaaz Yahia Zakaria",
+  "license": "Apache-2.0",
+  "homepage": "https://moaaz-i.github.io/flash-db/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Moaaz-i/FLASH"
+  },
+  "bugs": {
+    "url": "https://github.com/Moaaz-i/FLASH/issues"
+  }
+}

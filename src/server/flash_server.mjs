@@ -1,0 +1,218 @@
+import http from 'node:http';
+import { FlashDatabase } from '../core/database.mjs';
+import { FlashMetrics } from './metrics.mjs';
+import { logger } from '../core/logger.mjs';
+
+/**
+ * FLASH Standalone Server Daemon (FlashServer)
+ * High-performance Zero-Knowledge Database Server that runs on a dedicated server / container,
+ * listening for remote FlashClient connections over the network.
+ */
+export class FlashServer {
+  /**
+   * @param {object} [options]
+   * @param {number} [options.port=6742]
+   * @param {string} [options.host='0.0.0.0']
+   * @param {string} [options.storagePath='./flash_server_data']
+   * @param {string} [options.authKey]
+   */
+  constructor(options = {}) {
+    this.options = options;
+    this.server = null;
+  }
+
+  start() {
+    this.server = FlashServer.start(this.options);
+    return this.server;
+  }
+
+  stop() {
+    if (this.server) {
+      this.server.close();
+      this.server = null;
+    }
+  }
+
+  /**
+   * Starts a standalone FLASH Database Server daemon
+
+   * @param {object} options
+   * @param {number} [options.port=6742] - Default FLASH port (6742)
+   * @param {string} [options.host='0.0.0.0']
+   * @param {string} [options.storagePath='./flash_server_data']
+   * @param {string} [options.authKey] - Optional server connection secret
+   * @returns {http.Server}
+   */
+  static start(options = {}) {
+    const port = options.port || 6742;
+    const host = options.host || '0.0.0.0';
+    const storagePath = options.storagePath || './flash_server_data';
+    const dbName = options.dbName || 'flash_server_db';
+    const authKey = options.authKey || null;
+
+    const db = new FlashDatabase(dbName, { storagePath });
+    const metrics = new FlashMetrics();
+
+    const server = http.createServer(async (req, res) => {
+      // Enable CORS
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-flash-server-key');
+
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204);
+        return res.end();
+      }
+
+      const url = new URL(req.url, `http://${host}:${port}`);
+
+      // Prometheus Telemetry Endpoint
+      if (url.pathname === '/metrics' && req.method === 'GET') {
+        // Compute storage-level gauges on every metrics pull
+        for (const colName of db.listCollections()) {
+          try {
+            const col = db.collection(colName);
+            await col.init();
+            metrics.setGauge(`storage_${colName}_sstables`, col.sstables.length);
+            metrics.setGauge(`storage_${colName}_memtable_bytes`, col.memtable.byteSize);
+            metrics.setGauge(`storage_${colName}_doc_count`, col.docOrder.length);
+          } catch {}
+        }
+        res.writeHead(200, { 'Content-Type': 'text/plain; version=0.0.4; charset=utf-8' });
+        return res.end(metrics.toPrometheus());
+      }
+
+      // Server Authentication Verification
+      if (authKey) {
+        const clientKey = req.headers['x-flash-server-key'] || url.searchParams.get('authKey');
+        if (clientKey !== authKey) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ error: 'Unauthorized: Invalid server authKey' }));
+        }
+      }
+
+      const readBody = () => new Promise((resolve, reject) => {
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', () => {
+          try {
+            resolve(body ? JSON.parse(body) : {});
+          } catch (e) {
+            reject(new Error('Invalid JSON payload'));
+          }
+        });
+        req.on('error', reject);
+      });
+
+      // Health Check & Server Info
+      if (url.pathname === '/health' && req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ status: 'HEALTHY', engine: 'FLASH Zero-Knowledge Server', version: '1.0.0' }));
+      }
+
+      // List Collections
+      if (url.pathname === '/api/v1/collections' && req.method === 'GET') {
+        const collections = db.listCollections();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ collections }));
+      }
+
+      const startOpTime = Date.now();
+
+      // Execute Raw Encrypted Find
+      if (url.pathname.startsWith('/api/v1/query/') && req.method === 'POST') {
+        const colName = decodeURIComponent(url.pathname.replace('/api/v1/query/', ''));
+        try {
+          const { envelope, options } = await readBody();
+          const col = db.collection(colName);
+          await col.init();
+          const records = await col.find(envelope || {}, options || {});
+          const durationMs = Date.now() - startOpTime;
+          metrics.recordOp('find', durationMs);
+          logger.info('FlashServer', 'find completed', { collection: colName, durationMs });
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ records }));
+        } catch (err) {
+          metrics.recordError('find');
+          logger.error('FlashServer', 'find failed', { collection: colName, error: err.message });
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ error: err.message }));
+        }
+      }
+
+      // Execute Raw Encrypted Insert
+      if (url.pathname.startsWith('/api/v1/insert/') && req.method === 'POST') {
+        const colName = decodeURIComponent(url.pathname.replace('/api/v1/insert/', ''));
+        try {
+          const { encryptedRecord } = await readBody();
+          const col = db.collection(colName);
+          await col.init();
+          const result = await col.insertOne(encryptedRecord);
+          const durationMs = Date.now() - startOpTime;
+          metrics.recordOp('insert', durationMs);
+          logger.info('FlashServer', 'insert completed', { collection: colName, durationMs });
+          res.writeHead(201, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ success: true, result }));
+        } catch (err) {
+          metrics.recordError('insert');
+          logger.error('FlashServer', 'insert failed', { collection: colName, error: err.message });
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ error: err.message }));
+        }
+      }
+
+      // Execute Raw Encrypted Delete
+      if (url.pathname.startsWith('/api/v1/delete/') && req.method === 'POST') {
+        const colName = decodeURIComponent(url.pathname.replace('/api/v1/delete/', ''));
+        try {
+          const { filter } = await readBody();
+          const col = db.collection(colName);
+          await col.init();
+          const result = await col.deleteOne(filter || {});
+          const durationMs = Date.now() - startOpTime;
+          metrics.recordOp('delete', durationMs);
+          logger.info('FlashServer', 'delete completed', { collection: colName, durationMs });
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ success: true, result }));
+        } catch (err) {
+          metrics.recordError('delete');
+          logger.error('FlashServer', 'delete failed', { collection: colName, error: err.message });
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ error: err.message }));
+        }
+      }
+
+      // Execute Raw Flush
+      if (url.pathname.startsWith('/api/v1/flush/') && req.method === 'POST') {
+        const colName = decodeURIComponent(url.pathname.replace('/api/v1/flush/', ''));
+        try {
+          const col = db.collection(colName);
+          await col.flush();
+          const durationMs = Date.now() - startOpTime;
+          metrics.recordOp('flush', durationMs);
+          logger.info('FlashServer', 'flush completed', { collection: colName, durationMs });
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ success: true, message: 'Flushed' }));
+        } catch (err) {
+          metrics.recordError('flush');
+          logger.error('FlashServer', 'flush failed', { collection: colName, error: err.message });
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ error: err.message }));
+        }
+      }
+
+      // 404 Route
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Endpoint not found on FLASH Server' }));
+    });
+
+    server.listen(port, host, () => {
+      logger.info('FlashServer', 'server started', { host, port, storagePath });
+    });
+
+    return server;
+  }
+}
+
+export { FlashMetrics };
+

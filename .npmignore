@@ -1,0 +1,16 @@
+# Development & Tests
+tests/
+benchmarks/
+docs/
+.github/
+
+# Data & Runtime Files
+data/
+flash_data/
+flash_server_data/
+*.farc
+*.sst
+
+# OS & Logs
+.DS_Store
+*.log

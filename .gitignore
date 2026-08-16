@@ -1,0 +1,39 @@
+# Node dependencies
+node_modules/
+package-lock.json.bak
+
+# Logs & Debugging
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Database & Runtime Data Folders
+data/
+flash_data/
+flash_server_data/
+*.farc
+*.sst
+*.wal
+*.tmp
+
+# Package
+*.tgz
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Documentation build output
+docs/.vitepress/dist
+docs/.vitepress/cache
+
+# Temporary & Test artifacts
+tmp/
+temp/
+coverage/
+.nyc_output/
