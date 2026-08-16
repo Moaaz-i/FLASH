@@ -8,8 +8,8 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-3178c6.svg)](https://www.typescriptlang.org/)
 [![Tests](https://img.shields.io/badge/Tests-74%2F74%20Passing-brightgreen.svg)]()
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
-[![Zero Knowledge](https://img.shields.io/badge/Security-100%25%20Zero--Knowledge-darkgreen.svg)]()
-[![LSM-Tree](https://img.shields.io/badge/Storage-LSM--Tree%20%2B%20SSTable-orange.svg)]()
+[![Docs](https://img.shields.io/badge/Docs-VitePress-blue.svg)](https://moaaz-i.github.io/FLASH/)
+[![npm](https://img.shields.io/badge/npm-%40moaaz--yahia--zakaria%2Fflash--db-red.svg)](https://www.npmjs.com/package/@moaaz-yahia-zakaria/flash-db)
 
 _Over 1,000,000 ops/sec with military-grade AES-256-GCM, Searchable Blind Indexes, Additive Homomorphic Arithmetic, AI Vector Search (HNSW), and Snapshot Isolation MVCC._
 
@@ -33,6 +33,12 @@ _Over 1,000,000 ops/sec with military-grade AES-256-GCM, Searchable Blind Indexe
 - **🔄 ACID Transactions & Snapshot Isolation**: Multi-Version Concurrency Control (**MVCC**) + Distributed **Two-Phase Commit (2PC)** across sharded clusters.
 - **📊 Built-in Observability & ETL**: Live Prometheus `/metrics` telemetry endpoint and streaming `NDJSON` / `CSV` export & import tools.
 - **📘 Full TypeScript Definitions**: First-class `index.d.ts` with IntelliSense autocompletion and generic collection typing.
+
+---
+
+## 📖 Documentation
+
+**[Full Documentation (VitePress)](https://moaaz-i.github.io/FLASH/)**
 
 ---
 

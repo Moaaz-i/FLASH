@@ -3,6 +3,7 @@ import { defineConfig } from 'vitepress';
 export default defineConfig({
   title: 'FLASH DB',
   description: 'Next-Gen Ultra-Fast Zero-Knowledge Encrypted Document DBMS',
+  base: '/FLASH/',
   themeConfig: {
     logo: '/logo.svg',
     siteTitle: 'FLASH DB',
