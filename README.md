@@ -39,7 +39,7 @@ _Over 1,000,000 ops/sec with military-grade AES-256-GCM, Searchable Blind Indexe
 ## 📦 Installation
 
 ```bash
-npm install flash-db
+npm install @moaaz-yahia-zakaria/flash-db
 ```
 
 ---
@@ -47,7 +47,7 @@ npm install flash-db
 ## ⚡ Quick Start
 
 ```typescript
-import { FlashClient } from "flash-db";
+import { FlashClient } from "@moaaz-yahia-zakaria/flash-db";
 
 // 1. Initialize Client with Master Secret Key
 const client = new FlashClient({
