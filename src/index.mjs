@@ -77,3 +77,9 @@ export { FlashAIDatabase } from './ai/flash_ai_database.mjs';
 export { FlashLLMAdapter } from './ai/flash_llm_adapter.mjs';
 export { FlashQuantizer } from './vector/quantizer.mjs';
 export { FlashContextOptimizer } from './ai/context_optimizer.mjs';
+
+// 🔴 Real-Time Infrastructure
+export { FlashWebSocket, FlashWebSocketServer } from './realtime/websocket_server.mjs';
+export { FlashPresence } from './realtime/presence.mjs';
+export { FlashLRUCache } from './cache/lru_cache.mjs';
+export { FlashEnhancedPubSub } from './realtime/enhanced_pubsub.mjs';
