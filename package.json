@@ -1,6 +1,6 @@
 {
   "name": "@moaaz-yahia-zakaria/flash-db",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Next-Gen Ultra-Fast Zero-Knowledge Encrypted Embedded Document Database Engine",
   "type": "module",
   "main": "src/index.mjs",
