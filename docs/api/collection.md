@@ -7,7 +7,7 @@ The `FlashClientCollection` class provides a fluent, MongoDB-compatible interfac
 ## Getting a Collection
 
 ```javascript
-import { FlashClient } from 'flash-db';
+import { FlashClient } from '@moaaz-yahia-zakaria/flash-db';
 
 const client = new FlashClient({ secretKey: 'master-key' });
 

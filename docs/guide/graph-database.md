@@ -15,7 +15,7 @@
 ## Example Usage
 
 ```javascript
-import { FlashGraph } from 'flash-db';
+import { FlashGraph } from '@moaaz-yahia-zakaria/flash-db';
 
 const graph = new FlashGraph();
 

@@ -9,7 +9,7 @@
 Install the library directly into your project:
 
 ```bash
-npm install flash-db
+npm install @moaaz-yahia-zakaria/flash-db
 ```
 
 Ensure your `package.json` specifies `"type": "module"`.
@@ -21,7 +21,7 @@ Ensure your `package.json` specifies `"type": "module"`.
 ### 1. Initialize the Client
 
 ```javascript
-import { FlashClient } from 'flash-db';
+import { FlashClient } from '@moaaz-yahia-zakaria/flash-db';
 
 const client = new FlashClient({
   secretKey: 'my_super_secret_master_passphrase_2026', // Master 256-bit encryption key

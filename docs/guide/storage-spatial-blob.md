@@ -9,7 +9,7 @@
 Search points within bounding boxes or query K-Nearest Neighbors via Haversine distance in Kilometers:
 
 ```javascript
-import { FlashSpatialRTree } from 'flash-db';
+import { FlashSpatialRTree } from '@moaaz-yahia-zakaria/flash-db';
 
 const rtree = new FlashSpatialRTree();
 rtree.insertPoint('nyc_store', 40.7128, -74.0060, { name: 'Manhattan Store' });
@@ -27,7 +27,7 @@ console.log(nearest[0].id); // 'nyc_store'
 Store gigabyte-scale videos, images, and documents split into deduplicated, encrypted chunks:
 
 ```javascript
-import { FlashBlobStore } from 'flash-db';
+import { FlashBlobStore } from '@moaaz-yahia-zakaria/flash-db';
 
 const blobStore = new FlashBlobStore({ chunkSizeBytes: 65536 });
 const fileData = Buffer.from('...'); // Raw file buffer
@@ -47,7 +47,7 @@ const downloaded = blobStore.readBlob('video_101');
 Run FLASH completely inside web browsers and edge workers using IndexedDB and OPFS:
 
 ```javascript
-import { FlashBrowserAdapter } from 'flash-db';
+import { FlashBrowserAdapter } from '@moaaz-yahia-zakaria/flash-db';
 
 const adapter = new FlashBrowserAdapter('my_offline_app', { driver: 'indexeddb' });
 await adapter.set('drafts', 'draft_1', Buffer.from('Local draft data'));

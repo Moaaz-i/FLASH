@@ -30,7 +30,7 @@ Client Request → WAL Frame → fsync → MemTable Update → Response
 The WAL automatically fsyncs after every frame append (configurable):
 
 ```js
-import { FlashArc } from 'flash-db';
+import { FlashArc } from '@moaaz-yahia-zakaria/flash-db';
 
 // Default: fsyncOnWrite = true (maximum durability)
 const wal = new FlashArc('./data/mydb/mycol/wal.arc');
@@ -117,7 +117,7 @@ On startup, any leftover `.tmp` files from a previous crash are automatically re
 For full disaster recovery:
 
 ```js
-import { FlashClient } from 'flash-db';
+import { FlashClient } from '@moaaz-yahia-zakaria/flash-db';
 
 const client = new FlashClient({ secretKey: 'your-key' });
 

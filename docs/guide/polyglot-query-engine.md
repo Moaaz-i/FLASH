@@ -27,7 +27,7 @@ It enables users and AI agents to search and filter database collections using *
 Translates queries in `< 0.05ms` offline:
 
 ```javascript
-import { FlashNLQueryEngine } from 'flash-db';
+import { FlashNLQueryEngine } from '@moaaz-yahia-zakaria/flash-db';
 
 const schema = ['age', 'salary', 'status', 'city', 'rating'];
 
@@ -54,7 +54,7 @@ console.log(qZh.filter);
 For highly complex, multi-clause, or conversational sentences in any arbitrary language, `parseWithLLM` leverages external or local LLMs:
 
 ```javascript
-import { FlashNLQueryEngine, FlashLLMAdapter } from 'flash-db';
+import { FlashNLQueryEngine, FlashLLMAdapter } from '@moaaz-yahia-zakaria/flash-db';
 
 const llm = new FlashLLMAdapter({
   provider: 'openai',

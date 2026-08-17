@@ -33,7 +33,7 @@ $$\text{PlainSum} = \left( C_{\text{total}} - \sum_{i=1}^{N} \text{Mask}_i \righ
 ### 1. Declare Field Policy as `'counter'`
 
 ```javascript
-import { FlashClient } from 'flash-db';
+import { FlashClient } from '@moaaz-yahia-zakaria/flash-db';
 
 const client = new FlashClient({
   secretKey: 'master-key',

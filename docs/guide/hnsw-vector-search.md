@@ -37,7 +37,7 @@ At upper layers, searches make large leaps across vector space with minimal dist
 ### 1. Standalone `FlashHNSWIndex`
 
 ```javascript
-import { FlashHNSWIndex } from 'flash-db';
+import { FlashHNSWIndex } from '@moaaz-yahia-zakaria/flash-db';
 
 // 1. Initialize HNSW Index
 const hnsw = new FlashHNSWIndex({
@@ -68,7 +68,7 @@ console.log(topMatches);
 ### 2. Integrated with `FlashVectorIndex`
 
 ```javascript
-import { FlashVectorIndex } from 'flash-db';
+import { FlashVectorIndex } from '@moaaz-yahia-zakaria/flash-db';
 
 const vectorIndex = new FlashVectorIndex({
   engine: 'hnsw',

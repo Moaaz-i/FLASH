@@ -5,7 +5,7 @@ FLASH DB includes a structured JSON logger for production observability.
 ## Quick Start
 
 ```js
-import { logger } from 'flash-db';
+import { logger } from '@moaaz-yahia-zakaria/flash-db';
 
 // Automatic structured JSON output to stderr
 logger.info('server', 'Flash DB started', { port: 3000, version: '2.1.0' });
@@ -79,7 +79,7 @@ node app.js 2>&1 | jq 'select(.module == "engine")'
 For metrics alongside logs, use the FlashMetrics class:
 
 ```js
-import { logger, FlashMetrics } from 'flash-db';
+import { logger, FlashMetrics } from '@moaaz-yahia-zakaria/flash-db';
 
 const metrics = new FlashMetrics();
 logger.info('app', 'Request processed', { duration: 42 });

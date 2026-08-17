@@ -11,7 +11,7 @@ FLASH DB supports **Dual Architectural Modes**:
 On your dedicated Database Server or Docker Container:
 
 ```javascript
-import { FlashServer } from 'flash-db';
+import { FlashServer } from '@moaaz-yahia-zakaria/flash-db';
 
 // Start high-performance Zero-Knowledge database server daemon
 const server = FlashServer.start({
@@ -31,7 +31,7 @@ console.log('⚡ FLASH Server daemon is live on port 6742');
 On your Web Application or API Servers:
 
 ```javascript
-import { FlashClient } from 'flash-db';
+import { FlashClient } from '@moaaz-yahia-zakaria/flash-db';
 
 const client = new FlashClient({
   // Network connection string (flash:// or http://)

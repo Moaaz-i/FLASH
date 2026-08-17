@@ -11,7 +11,7 @@ With the explosion of Generative AI and Large Language Models (LLMs), Vector Dat
 When inserting a document, simply supply a numerical embedding array in the `$vector` field:
 
 ```javascript
-import { FlashClient } from 'flash-db';
+import { FlashClient } from '@moaaz-yahia-zakaria/flash-db';
 
 const client = new FlashClient({ secretKey: 'ai_master_key' });
 const articles = client.collection('articles');

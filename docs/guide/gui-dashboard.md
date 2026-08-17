@@ -7,7 +7,7 @@ FLASH DB includes a full interactive local Web Studio (similar to **MongoDB Comp
 ## 1. Launching the Studio Dashboard
 
 ```javascript
-import { FlashClient } from 'flash-db';
+import { FlashClient } from '@moaaz-yahia-zakaria/flash-db';
 
 const client = new FlashClient({
   secretKey: 'master_passphrase',
