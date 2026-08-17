@@ -19,7 +19,8 @@ export default defineConfig({
           { text: 'ETL & Data Migration', link: '/guide/etl-data-migration' },
           { text: 'Durability & Crash Recovery', link: '/guide/durability' },
           { text: 'Observability & Metrics', link: '/guide/observability-metrics' },
-          { text: 'Structured Logging', link: '/guide/structured-logging' }
+          { text: 'Structured Logging', link: '/guide/structured-logging' },
+          { text: 'Real-Time Infrastructure', link: '/guide/realtime-infrastructure' }
         ]
       },
       {
@@ -90,7 +91,8 @@ export default defineConfig({
             { text: 'Bulk ETL & Migration', link: '/guide/etl-data-migration' },
             { text: 'Durability & Crash Recovery', link: '/guide/durability' },
             { text: 'Observability & Metrics', link: '/guide/observability-metrics' },
-            { text: 'Structured Logging', link: '/guide/structured-logging' }
+            { text: 'Structured Logging', link: '/guide/structured-logging' },
+            { text: 'Real-Time Infrastructure', link: '/guide/realtime-infrastructure' }
           ]
         },
         {

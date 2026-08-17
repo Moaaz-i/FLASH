@@ -32,6 +32,7 @@ _Over 1,000,000 ops/sec with military-grade AES-256-GCM, Searchable Blind Indexe
 - **💾 Modern LSM-Tree Engine**: Lock-Free SkipList MemTable + `.farc` durability archive + Bloom-Filtered compressed SSTable segments + Tiered Compactor.
 - **🔄 ACID Transactions & Snapshot Isolation**: Multi-Version Concurrency Control (**MVCC**) + Distributed **Two-Phase Commit (2PC)** across sharded clusters.
 - **📊 Built-in Observability & ETL**: Live Prometheus `/metrics` telemetry endpoint and streaming `NDJSON` / `CSV` export & import tools.
+- **🔴 Real-Time Infrastructure**: Zero-dependency WebSocket server with rooms/channels, presence tracking, LRU cache, and enhanced pub/sub with wildcards.
 - **📘 Full TypeScript Definitions**: First-class `index.d.ts` with IntelliSense autocompletion and generic collection typing.
 
 ---

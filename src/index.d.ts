@@ -1350,3 +1350,153 @@ export class FlashSQL {
   static execute(db: FlashDatabase, sqlQuery: string): Promise<Array<Record<string, unknown>>>;
   static parse(sql: string): Record<string, unknown>;
 }
+
+// ============================================================================
+// Real-Time: FlashWebSocket & FlashWebSocketServer
+// ============================================================================
+
+export interface WebSocketOptions {
+  path?: string;
+  heartbeatInterval?: number;
+  maxPayload?: number;
+}
+
+export class FlashWebSocket {
+  readonly id: string;
+  readonly rooms: Set<string>;
+  readonly connected: boolean;
+  send(data: string | Record<string, unknown>): void;
+  sendBinary(data: Buffer): void;
+  join(room: string): this;
+  leave(room: string): this;
+  ping(): void;
+  close(code?: number, reason?: string): void;
+  onmessage?: (data: Record<string, unknown>) => void;
+  onclose?: () => void;
+}
+
+export class FlashWebSocketServer {
+  readonly size: number;
+  constructor(httpServer: import('node:http').Server, options?: WebSocketOptions);
+  on(event: 'connection', listener: (ws: FlashWebSocket) => void): this;
+  on(event: 'disconnect', listener: (ws: FlashWebSocket) => void): this;
+  on(event: 'message', listener: (ws: FlashWebSocket, data: Record<string, unknown>) => void): this;
+  on(event: 'join', listener: (ws: FlashWebSocket, room: string) => void): this;
+  on(event: 'leave', listener: (ws: FlashWebSocket, room: string) => void): this;
+  joinRoom(ws: FlashWebSocket, room: string): void;
+  leaveRoom(ws: FlashWebSocket, room: string): void;
+  to(room: string, data: string | Record<string, unknown>, exclude?: FlashWebSocket): void;
+  broadcast(data: string | Record<string, unknown>, exclude?: FlashWebSocket): void;
+  getRoomMembers(room: string): Set<FlashWebSocket>;
+  close(): void;
+}
+
+// ============================================================================
+// Real-Time: FlashPresence
+// ============================================================================
+
+export interface PresenceOptions {
+  heartbeatTimeout?: number;
+  cleanupInterval?: number;
+}
+
+export interface PresenceInfo {
+  userId: string;
+  status: string;
+  lastSeen: number;
+  connections: number;
+  meta: Record<string, unknown>;
+}
+
+export class FlashPresence {
+  constructor(options?: PresenceOptions);
+  on(event: 'online', listener: (userId: string, info: PresenceInfo) => void): this;
+  on(event: 'offline', listener: (userId: string, info: PresenceInfo) => void): this;
+  on(event: 'status', listener: (userId: string, status: string, info: PresenceInfo) => void): this;
+  track(userId: string, meta?: Record<string, unknown>): PresenceInfo;
+  heartbeat(userId: string): void;
+  disconnect(userId: string): void;
+  setStatus(userId: string, status: string): void;
+  isOnline(userId: string): boolean;
+  getStatus(userId: string): string;
+  getOnlineUsers(): PresenceInfo[];
+  getOnlineCount(): number;
+  get(userId: string): PresenceInfo | null;
+  getAll(): PresenceInfo[];
+  destroy(): void;
+}
+
+// ============================================================================
+// Cache: FlashLRUCache
+// ============================================================================
+
+export interface LRUCacheOptions {
+  maxSize?: number;
+  defaultTTL?: number;
+  cleanupInterval?: number;
+}
+
+export interface LRUCacheStats {
+  hits: number;
+  misses: number;
+  evictions: number;
+  sets: number;
+  deletes: number;
+  size: number;
+  maxSize: number;
+}
+
+export class FlashLRUCache {
+  constructor(options?: LRUCacheOptions);
+  set(key: string, value: unknown, ttl?: number): void;
+  get(key: string): unknown;
+  has(key: string): boolean;
+  delete(key: string): boolean;
+  peek(key: string): unknown;
+  keys(): string[];
+  values(): unknown[];
+  entries(): Array<[string, unknown]>;
+  clear(): void;
+  readonly size: number;
+  readonly stats: LRUCacheStats;
+  destroy(): void;
+}
+
+// ============================================================================
+// Real-Time: FlashEnhancedPubSub
+// ============================================================================
+
+export interface EnhancedPubSubOptions {
+  maxHistory?: number;
+  maxRetries?: number;
+}
+
+export interface PubSubMessage {
+  id: string;
+  topic: string;
+  payload: unknown;
+  timestamp: number;
+  ttl: number;
+  retryCount: number;
+  status: string;
+}
+
+export type AckFn = (ack: boolean) => void;
+
+export class FlashEnhancedPubSub {
+  constructor(options?: EnhancedPubSubOptions);
+  on(event: 'publish', listener: (msg: PubSubMessage) => void): this;
+  on(event: 'dead-letter', listener: (msg: PubSubMessage) => void): this;
+  publish(topic: string, payload: unknown, options?: { id?: string; ttl?: number }): string;
+  subscribe(topic: string, subscriberId: string, callback: (msg: PubSubMessage, ack: AckFn) => void): this;
+  subscribeWildcard(pattern: string, subscriberId: string, callback: (msg: PubSubMessage, ack: AckFn) => void): this;
+  unsubscribe(topic: string, subscriberId: string): this;
+  unsubscribeAll(subscriberId: string): void;
+  getHistory(topic: string, limit?: number): PubSubMessage[];
+  getDeadLetter(): PubSubMessage[];
+  retryDeadLetter(msgId: string): boolean;
+  clearHistory(topic?: string): void;
+  getTopics(): string[];
+  getSubscriberCount(topic: string): number;
+  destroy(): void;
+}
