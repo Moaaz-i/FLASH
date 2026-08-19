@@ -2,7 +2,7 @@ import { FlashExplain } from '../engine/explain.mjs';
 
 /**
  * FLASH Fluent Chaining Query Cursor (FlashQuery)
- * Provides Mongoose/MongoDB method chaining: .sort(), .limit(), .skip(), .select(), .where(), .stream(), .lean()
+ * Provides fluent method chaining: .sort(), .limit(), .skip(), .select(), .where(), .stream(), .lean()
  * Implements Promise-like thenable so it can be awaited directly: const docs = await col.find().sort({ age: -1 })
  */
 export class FlashQuery {
@@ -172,9 +172,11 @@ export class FlashQuery {
    */
   async exec() {
     const start = performance.now();
+    const executionStats = {};
     const rawResults = await this.collection._executeRawQuery(this.filterCriteria, {
       ...this.options,
-      limit: 100000
+      limit: 100000,
+      executionStats,
     });
 
     let docs = rawResults;
@@ -221,7 +223,14 @@ export class FlashQuery {
     const duration = performance.now() - start;
 
     if (this._explainMode) {
-      return FlashExplain.analyze(this.collection.name, this.filterCriteria, this.options, docs, duration);
+      return FlashExplain.analyze(
+        this.collection.name,
+        this.filterCriteria,
+        this.options,
+        docs,
+        duration,
+        executionStats,
+      );
     }
 
     return docs;

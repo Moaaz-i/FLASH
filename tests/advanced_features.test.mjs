@@ -24,7 +24,7 @@ test('FlashFuzzyEngine - Direct Unit Tests for Levenshtein & Soundex', () => {
   assert.strictEqual(FlashFuzzyEngine.soundex(null), '');
 });
 
-test('Surpass MongoDB - Encrypted Fuzzy Search & Phonetic Matching', async () => {
+test('Advanced - Encrypted Fuzzy Search & Phonetic Matching', async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flash-fuzzy-test-'));
 
   try {
@@ -58,7 +58,7 @@ test('Surpass MongoDB - Encrypted Fuzzy Search & Phonetic Matching', async () =>
   }
 });
 
-test('Surpass MongoDB - Distributed Sharding Ring with Consistent Hashing', () => {
+test('Advanced - Distributed Sharding Ring with Consistent Hashing', () => {
   const cluster = new FlashCluster({ virtualNodes: 128 });
 
   const db1 = new FlashDatabase('shard_us_east');
@@ -85,7 +85,7 @@ test('Surpass MongoDB - Distributed Sharding Ring with Consistent Hashing', () =
   assert.strictEqual(shardA.shardId, shardA_repeat.shardId);
 });
 
-test('Surpass MongoDB - Advanced Aggregation ($unwind, $project, $addFields)', async () => {
+test('Advanced - Aggregation ($unwind, $project, $addFields)', async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flash-agg-test-'));
 
   try {
@@ -120,7 +120,7 @@ test('Surpass MongoDB - Advanced Aggregation ($unwind, $project, $addFields)', a
   }
 });
 
-test('Surpass MongoDB - Built-In Web GUI Dashboard Server', async () => {
+test('Advanced - Built-In Web GUI Dashboard Server', async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flash-gui-test-'));
 
   try {

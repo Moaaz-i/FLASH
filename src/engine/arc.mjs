@@ -84,6 +84,39 @@ export class FlashArc {
   }
 
   /**
+   * Batch append multiple frames with a single fsync for throughput.
+   * @param {Array<{ opCode: number, key: string, data: Buffer|string }>} operations
+   */
+  async appendBatch(operations = []) {
+    if (operations.length === 0) return;
+    if (!this.fd) await this.open();
+
+    const frames = [];
+    for (const { opCode, key, data } of operations) {
+      const keyBuf = Buffer.from(key, 'utf-8');
+      const dataBuf = Buffer.isBuffer(data) ? data : Buffer.from(typeof data === 'string' ? data : JSON.stringify(data), 'utf-8');
+      const payload = Buffer.allocUnsafe(2 + keyBuf.length + dataBuf.length);
+      payload.writeUInt16LE(keyBuf.length, 0);
+      keyBuf.copy(payload, 2);
+      dataBuf.copy(payload, 2 + keyBuf.length);
+
+      const frame = Buffer.allocUnsafe(13 + payload.length);
+      frame.write('FARC', 0, 4, 'ascii');
+      frame.writeUInt32LE(payload.length, 4);
+      const checksum = crypto.createHash('sha256').update(payload).digest().readUInt32LE(0);
+      frame.writeUInt32LE(checksum, 8);
+      frame.writeUInt8(opCode, 12);
+      payload.copy(frame, 13);
+      frames.push(frame);
+    }
+
+    await this.fd.write(Buffer.concat(frames));
+    if (this.syncOnWrite) {
+      await this.fd.sync();
+    }
+  }
+
+  /**
    * Fast Microsecond Recovery: Replays all .farc frames directly into MemTable upon startup
    * @param {Function} onRecord - Callback (opCode, key, dataBuffer)
    */

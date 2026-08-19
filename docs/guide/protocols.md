@@ -1,6 +1,8 @@
-# Polyglot Protocols: gRPC & GraphQL
+# Polyglot Protocols: gRPC, GraphQL & FLASH Wire
 
-**FLASH DB** provides dedicated protocol engines for low-latency polyglot microservices (`gRPC`) and flexible web query APIs (`GraphQL`).
+**FLASH DB** provides dedicated protocol engines for low-latency polyglot microservices (`gRPC`), flexible web query APIs (`GraphQL`), and the native **FLASH Wire** binary protocol.
+
+> For the native TCP wire protocol (BSON, port 6744), see [FLASH Wire Protocol](/guide/flash-wire).
 
 ---
 

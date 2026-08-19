@@ -1,6 +1,6 @@
 /**
  * FLASH Universal Polyglot Natural Language Query Engine (FlashNLQueryEngine)
- * Script-Agnostic & Zero-Shot Translation of Natural Language into structured MongoDB Queries.
+ * Script-Agnostic & Zero-Shot Translation of Natural Language into structured FLASH queries.
  * Supports ANY language on Earth (English, Arabic, Chinese, French, Spanish, Russian, Hindi,
  * Japanese, German, Turkish, newly invented dialects & programming pseudocode).
  * 
@@ -11,7 +11,7 @@
 
 export class FlashNLQueryEngine {
   /**
-   * Translates a natural language question in ANY language into a structured MongoDB query
+   * Translates a natural language question in ANY language into a structured query filter
    * @param {string} prompt - Question/Prompt in ANY human or artificial language
    * @param {Array<string>} [knownFields=[]] - Available schema fields in the collection
    * @returns {{ filter: object, sort?: object, limit?: number, explanation: string }}
@@ -139,7 +139,7 @@ export class FlashNLQueryEngine {
 
   /**
    * Zero-Shot Universal Polyglot Translation with any LLM (OpenAI, Ollama, DeepSeek, Gemini, etc.)
-   * Translates ANY prompt in ANY language into a 100% compliant MongoDB query object.
+   * Translates ANY prompt in ANY language into a compliant FLASH query object.
    * @param {string} prompt - Prompt in ANY language
    * @param {object} [options]
    * @param {object} [options.llmAdapter] - FlashLLMAdapter instance

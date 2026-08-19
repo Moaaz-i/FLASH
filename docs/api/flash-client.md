@@ -64,7 +64,7 @@ const users = client.collection('users', {
 
 ### `model(name, schema?)`
 
-Create a Mongoose-like model for a collection.
+Create an ODM model for a collection.
 
 - **Returns:** `FlashModelInterface<T>`
 
@@ -204,6 +204,30 @@ Gracefully closes WAL file handles and flushes open collections.
 ```javascript
 await client.close();
 ```
+
+---
+
+## FLASH-Exclusive Intelligence Methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `privateRAG(name, opts?)` | `FlashPrivateRAG` | Encrypted RAG pipeline |
+| `embeddingVault(name, opts?)` | `FlashEmbeddingVault` | Vectors on server, text client-side |
+| `agentMemory(namespace, opts?)` | `FlashAgentMemory` | AI agent episodic memory |
+| `sealedVault(name, opts?)` | `FlashSealedVault` | Passphrase vault + auto-lock |
+| `integrityProof(collection, opts?)` | `Promise<Proof>` | Signed Merkle manifest |
+| `portableBundle()` | `FlashPortableBundle` | `.flashpack` export/import |
+| `langChainAdapter(opts?)` | `FlashLangChainAdapter` | AI framework adapter |
+| `federatedQuery()` | `FlashFederatedQuery` | Multi-peer query merge |
+| `multiAgentSync(namespace)` | `FlashMultiAgentSync` | Shared agent memory |
+| `complianceExport()` | `FlashComplianceExport` | GDPR export/erase |
+| `timeSeal(path?)` | `FlashTimeSeal` | Tamper-evident timestamps |
+| `cloudSync(remoteDir)` | `FlashCloudSync` | Cloud folder sync |
+| `encryptedCRDT(name, nodeId)` | `FlashEncryptedCRDT` | Encrypted CRDT sync |
+| `browserVault()` | `FlashBrowserVault` | Browser encrypted KV |
+| `auditStream(collection)` | `FlashAuditStream` | Change stream + audit chain |
+
+See [FLASH-Exclusive Stack](/guide/flash-exclusive) for full documentation.
 
 ---
 

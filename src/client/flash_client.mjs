@@ -1,27 +1,52 @@
-import crypto from 'node:crypto';
-import { FlashBinary } from '../binary/flash_binary.mjs';
-import { FlashCipher } from '../crypto/cipher.mjs';
-import { FlashBlindIndex } from '../crypto/blind_index.mjs';
-import { FlashHomomorphic } from '../crypto/homomorphic.mjs';
-import { FlashDatabase } from '../core/database.mjs';
-import { FlashVectorIndex } from '../vector/vector_index.mjs';
-import { FlashChangeStream } from '../reactive/change_stream.mjs';
-import { FlashSession } from '../transactions/session.mjs';
-import { FlashPQC } from '../crypto/pqc.mjs';
-import { FlashSchema } from '../schema/schema_validator.mjs';
-import { FlashDashboard } from '../gui/dashboard_server.mjs';
-import { FlashUpdateEngine } from '../engine/update_engine.mjs';
-import { FlashSecondaryIndexManager } from '../engine/secondary_index.mjs';
-import { FlashQueryEvaluator } from '../engine/query_evaluator.mjs';
-import { FlashBulkWriter } from '../engine/bulk_writer.mjs';
-import { FlashBackupManager } from '../engine/backup_restore.mjs';
-import { FlashTTLManager } from '../engine/ttl_manager.mjs';
-import { FlashQuery } from './fluent_query.mjs';
-import { FlashModel, FlashSchemaExtended } from '../odm/flash_model.mjs';
-import { FlashSpatialPlugin } from '../plugins/spatial_plugin.mjs';
-import { FlashTimeSeriesPlugin } from '../plugins/time_series_plugin.mjs';
-import { FlashTextSearchPlugin } from '../plugins/text_search_plugin.mjs';
-import { FlashNLQueryEngine } from '../ai/nl_query_engine.mjs';
+import crypto from "node:crypto";
+import { FlashBinary } from "../binary/flash_binary.mjs";
+import { FlashCipher } from "../crypto/cipher.mjs";
+import { FlashBlindIndex } from "../crypto/blind_index.mjs";
+import { FlashHomomorphic } from "../crypto/homomorphic.mjs";
+import { FlashDatabase } from "../core/database.mjs";
+import { FlashVectorIndex } from "../vector/vector_index.mjs";
+import { FlashChangeStream } from "../reactive/change_stream.mjs";
+import { FlashSession } from "../transactions/session.mjs";
+import { FlashPQC } from "../crypto/pqc.mjs";
+import { FlashSchema } from "../schema/schema_validator.mjs";
+import { FlashDashboard } from "../gui/dashboard_server.mjs";
+import { FlashUpdateEngine } from "../engine/update_engine.mjs";
+import { FlashSecondaryIndexManager } from "../engine/secondary_index.mjs";
+import { FlashQueryEvaluator } from "../engine/query_evaluator.mjs";
+import { FlashBulkWriter } from "../engine/bulk_writer.mjs";
+import { FlashBackupManager } from "../engine/backup_restore.mjs";
+import { FlashTTLManager } from "../engine/ttl_manager.mjs";
+import { FlashQuery } from "./fluent_query.mjs";
+import { FlashModel, FlashSchemaExtended } from "../odm/flash_model.mjs";
+import { FlashSpatialPlugin } from "../plugins/spatial_plugin.mjs";
+import { FlashTimeSeriesPlugin } from "../plugins/time_series_plugin.mjs";
+import { FlashTextSearchPlugin } from "../plugins/text_search_plugin.mjs";
+import { FlashNLQueryEngine } from "../ai/nl_query_engine.mjs";
+import { FlashMVCC } from "../transactions/mvcc.mjs";
+import path from "node:path";
+import fs from "node:fs";
+import {
+  FlashSpillAggregator,
+  materializePipelineData,
+  wrapAsPipelineData,
+  runGroupStage,
+} from "../engine/spill_aggregator.mjs";
+import { cleanupSpillDir } from "../engine/compaction_merge.mjs";
+import { FlashPrivateRAG } from "../ai/private_rag.mjs";
+import { FlashAgentMemory } from "../ai/agent_memory.mjs";
+import { FlashSealedVault } from "../security/sealed_vault.mjs";
+import { FlashIntegrityProof } from "../security/integrity_proof.mjs";
+import { FlashEmbeddingVault } from "../ai/embedding_vault.mjs";
+import { FlashPortableBundle } from "../tools/portable_bundle.mjs";
+import { FlashLangChainAdapter } from "../ai/langchain_adapter.mjs";
+import { FlashFederatedQuery } from "../cluster/federated_query.mjs";
+import { FlashMultiAgentSync } from "../ai/multi_agent_sync.mjs";
+import { FlashComplianceExport } from "../security/compliance_export.mjs";
+import { FlashTimeSeal } from "../security/time_seal.mjs";
+import { FlashCloudSync } from "../sync/cloud_sync.mjs";
+import { FlashEncryptedCRDT } from "../sync/encrypted_crdt.mjs";
+import { FlashBrowserVault } from "../storage/browser_vault.mjs";
+import { FlashAuditStream } from "../reactive/audit_stream.mjs";
 
 /**
  * FLASH Zero-Knowledge Client SDK (FlashClient)
@@ -40,7 +65,7 @@ export class FlashClient {
    */
   constructor(config = {}) {
     if (!config.secretKey) {
-      throw new Error('Secret key is required to initialize FlashClient SDK');
+      throw new Error("Secret key is required to initialize FlashClient SDK");
     }
 
     this.secretKey = config.pqcHardened
@@ -58,18 +83,26 @@ export class FlashClient {
     // ODM Model registry (modelName -> FlashModel)
     this.models = new Map();
 
+    this.mvcc = new FlashMVCC();
+    this._activeSession = null;
+
     if (this.uri) {
       // Remote Client-Server Mode
-      const normalizedUrl = this.uri.replace(/^flash:\/\//i, 'http://');
-      this.remoteBaseUrl = normalizedUrl.endsWith('/') ? normalizedUrl.slice(0, -1) : normalizedUrl;
+      const normalizedUrl = this.uri.replace(/^flash:\/\//i, "http://");
+      this.remoteBaseUrl = normalizedUrl.endsWith("/")
+        ? normalizedUrl.slice(0, -1)
+        : normalizedUrl;
       this.db = {
-        dbName: config.dbName || 'flash_remote_db',
-        storagePath: config.storagePath || './data',
+        dbName: config.dbName || "flash_remote_db",
+        storagePath: config.storagePath || "./data",
         listCollections: async () => {
           try {
-            const headers = { 'Content-Type': 'application/json' };
-            if (this.authKey) headers['x-flash-server-key'] = this.authKey;
-            const res = await fetch(`${this.remoteBaseUrl}/api/v1/collections`, { headers });
+            const headers = { "Content-Type": "application/json" };
+            if (this.authKey) headers["x-flash-server-key"] = this.authKey;
+            const res = await fetch(
+              `${this.remoteBaseUrl}/api/v1/collections`,
+              { headers },
+            );
             if (res.ok) {
               const data = await res.json();
               return data.collections || [];
@@ -77,13 +110,14 @@ export class FlashClient {
           } catch (e) {}
           return [];
         },
-        collection: (name) => new RemoteCollectionDriver(name, this.remoteBaseUrl, this.authKey),
-        close: async () => {}
+        collection: (name) =>
+          new RemoteCollectionDriver(name, this.remoteBaseUrl, this.authKey),
+        close: async () => {},
       };
     } else {
       // Embedded In-Process Mode
-      this.db = new FlashDatabase(config.dbName || 'flash_db', {
-        storagePath: config.storagePath || './data'
+      this.db = new FlashDatabase(config.dbName || "flash_db", {
+        storagePath: config.storagePath || "./data",
       });
     }
   }
@@ -93,15 +127,14 @@ export class FlashClient {
    * @returns {Promise<string[]>}
    */
   async listCollections() {
-    if (typeof this.db.listCollections === 'function') {
+    if (typeof this.db.listCollections === "function") {
       return await this.db.listCollections();
     }
     return [];
   }
 
-
   /**
-   * Compiles or retrieves a Mongoose-style ODM Model
+   * Compiles or retrieves an ODM Model
    * @param {string} name - Model name
    * @param {FlashSchemaExtended|object} [schema]
    */
@@ -122,14 +155,14 @@ export class FlashClient {
    */
   tenant(tenantId) {
     const tenantKey = crypto
-      .createHmac('sha256', this.secretKey)
-      .update(`flash-tenant-v1:${this.db.dbName || 'default'}:${tenantId}`)
-      .digest('hex');
+      .createHmac("sha256", this.secretKey)
+      .update(`flash-tenant-v1:${this.db.dbName || "default"}:${tenantId}`)
+      .digest("hex");
     return new FlashClient({
       ...this.config,
       secretKey: tenantKey,
       dbName: `${this.db.dbName}_tenant_${tenantId}`,
-      storagePath: `${this.config.storagePath || './data'}/tenant_${tenantId}`,
+      storagePath: `${this.config.storagePath || "./data"}/tenant_${tenantId}`,
     });
   }
 
@@ -138,7 +171,7 @@ export class FlashClient {
    * @param {string} destinationPath
    */
   async backup(destinationPath) {
-    const src = this.db.storagePath || this.config.storagePath || './data';
+    const src = this.db.storagePath || this.config.storagePath || "./data";
     return await FlashBackupManager.backup(src, destinationPath);
   }
 
@@ -147,7 +180,7 @@ export class FlashClient {
    * @param {string} backupPath
    */
   async restore(backupPath) {
-    const dst = this.db.storagePath || this.config.storagePath || './data';
+    const dst = this.db.storagePath || this.config.storagePath || "./data";
     return await FlashBackupManager.restore(backupPath, dst);
   }
 
@@ -163,6 +196,78 @@ export class FlashClient {
    */
   startSession() {
     return new FlashSession(this);
+  }
+
+  /**
+   * Encrypted Private RAG pipeline — chunk, embed, retrieve without server seeing plaintext.
+   */
+  privateRAG(collectionName = "private_rag", options = {}) {
+    return new FlashPrivateRAG(this, collectionName, options);
+  }
+
+  /**
+   * Encrypted episodic memory for AI agents — semantic recall with TTL and importance.
+   */
+  agentMemory(namespace = "default", options = {}) {
+    return new FlashAgentMemory(this, namespace, options);
+  }
+
+  /**
+   * Passphrase-sealed vault with auto-lock — isolated key domain for secrets.
+   */
+  sealedVault(vaultName, options = {}) {
+    return new FlashSealedVault(this, vaultName, options);
+  }
+
+  /**
+   * Export signed integrity proof (Merkle root + invariants) for compliance.
+   */
+  async integrityProof(collectionName, options = {}) {
+    return FlashIntegrityProof.export(this, collectionName, options);
+  }
+
+  embeddingVault(collectionName = "embedding_vault", options = {}) {
+    return new FlashEmbeddingVault(this, collectionName, options);
+  }
+
+  portableBundle() {
+    return new FlashPortableBundle(this);
+  }
+
+  langChainAdapter(options = {}) {
+    return new FlashLangChainAdapter(this, options);
+  }
+
+  federatedQuery() {
+    return new FlashFederatedQuery();
+  }
+
+  multiAgentSync(namespace = "multi_agent") {
+    return new FlashMultiAgentSync(this, namespace);
+  }
+
+  complianceExport() {
+    return new FlashComplianceExport(this);
+  }
+
+  timeSeal(sealPath) {
+    return new FlashTimeSeal(sealPath, this.secretKey);
+  }
+
+  cloudSync(syncDir) {
+    return new FlashCloudSync(this, syncDir);
+  }
+
+  encryptedCRDT(collectionName, nodeId = null) {
+    return new FlashEncryptedCRDT(this, collectionName, nodeId);
+  }
+
+  browserVault(vaultName = "browser_vault") {
+    return new FlashBrowserVault(this.secretKey, vaultName);
+  }
+
+  auditStream(collectionName, options = {}) {
+    return new FlashAuditStream(this.collection(collectionName), options);
   }
 
   collection(name, options = {}) {
@@ -192,33 +297,42 @@ export class FlashClient {
       _blind: {
         exact: {},
         ngrams: {},
-        range: {}
+        range: {},
       },
       _homo: {},
-      _plain: {}
+      _plain: {},
     };
 
     for (const [key, value] of Object.entries(doc)) {
-      if (key === '_id') continue;
+      if (key === "_id") continue;
 
-      const policy = this.fieldPolicy[key] || 'searchable';
+      const policy = this.fieldPolicy[key] || "searchable";
 
-      if (policy === 'plaintext') {
+      if (policy === "plaintext") {
         encryptedRecord._plain[key] = value;
-      } else if (policy === 'counter' && typeof value === 'number') {
+      } else if (policy === "counter" && typeof value === "number") {
         const h = this.homomorphic.encryptAdd(value, recordId, key);
         encryptedRecord._homo[key] = h.ciphertext;
-        encryptedRecord._enc[key] = this.cipher.encrypt(value, { aad: this._buildAAD(recordId, key) });
+        encryptedRecord._enc[key] = this.cipher.encrypt(value, {
+          aad: this._buildAAD(recordId, key),
+        });
       } else {
-        encryptedRecord._enc[key] = this.cipher.encrypt(value, { aad: this._buildAAD(recordId, key) });
+        encryptedRecord._enc[key] = this.cipher.encrypt(value, {
+          aad: this._buildAAD(recordId, key),
+        });
 
         if (value !== null && value !== undefined) {
-          encryptedRecord._blind.exact[key] = this.blindIndex.generateTrapdoor(key, value);
-          if (typeof value === 'string' && value.length >= 2) {
-            encryptedRecord._blind.ngrams[key] = this.blindIndex.generateNGramTrapdoors(key, value);
+          encryptedRecord._blind.exact[key] = this.blindIndex.generateTrapdoor(
+            key,
+            value,
+          );
+          if (typeof value === "string" && value.length >= 2) {
+            encryptedRecord._blind.ngrams[key] =
+              this.blindIndex.generateNGramTrapdoors(key, value);
           }
-          if (typeof value === 'number') {
-            encryptedRecord._blind.range[key] = this.blindIndex.generateRangeBuckets(key, value);
+          if (typeof value === "number") {
+            encryptedRecord._blind.range[key] =
+              this.blindIndex.generateRangeBuckets(key, value);
           }
         }
       }
@@ -257,35 +371,65 @@ export class FlashClient {
     const envelope = {};
 
     for (const [key, condition] of Object.entries(query)) {
-      if (key.startsWith('$')) continue;
-      if (key === '_id') {
+      if (key.startsWith("$")) continue;
+      if (key === "_id") {
         envelope._id = condition;
         continue;
       }
 
       const policy = this.fieldPolicy[key];
 
-      if (policy === 'plaintext') {
+      if (policy === "plaintext") {
         envelope.$plain = envelope.$plain || {};
         envelope.$plain[key] = condition;
         continue;
       }
 
-      if (typeof condition === 'object' && condition !== null && !Array.isArray(condition)) {
+      if (
+        typeof condition === "object" &&
+        condition !== null &&
+        !Array.isArray(condition)
+      ) {
         if (condition.$eq !== undefined) {
           envelope.$exact = envelope.$exact || {};
-          envelope.$exact[key] = this.blindIndex.generateTrapdoor(key, condition.$eq);
+          envelope.$exact[key] = this.blindIndex.generateTrapdoor(
+            key,
+            condition.$eq,
+          );
         }
         if (condition.$regex !== undefined || condition.$substr !== undefined) {
           const searchStr = condition.$regex || condition.$substr;
           envelope.$ngrams = envelope.$ngrams || {};
-          envelope.$ngrams[key] = this.blindIndex.generateNGramTrapdoors(key, String(searchStr), false);
+          envelope.$ngrams[key] = this.blindIndex.generateNGramTrapdoors(
+            key,
+            String(searchStr),
+            false,
+          );
         }
-        if (condition.$gt !== undefined || condition.$gte !== undefined || condition.$lt !== undefined || condition.$lte !== undefined) {
-          const min = condition.$gt !== undefined ? condition.$gt : (condition.$gte !== undefined ? condition.$gte : 0);
-          const max = condition.$lt !== undefined ? condition.$lt : (condition.$lte !== undefined ? condition.$lte : 1000000);
+        if (
+          condition.$gt !== undefined ||
+          condition.$gte !== undefined ||
+          condition.$lt !== undefined ||
+          condition.$lte !== undefined
+        ) {
+          const min =
+            condition.$gt !== undefined
+              ? condition.$gt
+              : condition.$gte !== undefined
+                ? condition.$gte
+                : 0;
+          const max =
+            condition.$lt !== undefined
+              ? condition.$lt
+              : condition.$lte !== undefined
+                ? condition.$lte
+                : 1000000;
           envelope.$range = envelope.$range || {};
-          envelope.$range[key] = this.blindIndex.generateRangeQueryTokens(key, Number(min), Number(max));
+          envelope.$range[key] = this.blindIndex.generateRangeQueryTokens(
+            key,
+            Number(min),
+            Number(max),
+          );
         }
       } else {
         envelope.$exact = envelope.$exact || {};
@@ -302,7 +446,7 @@ export class FlashClient {
 }
 
 /**
- * Client-facing Collection wrapper with Full MongoDB & ODM Parity
+ * Client-facing Collection — encrypted CRUD, queries, aggregation, and ODM
  */
 export class FlashClientCollection {
   constructor(name, client) {
@@ -320,19 +464,33 @@ export class FlashClientCollection {
 
   async init() {
     if (this.isReady) return;
+    this.raw.secondaryIndexManager = this.indexManager;
     await this.raw.init();
+    await this._rebuildClientIndexes();
     this.isReady = true;
   }
 
+  async _rebuildClientIndexes() {
+    const rawDocs = await this.raw.find({}, { limit: 100_000 });
+    for (const raw of rawDocs) {
+      const doc = this.client.decryptDocument(raw);
+      if (doc.$vector) {
+        this.vectorIndex.set(doc._id, doc.$vector);
+      }
+      this.indexManager.indexDocument(doc);
+    }
+  }
+
   setSchema(schemaDefinition, options = {}) {
-    this.schema = (schemaDefinition instanceof FlashSchema)
-      ? schemaDefinition
-      : new FlashSchema(schemaDefinition, options);
+    this.schema =
+      schemaDefinition instanceof FlashSchema
+        ? schemaDefinition
+        : new FlashSchema(schemaDefinition, options);
 
     if (options.expireAfterSeconds) {
       this.ttlManager = new FlashTTLManager(this.raw, {
-        field: options.ttlField || 'createdAt',
-        expireAfterSeconds: options.expireAfterSeconds
+        field: options.ttlField || "createdAt",
+        expireAfterSeconds: options.expireAfterSeconds,
       });
       this.ttlManager.start();
     }
@@ -341,7 +499,9 @@ export class FlashClientCollection {
   }
 
   createIndex(keySpec, options = {}) {
-    return this.indexManager.createIndex(keySpec, options);
+    const name = this.indexManager.createIndex(keySpec, options);
+    this.raw._schedulePersistIndexes();
+    return name;
   }
 
   listIndexes() {
@@ -353,9 +513,12 @@ export class FlashClientCollection {
   }
 
   watch(filter = null) {
-    const stream = new FlashChangeStream(filter);
+    const stream = new FlashChangeStream(filter || {}, null, {
+      oplog: this.raw.oplog,
+      collectionName: this.name,
+    });
     this.changeStreams.add(stream);
-    stream.on('close', () => this.changeStreams.delete(stream));
+    stream.on("close", () => this.changeStreams.delete(stream));
     return stream;
   }
 
@@ -375,7 +538,7 @@ export class FlashClientCollection {
         if (!filter || FlashQueryEvaluator.matches(decrypted, filter)) {
           results.push({
             ...decrypted,
-            _score: item.score
+            _score: item.score,
           });
           if (results.length >= topK) break;
         }
@@ -388,7 +551,9 @@ export class FlashClientCollection {
   async insertOne(doc) {
     if (!this.isReady) await this.init();
     const validatedDoc = this.schema.validate(doc);
-    validatedDoc._id = validatedDoc._id ? String(validatedDoc._id) : crypto.randomUUID();
+    validatedDoc._id = validatedDoc._id
+      ? String(validatedDoc._id)
+      : crypto.randomUUID();
 
     // Validate Unique Indexes
     this.indexManager.validateUniqueConstraints(validatedDoc);
@@ -404,22 +569,41 @@ export class FlashClientCollection {
     this.indexManager.indexDocument(validatedDoc);
 
     for (const stream of this.changeStreams) {
-      stream.emitChange('insert', validatedDoc);
+      stream.emitChange("insert", validatedDoc);
     }
 
     return res;
   }
 
   async insertMany(docs) {
-    const insertedIds = [];
-    for (const doc of docs) {
-      const res = await this.insertOne(doc);
-      insertedIds.push(res.insertedId);
+    if (!this.isReady) await this.init();
+    const validatedDocs = docs.map((doc) => {
+      const validated = this.schema.validate(doc);
+      validated._id = validated._id
+        ? String(validated._id)
+        : crypto.randomUUID();
+      this.indexManager.validateUniqueConstraints(validated);
+      return validated;
+    });
+
+    const encryptedDocs = validatedDocs.map((doc) =>
+      this.client.encryptDocument(doc),
+    );
+    const res = await this.raw.insertMany(encryptedDocs);
+
+    for (let i = 0; i < validatedDocs.length; i++) {
+      const validated = validatedDocs[i];
+      if (validated.$vector) {
+        this.vectorIndex.set(validated._id, validated.$vector);
+      }
+      this.indexManager.indexDocument(validated);
+      for (const stream of this.changeStreams) {
+        stream.emitChange("insert", validated);
+      }
     }
-    return {
-      insertedCount: insertedIds.length,
-      insertedIds
-    };
+
+    this.raw._schedulePersistIndexes();
+    return res;
   }
 
   /**
@@ -434,11 +618,72 @@ export class FlashClientCollection {
 
   async _executeRawQuery(query = {}, options = {}) {
     if (!this.isReady) await this.init();
-    const envelope = this.client.buildQueryEnvelope(query);
-    const rawResults = await this.raw.find(envelope, options);
 
-    const decryptedDocs = rawResults.map(r => this.client.decryptDocument(r));
-    const filteredDocs = decryptedDocs.filter(doc => FlashQueryEvaluator.matches(doc, query));
+    const stats = options.executionStats || options.stats || null;
+
+    const equalityFields = {};
+    for (const [k, v] of Object.entries(query)) {
+      if (
+        !k.startsWith("$") &&
+        k !== "_id" &&
+        (typeof v !== "object" || v === null)
+      ) {
+        equalityFields[k] = v;
+      }
+    }
+
+    if (Object.keys(equalityFields).length >= 1) {
+      const compoundIds = this.indexManager.lookupCompound(equalityFields);
+      if (compoundIds !== null) {
+        const rawResults = await this.raw.find(
+          { $ids: compoundIds.map(String) },
+          { ...options, stats },
+        );
+        const decryptedDocs = rawResults.map((r) =>
+          this.client.decryptDocument(r),
+        );
+        return decryptedDocs.filter((doc) =>
+          FlashQueryEvaluator.matches(doc, query),
+        );
+      }
+    }
+
+    const simpleFields = Object.entries(query).filter(
+      ([k, v]) =>
+        k !== "_id" &&
+        !k.startsWith("$") &&
+        (typeof v !== "object" || v === null),
+    );
+    if (simpleFields.length === 1) {
+      const [field, val] = simpleFields[0];
+      const ids = this.indexManager.lookup(field, val);
+      if (ids !== null) {
+        const rawResults = await this.raw.find(
+          { $ids: ids.map(String) },
+          { ...options, stats },
+        );
+        const decryptedDocs = rawResults.map((r) =>
+          this.client.decryptDocument(r),
+        );
+        return decryptedDocs.filter((doc) =>
+          FlashQueryEvaluator.matches(doc, query),
+        );
+      }
+    }
+
+    const envelope = this.client.buildQueryEnvelope(query);
+    if (Object.keys(equalityFields).length > 0) {
+      envelope.$secondary = {
+        ...(envelope.$secondary || {}),
+        ...equalityFields,
+      };
+    }
+    const rawResults = await this.raw.find(envelope, { ...options, stats });
+
+    const decryptedDocs = rawResults.map((r) => this.client.decryptDocument(r));
+    const filteredDocs = decryptedDocs.filter((doc) =>
+      FlashQueryEvaluator.matches(doc, query),
+    );
 
     // Handle Populations
     if (options.populate && Array.isArray(options.populate)) {
@@ -456,7 +701,7 @@ export class FlashClientCollection {
         for (const doc of filteredDocs) {
           const lVal = String(doc[pop.localField]);
           const matches = foreignMap.get(lVal) || [];
-          doc[pop.as] = pop.single ? (matches[0] || null) : matches;
+          doc[pop.as] = pop.single ? matches[0] || null : matches;
         }
       }
     }
@@ -481,7 +726,11 @@ export class FlashClientCollection {
       if (options.upsert) {
         const newDoc = FlashUpdateEngine.applyUpdate(filter, update);
         const res = await this.insertOne(newDoc);
-        return { matchedCount: 0, modifiedCount: 1, upsertedId: res.insertedId };
+        return {
+          matchedCount: 0,
+          modifiedCount: 1,
+          upsertedId: res.insertedId,
+        };
       }
       return { matchedCount: 0, modifiedCount: 0 };
     }
@@ -497,7 +746,7 @@ export class FlashClientCollection {
     this.indexManager.indexDocument(validated);
 
     for (const stream of this.changeStreams) {
-      stream.emitChange('update', validated);
+      stream.emitChange("update", validated);
     }
 
     return { matchedCount: 1, modifiedCount: 1, doc: validated };
@@ -536,7 +785,7 @@ export class FlashClientCollection {
       this.vectorIndex.delete(String(docToDelete._id));
       this.indexManager.unindexDocument(docToDelete);
       for (const stream of this.changeStreams) {
-        stream.emitChange('delete', docToDelete);
+        stream.emitChange("delete", docToDelete);
       }
     }
 
@@ -557,140 +806,173 @@ export class FlashClientCollection {
     return await FlashBulkWriter.execute(this, operations, options);
   }
 
-  async aggregate(pipeline = []) {
+  async aggregate(pipeline = [], options = {}) {
+    const spillThreshold = options.spillThreshold ?? 5000;
+    const spillDir = path.join(
+      this.raw.storageDir,
+      ".agg_spill",
+      String(Date.now()),
+    );
+    fs.mkdirSync(spillDir, { recursive: true });
+
+    const matchStages = pipeline.filter((s) => s.$match);
+    const otherStages = pipeline.filter((s) => !s.$match);
+    const orderedPipeline = [...matchStages, ...otherStages];
+
     let currentData = null;
+    let spillHandle = null;
 
-    for (const stage of pipeline) {
-      if (stage.$match) {
-        currentData = await this.find(stage.$match).exec();
-      } else {
-        if (currentData === null) {
-          currentData = await this.find({}).exec();
-        }
-
-        if (stage.$lookup) {
-          const { from, localField, foreignField, as, single } = stage.$lookup;
-          const targetCol = this.client.collection(from);
-          const foreignDocs = await targetCol.find().exec();
-          const foreignMap = new Map();
-
-          for (const fDoc of foreignDocs) {
-            const fVal = String(fDoc[foreignField]);
-            if (!foreignMap.has(fVal)) foreignMap.set(fVal, []);
-            foreignMap.get(fVal).push(fDoc);
-          }
-
-          for (const doc of currentData) {
-            const lVal = String(doc[localField]);
-            const matches = foreignMap.get(lVal) || [];
-            doc[as] = single ? (matches[0] || null) : matches;
-          }
-        }
-
-        // $unwind
-        if (stage.$unwind) {
-          const fieldPath = typeof stage.$unwind === 'string' ? stage.$unwind.replace('$', '') : stage.$unwind.path.replace('$', '');
-          const unwound = [];
-          for (const doc of currentData) {
-            const arr = doc[fieldPath];
-            if (Array.isArray(arr) && arr.length > 0) {
-              for (const item of arr) {
-                unwound.push({ ...doc, [fieldPath]: item });
-              }
-            } else if (arr !== undefined && arr !== null) {
-              unwound.push({ ...doc });
-            }
-          }
-          currentData = unwound;
-        }
-
-        // $addFields
-        if (stage.$addFields) {
-          currentData = currentData.map(doc => ({ ...doc, ...stage.$addFields }));
-        }
-
-        // $project
-        if (stage.$project) {
-          const isInclusive = Object.values(stage.$project).some(v => v === 1 || v === true);
-          currentData = currentData.map(doc => {
-            const projected = isInclusive ? { _id: doc._id } : { ...doc };
-            for (const [k, v] of Object.entries(stage.$project)) {
-              if (v === 1 || v === true) {
-                projected[k] = doc[k];
-              } else if (v === 0 || v === false) {
-                delete projected[k];
-              }
-            }
-            return projected;
+    try {
+      for (const stage of orderedPipeline) {
+        if (stage.$match) {
+          const results = await this.find(stage.$match).exec();
+          currentData = await wrapAsPipelineData(results, {
+            spillThreshold,
+            spillDir,
           });
-        }
-
-        if (stage.$group) {
-          const groupField = stage.$group._id ? stage.$group._id.replace('$', '') : null;
-          const groups = new Map();
-
-          for (const doc of currentData) {
-            const key = groupField ? doc[groupField] : '__all__';
-            if (!groups.has(key)) {
-              groups.set(key, []);
-            }
-            groups.get(key).push(doc);
+          if (currentData instanceof FlashSpillAggregator)
+            spillHandle = currentData;
+        } else {
+          if (currentData === null) {
+            const all = await this.find({}).exec();
+            currentData = await wrapAsPipelineData(all, {
+              spillThreshold,
+              spillDir,
+            });
+            if (currentData instanceof FlashSpillAggregator)
+              spillHandle = currentData;
           }
 
-          const aggregatedResults = [];
-          for (const [key, items] of groups.entries()) {
-            const resultItem = { _id: key === '__all__' ? null : key };
+          if (stage.$lookup) {
+            let arr = await materializePipelineData(currentData);
+            const { from, localField, foreignField, as, single } =
+              stage.$lookup;
+            const targetCol = this.client.collection(from);
+            const foreignDocs = await targetCol.find().exec();
+            const foreignMap = new Map();
 
-            for (const [outField, op] of Object.entries(stage.$group)) {
-              if (outField === '_id') continue;
-              const [opName, opFieldRaw] = Object.entries(op)[0];
-              const targetField = typeof opFieldRaw === 'string' ? opFieldRaw.replace('$', '') : null;
+            for (const fDoc of foreignDocs) {
+              const fVal = String(fDoc[foreignField]);
+              if (!foreignMap.has(fVal)) foreignMap.set(fVal, []);
+              foreignMap.get(fVal).push(fDoc);
+            }
 
-              if (opName === '$sum') {
-                resultItem[outField] = items.reduce((acc, it) => acc + (Number(it[targetField]) || 0), 0);
-              } else if (opName === '$avg') {
-                const sum = items.reduce((acc, it) => acc + (Number(it[targetField]) || 0), 0);
-                resultItem[outField] = items.length ? sum / items.length : 0;
-              } else if (opName === '$count') {
-                resultItem[outField] = items.length;
+            for (const doc of arr) {
+              const lVal = String(doc[localField]);
+              const matches = foreignMap.get(lVal) || [];
+              doc[as] = single ? matches[0] || null : matches;
+            }
+            currentData = await wrapAsPipelineData(arr, {
+              spillThreshold,
+              spillDir,
+            });
+          }
+
+          if (stage.$unwind) {
+            let arr = await materializePipelineData(currentData);
+            const fieldPath =
+              typeof stage.$unwind === "string"
+                ? stage.$unwind.replace("$", "")
+                : stage.$unwind.path.replace("$", "");
+            const unwound = [];
+            for (const doc of arr) {
+              const fieldVal = doc[fieldPath];
+              if (Array.isArray(fieldVal) && fieldVal.length > 0) {
+                for (const item of fieldVal) {
+                  unwound.push({ ...doc, [fieldPath]: item });
+                }
+              } else if (fieldVal !== undefined && fieldVal !== null) {
+                unwound.push({ ...doc });
               }
             }
-
-            aggregatedResults.push(resultItem);
+            currentData = await wrapAsPipelineData(unwound, {
+              spillThreshold,
+              spillDir,
+            });
           }
 
-          currentData = aggregatedResults;
-        }
+          if (stage.$addFields) {
+            let arr = await materializePipelineData(currentData);
+            currentData = await wrapAsPipelineData(
+              arr.map((doc) => ({ ...doc, ...stage.$addFields })),
+              { spillThreshold, spillDir },
+            );
+          }
 
-        if (stage.$sort) {
-          currentData.sort((a, b) => {
-            for (const [key, dir] of Object.entries(stage.$sort)) {
-              const valA = a[key];
-              const valB = b[key];
-              if (valA < valB) return dir === -1 ? 1 : -1;
-              if (valA > valB) return dir === -1 ? -1 : 1;
+          if (stage.$project) {
+            let arr = await materializePipelineData(currentData);
+            const isInclusive = Object.values(stage.$project).some(
+              (v) => v === 1 || v === true,
+            );
+            currentData = await wrapAsPipelineData(
+              arr.map((doc) => {
+                const projected = isInclusive ? { _id: doc._id } : { ...doc };
+                for (const [k, v] of Object.entries(stage.$project)) {
+                  if (v === 1 || v === true) projected[k] = doc[k];
+                  else if (v === 0 || v === false) delete projected[k];
+                }
+                return projected;
+              }),
+              { spillThreshold, spillDir },
+            );
+          }
+
+          if (stage.$group) {
+            currentData = await runGroupStage(currentData, stage.$group);
+            spillHandle = null;
+          }
+
+          if (stage.$sort) {
+            if (currentData instanceof FlashSpillAggregator) {
+              await currentData.externalSort(stage.$sort);
+              spillHandle = currentData;
+            } else {
+              currentData.sort((a, b) => {
+                for (const [key, dir] of Object.entries(stage.$sort)) {
+                  const valA = a[key];
+                  const valB = b[key];
+                  if (valA < valB) return dir === -1 ? 1 : -1;
+                  if (valA > valB) return dir === -1 ? -1 : 1;
+                }
+                return 0;
+              });
             }
-            return 0;
-          });
-        }
+          }
 
-        if (stage.$limit) {
-          currentData = currentData.slice(0, stage.$limit);
+          if (stage.$limit) {
+            if (currentData instanceof FlashSpillAggregator) {
+              currentData = await currentData.take(stage.$limit);
+              spillHandle = null;
+            } else {
+              currentData = currentData.slice(0, stage.$limit);
+            }
+          }
         }
       }
-    }
 
-    return currentData || [];
+      return await materializePipelineData(currentData);
+    } finally {
+      if (spillHandle instanceof FlashSpillAggregator) {
+        await spillHandle.close();
+      } else if (fs.existsSync(spillDir)) {
+        await cleanupSpillDir(spillDir);
+      }
+    }
   }
 
   async verifyRecordIntegrity(docId) {
     if (!this.isReady) await this.init();
-    return this.raw.verifyRecordIntegrity(docId);
+    return this.raw.verifyRecordIntegrityAsync(docId);
   }
 
   async timeSeriesBucket(timeField, interval, aggregations) {
     const docs = await this.find({}).exec();
-    return FlashTimeSeriesPlugin.bucket(docs, timeField, interval, aggregations);
+    return FlashTimeSeriesPlugin.bucket(
+      docs,
+      timeField,
+      interval,
+      aggregations,
+    );
   }
 
   async spatialNear(field, nearSpec) {
@@ -711,9 +993,9 @@ export class FlashClientCollection {
     if (parsed.sort) query = query.sort(parsed.sort);
     if (parsed.limit) query = query.limit(parsed.limit);
     const results = await query.exec();
-    Object.defineProperty(results, '_interpretedQuery', {
+    Object.defineProperty(results, "_interpretedQuery", {
       value: parsed,
-      enumerable: false
+      enumerable: false,
     });
     return results;
   }
@@ -737,8 +1019,8 @@ class RemoteCollectionDriver {
   }
 
   _getHeaders() {
-    const h = { 'Content-Type': 'application/json' };
-    if (this.authKey) h['x-flash-server-key'] = this.authKey;
+    const h = { "Content-Type": "application/json" };
+    if (this.authKey) h["x-flash-server-key"] = this.authKey;
     return h;
   }
 
@@ -747,43 +1029,55 @@ class RemoteCollectionDriver {
   }
 
   async find(envelope = {}, options = {}) {
-    const res = await fetch(`${this.baseUrl}/api/v1/query/${encodeURIComponent(this.name)}`, {
-      method: 'POST',
-      headers: this._getHeaders(),
-      body: JSON.stringify({ envelope, options })
-    });
+    const res = await fetch(
+      `${this.baseUrl}/api/v1/query/${encodeURIComponent(this.name)}`,
+      {
+        method: "POST",
+        headers: this._getHeaders(),
+        body: JSON.stringify({ envelope, options }),
+      },
+    );
     if (!res.ok) throw new Error(`Remote FlashServer error: ${res.statusText}`);
     const data = await res.json();
     return data.records || [];
   }
 
   async insertOne(encryptedRecord) {
-    const res = await fetch(`${this.baseUrl}/api/v1/insert/${encodeURIComponent(this.name)}`, {
-      method: 'POST',
-      headers: this._getHeaders(),
-      body: JSON.stringify({ encryptedRecord })
-    });
+    const res = await fetch(
+      `${this.baseUrl}/api/v1/insert/${encodeURIComponent(this.name)}`,
+      {
+        method: "POST",
+        headers: this._getHeaders(),
+        body: JSON.stringify({ encryptedRecord }),
+      },
+    );
     if (!res.ok) throw new Error(`Remote FlashServer error: ${res.statusText}`);
     const data = await res.json();
     return data.result;
   }
 
   async deleteOne(filter) {
-    const res = await fetch(`${this.baseUrl}/api/v1/delete/${encodeURIComponent(this.name)}`, {
-      method: 'POST',
-      headers: this._getHeaders(),
-      body: JSON.stringify({ filter })
-    });
+    const res = await fetch(
+      `${this.baseUrl}/api/v1/delete/${encodeURIComponent(this.name)}`,
+      {
+        method: "POST",
+        headers: this._getHeaders(),
+        body: JSON.stringify({ filter }),
+      },
+    );
     if (!res.ok) throw new Error(`Remote FlashServer error: ${res.statusText}`);
     const data = await res.json();
     return data.result;
   }
 
   async flush() {
-    const res = await fetch(`${this.baseUrl}/api/v1/flush/${encodeURIComponent(this.name)}`, {
-      method: 'POST',
-      headers: this._getHeaders()
-    });
+    const res = await fetch(
+      `${this.baseUrl}/api/v1/flush/${encodeURIComponent(this.name)}`,
+      {
+        method: "POST",
+        headers: this._getHeaders(),
+      },
+    );
     return res.ok;
   }
 
@@ -793,6 +1087,6 @@ class RemoteCollectionDriver {
   }
 
   getMerkleRoot() {
-    return 'Remote Merkle Verified';
+    return "Remote Merkle Verified";
   }
 }

@@ -13,7 +13,7 @@ test('Client-Server Mode - Remote FlashClient connecting over network URI to Fla
   let server;
 
   try {
-    // 1. Start Remote Standalone Server Daemon (like mongod)
+    // 1. Start remote standalone server daemon
     server = FlashServer.start({
       port,
       host: '127.0.0.1',
@@ -23,7 +23,7 @@ test('Client-Server Mode - Remote FlashClient connecting over network URI to Fla
 
     await new Promise(resolve => setTimeout(resolve, 100));
 
-    // 2. Initialize Remote Client SDK (like MongoClient)
+    // 2. Initialize remote client SDK
     const client = new FlashClient({
       uri: `flash://127.0.0.1:${port}`,
       authKey,

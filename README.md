@@ -2,18 +2,42 @@
 
 # ⚡ FLASH DB
 
-**Next-Generation Ultra-Fast Zero-Knowledge Encrypted Document Database Engine**
+**Zero-Knowledge Encrypted Intelligence Database — Local-First, AI-Native, Server-Blind**
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-3178c6.svg)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/Tests-74%2F74%20Passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-122%2F122%20Passing-brightgreen.svg)]()
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![Docs](https://img.shields.io/badge/Docs-VitePress-blue.svg)](https://moaaz-i.github.io/FLASH/)
 [![npm](https://img.shields.io/badge/npm-%40moaaz--yahia--zakaria%2Fflash--db-red.svg)](https://www.npmjs.com/package/@moaaz-yahia-zakaria/flash-db)
 
-_Over 1,000,000 ops/sec with military-grade AES-256-GCM, Searchable Blind Indexes, Additive Homomorphic Arithmetic, AI Vector Search (HNSW), and Snapshot Isolation MVCC._
+_The server never sees your keys, your queries, or your plaintext. Built for private AI, local-first apps, and encrypted intelligence at 1M+ ops/sec._
 
 </div>
+
+---
+
+## What FLASH Is
+
+**FLASH** is a **zero-knowledge document engine** — not a generic cloud database with encryption bolted on.
+
+| Pillar                     | Meaning                                                                                    |
+| -------------------------- | ------------------------------------------------------------------------------------------ |
+| **Server-blind by design** | AES-256-GCM, blind indexes, and ORE range tokens are the foundation — not optional plugins |
+| **AI-native storage**      | HNSW vector search, semantic cache, RAG context optimizer, and LLM tool-calling built in   |
+| **Local-first**            | Embedded in-process or over the FLASH wire protocol — your data stays under your key       |
+| **FLASH formats**          | `FlashBinary`, `.farc` WAL, `.flog` oplog — purpose-built, zero-copy, LSM-backed           |
+
+### FLASH-Exclusive (no other DB offers this stack)
+
+| Module                | Purpose                                                            |
+| --------------------- | ------------------------------------------------------------------ |
+| `FlashPrivateRAG`     | Encrypted ingest → chunk → embed → ask — private RAG, server-blind |
+| `FlashAgentMemory`    | AI agent episodic memory — semantic recall, TTL, importance        |
+| `FlashSealedVault`    | Passphrase vault with auto-lock — isolated secret domain           |
+| `FlashIntegrityProof` | Signed Merkle + invariant manifest for audit                       |
+
+> **FLASH answers one question:** _How do you store, query, and search documents when the engine must remain cryptographically blind?_
 
 ---
 
@@ -135,7 +159,7 @@ FlashDatabase Engine
 ## 🧪 Running Tests & Benchmarks
 
 ```bash
-# Run comprehensive test suite (74 tests)
+# Run comprehensive test suite (106 tests)
 npm test
 
 # Run performance benchmarks

@@ -124,7 +124,70 @@ export class FlashSecondaryIndexManager {
         return ids ? Array.from(ids) : [];
       }
     }
-    return null; // No matching index found
+    return null;
+  }
+
+  /**
+   * Compound / prefix index lookup from equality query fields.
+   * @param {object} queryFields - e.g. { tenantId: 't1', status: 'active' }
+   */
+  lookupCompound(queryFields) {
+    const fields = Object.keys(queryFields).filter((k) => !k.startsWith("$"));
+    if (fields.length === 0) return null;
+
+    let best = null;
+    for (const index of this.indexes.values()) {
+      const prefix = index.fields.filter((f) => fields.includes(f));
+      if (prefix.length === 0) continue;
+      const ordered = index.fields.every(
+        (f, i) => i >= prefix.length || fields.includes(f),
+      );
+      if (!ordered) continue;
+
+      const keyParts = index.fields.map((f) =>
+        queryFields[f] !== undefined
+          ? JSON.stringify(queryFields[f])
+          : "__null__",
+      );
+      const key = keyParts.join("|");
+      const ids = index.map.get(key);
+      if (!ids) continue;
+
+      if (!best || index.fields.length > best.fields.length) {
+        best = {
+          indexName: index.name,
+          fields: [...index.fields],
+          ids: Array.from(ids),
+          covered: index.fields.length === fields.length,
+        };
+      }
+    }
+
+    return best ? best.ids : null;
+  }
+
+  /**
+   * Pick best secondary index for a query envelope $secondary map.
+   */
+  findBestIndexForQuery(secondaryQuery) {
+    const fields = Object.keys(secondaryQuery);
+    if (fields.length === 0) return null;
+
+    for (const index of this.indexes.values()) {
+      const matches = index.fields.every((f) => secondaryQuery[f] !== undefined);
+      if (!matches) continue;
+      const key = index.fields
+        .map((f) => JSON.stringify(secondaryQuery[f]))
+        .join("|");
+      const ids = index.map.get(key);
+      return {
+        indexName: index.name,
+        fields: index.fields,
+        covered: index.fields.length === fields.length,
+        count: ids ? ids.size : 0,
+      };
+    }
+    return null;
   }
 
   listIndexes() {

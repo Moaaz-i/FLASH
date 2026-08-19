@@ -5,7 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { FlashClient, FlashSchemaExtended } from '../src/index.mjs';
 
-test('ODM & Active Record - Mongoose-style Models, Pre/Post Hooks, and Virtuals', async (t) => {
+test('ODM & Active Record - Models, Pre/Post Hooks, and Virtuals', async (t) => {
   const tmpDir = path.join(os.tmpdir(), `flash_odm_test_${Date.now()}`);
   const client = new FlashClient({
     secretKey: 'master_passphrase_odm_test',

@@ -1,4 +1,4 @@
-import { FlashSchema } from '../schema/schema_validator.mjs';
+import { FlashSchema } from "../schema/schema_validator.mjs";
 
 /**
  * Extended FlashSchema with Pre/Post Middleware Hooks, Virtuals, Instance Methods, & Statics
@@ -7,8 +7,8 @@ export class FlashSchemaExtended extends FlashSchema {
   constructor(definition = {}, options = {}) {
     super(definition, options);
     this.hooks = {
-      pre: new Map(),  // action -> Array<fn>
-      post: new Map()  // action -> Array<fn>
+      pre: new Map(), // action -> Array<fn>
+      post: new Map(), // action -> Array<fn>
     };
     this.virtuals = new Map(); // name -> { getter, setter }
     this.methods = {};
@@ -47,8 +47,14 @@ export class FlashSchemaExtended extends FlashSchema {
       name,
       getter: null,
       setter: null,
-      get(fn) { this.getter = fn; return this; },
-      set(fn) { this.setter = fn; return this; }
+      get(fn) {
+        this.getter = fn;
+        return this;
+      },
+      set(fn) {
+        this.setter = fn;
+        return this;
+      },
     };
     this.virtuals.set(name, virtualObj);
     return virtualObj;
@@ -66,9 +72,10 @@ export class FlashModel {
    * @param {import('../client/flash_client.mjs').FlashClientCollection} collection
    */
   static compile(modelName, schema, collection) {
-    const schemaInstance = (schema instanceof FlashSchemaExtended)
-      ? schema
-      : new FlashSchemaExtended(schema);
+    const schemaInstance =
+      schema instanceof FlashSchemaExtended
+        ? schema
+        : new FlashSchemaExtended(schema);
 
     class DocumentModel {
       constructor(data = {}) {
@@ -87,8 +94,10 @@ export class FlashModel {
           if (vMeta.getter) {
             Object.defineProperty(this, vName, {
               get: () => vMeta.getter.call(this),
-              set: (val) => { if (vMeta.setter) vMeta.setter.call(this, val); },
-              enumerable: true
+              set: (val) => {
+                if (vMeta.setter) vMeta.setter.call(this, val);
+              },
+              enumerable: true,
             });
           }
         }
@@ -99,14 +108,14 @@ export class FlashModel {
        */
       async validate() {
         // Execute Pre-validate hooks
-        const preHooks = this._schema.hooks.pre.get('validate') || [];
+        const preHooks = this._schema.hooks.pre.get("validate") || [];
         for (const hook of preHooks) {
           await hook.call(this);
         }
 
         const valid = this._schema.validate(this);
         if (!valid) {
-          throw new Error(`ValidationError: ${this._schema.errors.join(', ')}`);
+          throw new Error(`ValidationError: ${this._schema.errors.join(", ")}`);
         }
       }
 
@@ -117,7 +126,7 @@ export class FlashModel {
         await this.validate();
 
         // Execute Pre-save hooks
-        const preHooks = this._schema.hooks.pre.get('save') || [];
+        const preHooks = this._schema.hooks.pre.get("save") || [];
         for (const hook of preHooks) {
           await hook.call(this);
         }
@@ -125,7 +134,11 @@ export class FlashModel {
         // Extract pure data object (excluding private fields, functions, and virtuals)
         const docData = {};
         for (const [k, v] of Object.entries(this)) {
-          if ((!k.startsWith('_') || k === '_id') && typeof v !== 'function' && !this._schema.virtuals.has(k)) {
+          if (
+            (!k.startsWith("_") || k === "_id") &&
+            typeof v !== "function" &&
+            !this._schema.virtuals.has(k)
+          ) {
             docData[k] = v;
           }
         }
@@ -135,11 +148,14 @@ export class FlashModel {
           this._id = res.insertedId;
           this._isNew = false;
         } else {
-          await this._collection.updateOne({ _id: this._id }, { $set: docData });
+          await this._collection.updateOne(
+            { _id: this._id },
+            { $set: docData },
+          );
         }
 
         // Execute Post-save hooks
-        const postHooks = this._schema.hooks.post.get('save') || [];
+        const postHooks = this._schema.hooks.post.get("save") || [];
         for (const hook of postHooks) {
           await hook.call(this, this);
         }
@@ -152,14 +168,14 @@ export class FlashModel {
        */
       async remove() {
         if (!this._id) return;
-        const preHooks = this._schema.hooks.pre.get('remove') || [];
+        const preHooks = this._schema.hooks.pre.get("remove") || [];
         for (const hook of preHooks) {
           await hook.call(this);
         }
 
         await this._collection.deleteOne({ _id: this._id });
 
-        const postHooks = this._schema.hooks.post.get('remove') || [];
+        const postHooks = this._schema.hooks.post.get("remove") || [];
         for (const hook of postHooks) {
           await hook.call(this, this);
         }
@@ -168,7 +184,7 @@ export class FlashModel {
       toJSON() {
         const obj = {};
         for (const [k, v] of Object.entries(this)) {
-          if (!k.startsWith('_') || k === '_id') {
+          if (!k.startsWith("_") || k === "_id") {
             obj[k] = v;
           }
         }
@@ -176,14 +192,14 @@ export class FlashModel {
       }
     }
 
-    // Static Model Methods (MongoDB/Mongoose parity)
+    // Static model methods (ODM layer)
     DocumentModel.modelName = modelName;
     DocumentModel.schema = schemaInstance;
     DocumentModel.collection = collection;
 
-    DocumentModel.create = async function(docs) {
+    DocumentModel.create = async function (docs) {
       if (Array.isArray(docs)) {
-        const instances = docs.map(d => new DocumentModel(d));
+        const instances = docs.map((d) => new DocumentModel(d));
         for (const inst of instances) await inst.save();
         return instances;
       }
@@ -192,37 +208,37 @@ export class FlashModel {
       return instance;
     };
 
-    DocumentModel.find = function(filter = {}, options = {}) {
+    DocumentModel.find = function (filter = {}, options = {}) {
       const q = collection.find(filter, options);
       return q;
     };
 
-    DocumentModel.findOne = async function(filter = {}, options = {}) {
+    DocumentModel.findOne = async function (filter = {}, options = {}) {
       const doc = await collection.findOne(filter, options);
       return doc ? new DocumentModel(doc) : null;
     };
 
-    DocumentModel.findById = async function(id) {
+    DocumentModel.findById = async function (id) {
       return await DocumentModel.findOne({ _id: id });
     };
 
-    DocumentModel.updateOne = async function(filter, update, options) {
+    DocumentModel.updateOne = async function (filter, update, options) {
       return await collection.updateOne(filter, update, options);
     };
 
-    DocumentModel.updateMany = async function(filter, update, options) {
+    DocumentModel.updateMany = async function (filter, update, options) {
       return await collection.updateMany(filter, update, options);
     };
 
-    DocumentModel.deleteOne = async function(filter) {
+    DocumentModel.deleteOne = async function (filter) {
       return await collection.deleteOne(filter);
     };
 
-    DocumentModel.deleteMany = async function(filter) {
+    DocumentModel.deleteMany = async function (filter) {
       return await collection.deleteMany(filter);
     };
 
-    DocumentModel.countDocuments = async function(filter) {
+    DocumentModel.countDocuments = async function (filter) {
       return await collection.find(filter).countDocuments();
     };
 

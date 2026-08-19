@@ -2,7 +2,7 @@ import http from 'node:http';
 
 /**
  * FLASH Sovereign Web GUI Studio (FlashStudio)
- * World-class interactive database management UI, surpassing MongoDB Compass & Prisma Studio.
+ * World-class interactive database management UI for FLASH DB.
  */
 export class FlashDashboard {
   /**

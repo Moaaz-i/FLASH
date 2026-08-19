@@ -74,6 +74,31 @@ export class FlashGRPCServer {
     } else if (action === 'count') {
       const count = await col.count();
       return { success: true, count };
+    } else if (action === 'updateOne') {
+      const existing = await col.findOne(payload.filter || {});
+      if (!existing) return { success: true, matchedCount: 0, modifiedCount: 0 };
+      const merged = { ...existing, ...(payload.update?.$set || payload.update || {}) };
+      await col.deleteOne({ _id: existing._id });
+      await col.insertOne(merged);
+      return { success: true, matchedCount: 1, modifiedCount: 1 };
+    } else if (action === 'deleteOne') {
+      const result = await col.deleteOne(payload.filter || {});
+      return { success: true, result };
+    } else if (action === 'applyReplication') {
+      const raw = Buffer.from(payload.rawBase64, 'base64');
+      await col.applyRawInsert(payload.docId, raw, null, { skipOplog: true });
+      if (payload.oplogEvent) {
+        await col.oplog.append(
+          payload.oplogEvent.operationType,
+          payload.oplogEvent.collection,
+          payload.oplogEvent.docId,
+        );
+      }
+      return { success: true, applied: true };
+    } else if (action === 'explain') {
+      const stats = {};
+      const records = await col.find(payload.query || {}, { ...payload.options, stats });
+      return { success: true, records, stats };
     }
 
     return { error: `Unsupported RPC action: ${action}` };

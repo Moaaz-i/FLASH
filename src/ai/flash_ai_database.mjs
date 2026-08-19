@@ -309,7 +309,7 @@ export class FlashAIDatabase {
   registerCollectionAsTool(collectionName, options = {}) {
     const col = this.db.collection(collectionName);
     const toolName = `query_${collectionName}`;
-    const desc = options.description || `Search and query the local "${collectionName}" collection with MongoDB-style filter criteria or keyword lookup.`;
+    const desc = options.description || `Search and query the local "${collectionName}" collection with structured filter criteria or keyword lookup.`;
 
     this.llm.registerTool({
       name: toolName,
@@ -319,7 +319,7 @@ export class FlashAIDatabase {
         properties: {
           filter: {
             type: 'object',
-            description: 'MongoDB-style query filter object e.g. {"status": "active"} or {"price": {"$gt": 100}}',
+            description: 'Structured query filter object e.g. {"status": "active"} or {"price": {"$gt": 100}}',
           },
           limit: {
             type: 'number',

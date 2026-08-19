@@ -1,6 +1,6 @@
 /**
  * FLASH Zero-Knowledge SQL Query Parser & Execution Engine (FlashSQL)
- * Converts standard SQL queries into encrypted MongoDB-like queries and ORE comparisons.
+ * Converts standard SQL queries into encrypted document queries and ORE comparisons.
  */
 export class FlashSQL {
   /**

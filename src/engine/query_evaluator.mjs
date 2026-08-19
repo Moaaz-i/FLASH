@@ -2,13 +2,13 @@ import { FlashFuzzyEngine } from '../crypto/fuzzy_search.mjs';
 
 /**
  * FLASH Advanced Query Evaluator (FlashQueryEvaluator)
- * Evaluates complex nested MongoDB query filters in-memory with complete operator parity:
+ * Evaluates complex nested document query filters in-memory:
  * Logical ($and, $or, $nor, $not), Comparison ($eq, $ne, $gt, $gte, $lt, $lte, $in, $nin),
  * Element ($exists, $type), Array ($size, $all, $elemMatch), Evaluation ($mod, $regex, $fuzzy, $soundex).
  */
 export class FlashQueryEvaluator {
   /**
-   * Tests whether a document matches a complex MongoDB query
+   * Tests whether a document matches a complex query filter
    * @param {object} doc - Plain document
    * @param {object} query - Query filter
    * @returns {boolean}

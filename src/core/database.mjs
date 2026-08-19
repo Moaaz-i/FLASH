@@ -1,21 +1,18 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import { FlashCollection } from './collection.mjs';
+import { FlashMVCC } from '../transactions/mvcc.mjs';
+import { FlashTxLog } from '../transactions/tx_log.mjs';
 
 /**
  * FLASH Database Engine (FlashDatabase)
- * High-level Database instance managing collection namespaces, transactions, and state.
  */
 export class FlashDatabase {
-  /**
-   * @param {string} dbName
-   * @param {object} [options]
-   * @param {string} [options.storagePath='./data']
-   */
   constructor(dbName = 'flash_db', options = {}) {
     this.dbName = dbName;
     this.storagePath = path.resolve(options.storagePath || './data', dbName);
     this.collections = new Map();
+    this.mvcc = new FlashMVCC();
     this._ensureDir();
   }
 
@@ -26,7 +23,7 @@ export class FlashDatabase {
   }
 
   /**
-   * Returns or initializes a Collection instance (Synchronous MongoDB-style interface)
+   * Returns or initializes a Collection instance (synchronous document DB interface)
    * @param {string} name
    * @returns {FlashCollection}
    */
@@ -35,7 +32,7 @@ export class FlashDatabase {
       return this.collections.get(name);
     }
 
-    const col = new FlashCollection(name, this.storagePath);
+    const col = new FlashCollection(name, this.storagePath, { mvcc: this.mvcc });
     this.collections.set(name, col);
     return col;
   }
@@ -72,8 +69,51 @@ export class FlashDatabase {
    */
   async close() {
     for (const col of this.collections.values()) {
-      await col.wal.close();
+      await col.close();
     }
     this.collections.clear();
+  }
+
+  /**
+   * Replay prepared-but-uncommitted transactions after crash.
+   * @param {object} [options]
+   * @param {boolean} [options.replay=true] - if false, only report pending txs
+   */
+  async recoverTransactions(options = {}) {
+    const txLogPath = path.join(this.storagePath, 'sessions.txlog');
+    const txLog = new FlashTxLog(txLogPath);
+    const pending = await txLog.findPendingPrepared();
+    await txLog.close();
+
+    const replay = options.replay !== false;
+    const recovered = [];
+
+    for (const tx of pending) {
+      if (!replay) {
+        recovered.push({ txId: tx.txId, status: 'pending', operations: tx.operations.length });
+        continue;
+      }
+      for (const op of tx.operations) {
+        const col = this.collection(op.collectionName);
+        await col.init();
+        if (op.type === 'insert') {
+          await col.insertOne(op.doc);
+        } else if (op.type === 'delete') {
+          await col.deleteOne(op.filter);
+        }
+      }
+      recovered.push({ txId: tx.txId, status: 'replayed', operations: tx.operations.length });
+    }
+
+    if (replay && pending.length > 0) {
+      const log = new FlashTxLog(txLogPath);
+      for (const tx of pending) {
+        await log.appendCommitted(tx.txId);
+      }
+      await log.truncate();
+      await log.close();
+    }
+
+    return { pending: pending.length, recovered };
   }
 }

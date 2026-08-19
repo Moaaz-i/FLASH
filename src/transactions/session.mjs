@@ -1,9 +1,10 @@
-import crypto from 'node:crypto';
-import { FlashMVCC } from './mvcc.mjs';
+import crypto from "node:crypto";
+import path from "node:path";
+import { FlashMVCC } from "./mvcc.mjs";
+import { FlashTxLog } from "./tx_log.mjs";
 
 /**
- * FLASH ACID Client Session & Transaction Context (FlashSession)
- * Supports atomic multi-document operations, snapshot isolation, MVCC, and rollback
+ * ACID Client Session — MVCC + durable tx log + atomic batch commit.
  */
 export class FlashSession {
   /**
@@ -13,69 +14,103 @@ export class FlashSession {
     this.client = client;
     this.sessionId = crypto.randomUUID();
     this.inTransaction = false;
-    this.stagedOperations = []; // Array of { collectionName, type: 'insert'|'update'|'delete', doc, filter }
+    this.stagedOperations = [];
     this.mvcc = client?.mvcc || new FlashMVCC();
     this.mvccTx = null;
+    this.writeConcern = "majority";
+  }
+
+  withWriteConcern(concern = "majority") {
+    this.writeConcern = concern;
+    return this;
   }
 
   startTransaction() {
     if (this.inTransaction) {
-      throw new Error('Transaction is already active on this session');
+      throw new Error("Transaction is already active on this session");
     }
     this.inTransaction = true;
     this.stagedOperations = [];
     this.mvccTx = this.mvcc.beginTransaction(this.sessionId);
+    this.client._activeSession = this;
   }
 
-  /**
-   * Commits all staged operations atomically with MVCC conflict check
-   */
+  async insert(collectionName, doc) {
+    if (!this.inTransaction) throw new Error("No active transaction");
+    const col = this.client.collection(collectionName);
+    const validated = col.schema.validate(doc);
+    validated._id = validated._id ? String(validated._id) : crypto.randomUUID();
+    col.indexManager.validateUniqueConstraints(validated);
+    this.mvcc.write(this.mvccTx.txId, validated._id, validated);
+    this.stagedOperations.push({
+      collectionName,
+      type: "insert",
+      doc: validated,
+    });
+  }
+
+  async delete(collectionName, filter) {
+    if (!this.inTransaction) throw new Error("No active transaction");
+    const col = this.client.collection(collectionName);
+    const existing = await col.findOne(filter);
+    if (existing) {
+      this.mvcc.delete(this.mvccTx.txId, String(existing._id));
+      this.stagedOperations.push({
+        collectionName,
+        type: "delete",
+        filter: { _id: existing._id },
+      });
+    }
+  }
+
   async commitTransaction() {
     if (!this.inTransaction) {
-      throw new Error('No active transaction to commit');
+      throw new Error("No active transaction to commit");
     }
 
-    try {
-      if (this.mvccTx) {
-        this.mvcc.commit(this.mvccTx.txId);
-      }
+    const txLogPath = path.join(
+      this.client.db.storagePath,
+      "sessions.txlog",
+    );
+    const txLog = new FlashTxLog(txLogPath);
 
-      // Execute all staged writes
+    try {
+      await txLog.appendPrepared(this.sessionId, this.stagedOperations);
+      this.mvcc.commit(this.mvccTx.txId);
+
       for (const op of this.stagedOperations) {
         const col = this.client.collection(op.collectionName);
-        if (op.type === 'insert') {
+        if (op.type === "insert") {
           await col.insertOne(op.doc);
-        } else if (op.type === 'delete') {
+        } else if (op.type === "delete") {
           await col.deleteOne(op.filter);
         }
       }
+
+      await txLog.appendCommitted(this.sessionId);
+      await txLog.truncate();
     } catch (err) {
-      if (this.mvccTx) {
-        this.mvcc.abort(this.mvccTx.txId);
-      }
+      if (this.mvccTx) this.mvcc.abort(this.mvccTx.txId);
       throw err;
     } finally {
+      await txLog.close();
       this.inTransaction = false;
       this.stagedOperations = [];
       this.mvccTx = null;
+      this.client._activeSession = null;
     }
   }
 
-  /**
-   * Aborts and discards all staged operations without applying to disk/memory
-   */
   async abortTransaction() {
     if (!this.inTransaction) {
-      throw new Error('No active transaction to abort');
+      throw new Error("No active transaction to abort");
     }
-    if (this.mvccTx) {
-      this.mvcc.abort(this.mvccTx.txId);
-    }
+    if (this.mvccTx) this.mvcc.abort(this.mvccTx.txId);
     this.inTransaction = false;
     this.stagedOperations = [];
     this.mvccTx = null;
+    this.client._activeSession = null;
   }
 }
 
 export { FlashMVCC };
-

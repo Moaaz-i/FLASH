@@ -20,7 +20,19 @@ export default defineConfig({
           { text: 'Durability & Crash Recovery', link: '/guide/durability' },
           { text: 'Observability & Metrics', link: '/guide/observability-metrics' },
           { text: 'Structured Logging', link: '/guide/structured-logging' },
-          { text: 'Real-Time Infrastructure', link: '/guide/realtime-infrastructure' }
+          { text: 'Real-Time Infrastructure', link: '/guide/realtime-infrastructure' },
+          { text: 'flashsh CLI', link: '/guide/flashsh-cli' },
+          { text: 'Production Engine', link: '/guide/production-engine' }
+        ]
+      },
+      {
+        text: '⚡ FLASH Exclusive',
+        items: [
+          { text: 'Exclusive Stack Overview', link: '/guide/flash-exclusive' },
+          { text: 'Private RAG & Agent Memory', link: '/guide/private-rag' },
+          { text: 'Trust & Compliance Tools', link: '/guide/trust-compliance' },
+          { text: 'Portable Bundles & Sync', link: '/guide/portable-sync' },
+          { text: 'FLASH Wire Protocol', link: '/guide/flash-wire' }
         ]
       },
       {
@@ -92,7 +104,20 @@ export default defineConfig({
             { text: 'Durability & Crash Recovery', link: '/guide/durability' },
             { text: 'Observability & Metrics', link: '/guide/observability-metrics' },
             { text: 'Structured Logging', link: '/guide/structured-logging' },
-            { text: 'Real-Time Infrastructure', link: '/guide/realtime-infrastructure' }
+            { text: 'Real-Time Infrastructure', link: '/guide/realtime-infrastructure' },
+            { text: 'flashsh CLI', link: '/guide/flashsh-cli' },
+            { text: 'Production Engine', link: '/guide/production-engine' }
+          ]
+        },
+        {
+          text: 'FLASH Exclusive',
+          collapsed: false,
+          items: [
+            { text: 'Exclusive Stack Overview', link: '/guide/flash-exclusive' },
+            { text: 'Private RAG & Agent Memory', link: '/guide/private-rag' },
+            { text: 'Trust & Compliance Tools', link: '/guide/trust-compliance' },
+            { text: 'Portable Bundles & Sync', link: '/guide/portable-sync' },
+            { text: 'FLASH Wire Protocol', link: '/guide/flash-wire' }
           ]
         },
         {

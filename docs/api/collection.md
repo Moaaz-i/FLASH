@@ -1,6 +1,6 @@
 # FlashCollection API Reference
 
-The `FlashClientCollection` class provides a fluent, MongoDB-compatible interface for executing encrypted operations, queries, aggregations, and more.
+The `FlashClientCollection` class provides a fluent document DB interface for executing encrypted operations, queries, aggregations, and more.
 
 ---
 

@@ -1,49 +1,105 @@
-import path from 'node:path';
-import fs from 'node:fs';
-import crypto from 'node:crypto';
-import { FlashMemTable } from '../engine/memtable.mjs';
-import { FlashArc, ARC_OP, WAL_OP } from '../engine/arc.mjs';
-import { FlashSSTable } from '../engine/sstable.mjs';
-import { FlashIndexManager } from '../engine/index_manager.mjs';
-import { FlashBinary } from '../binary/flash_binary.mjs';
-import { FlashMerkle } from '../crypto/merkle.mjs';
-import { logger } from './logger.mjs';
+import path from "node:path";
+import fs from "node:fs";
+import crypto from "node:crypto";
+import { FlashMemTable } from "../engine/memtable.mjs";
+import { FlashArc, ARC_OP, WAL_OP } from "../engine/arc.mjs";
+import { FlashSSTable, fsyncDir } from "../engine/sstable.mjs";
+import { FlashIndexManager } from "../engine/index_manager.mjs";
+import { FlashIndexPersistence } from "../engine/index_persistence.mjs";
+import { FlashOplog } from "../engine/oplog.mjs";
+import { FlashMVCC } from "../transactions/mvcc.mjs";
+import { FlashQueryPlanner } from "../engine/query_planner.mjs";
+import { FlashInvariants } from "../engine/invariants.mjs";
+import { FlashBinary } from "../binary/flash_binary.mjs";
+import { FlashMerkle } from "../crypto/merkle.mjs";
+import { FlashWorkerPool } from "../engine/worker_pool.mjs";
+import { logger } from "./logger.mjs";
 
 /**
  * FLASH Collection Engine (FlashCollection)
- * Orchestrates MemTable, FlashArc (.farc Vault), SSTables, Blind Indexing, and Merkle State Root
- * Implements a true LSM-Tree: MemTable (L0 in-memory) -> Immutable SSTables (L1 on-disk)
+ * LSM-Tree with persistent indexes, MVCC, oplog, and query planning.
  */
 export class FlashCollection {
-  /**
-   * @param {string} name - Collection name
-   * @param {string} storageDir - Base directory for data files
-   * @param {object} [options]
-   * @param {number} [options.memtableThreshold=64 * 1024] - Flush to SSTable when MemTable reaches this size (Default 64KB)
-   */
   constructor(name, storageDir, options = {}) {
     this.name = name;
     this.storageDir = path.join(storageDir, name);
-    this.memtableThreshold = options.memtableThreshold || 64 * 1024; // 64KB default
+    this.memtableThreshold = options.memtableThreshold || 64 * 1024;
     this.memtable = new FlashMemTable();
     this.indexManager = new FlashIndexManager();
-    this.arc = new FlashArc(path.join(this.storageDir, 'commit.farc'));
-    this.wal = this.arc; // Backward compatibility alias
-    this.sstables = []; // List of immutable FlashSSTable instances
+    this.secondaryIndexManager = options.secondaryIndexManager || null;
+    this.arc = new FlashArc(path.join(this.storageDir, "commit.farc"));
+    this.wal = this.arc;
+    this.oplog = new FlashOplog(path.join(this.storageDir, "oplog.flog"));
+    this.mvcc = options.mvcc || new FlashMVCC();
+    this.sstables = [];
     this.merkleTree = null;
-    this.docOrder = []; // Array of docIds for Merkle tree leaves
+    this.docOrder = [];
+    this.docIdSet = new Set();
     this.isMerkleDirty = false;
     this.isReady = false;
+    this._persistTimer = null;
+    this._activeTxId = null;
+    this._compacting = false;
+    this.useWorkerFlush = options.useWorkerFlush === true;
+    this.workerPool = options.workerPool || FlashWorkerPool.getDefault();
+  }
+
+  _trackDocId(docId) {
+    const id = String(docId);
+    if (!this.docIdSet.has(id)) {
+      this.docIdSet.add(id);
+      this.docOrder.push(id);
+    }
+  }
+
+  _untrackDocId(docId) {
+    const id = String(docId);
+    if (this.docIdSet.delete(id)) {
+      const idx = this.docOrder.indexOf(id);
+      if (idx !== -1) this.docOrder.splice(idx, 1);
+    }
+  }
+
+  _schedulePersistIndexes() {
+    if (this._persistTimer) return;
+    this._persistTimer = setTimeout(async () => {
+      this._persistTimer = null;
+      try {
+        await FlashIndexPersistence.save(this.storageDir, {
+          indexManager: this.indexManager,
+          secondaryManager: this.secondaryIndexManager,
+          docIds: this.docIdSet,
+        });
+      } catch (err) {
+        logger.warn("FlashCollection", "index persist failed", {
+          collection: this.name,
+          error: err.message,
+        });
+      }
+    }, 100);
   }
 
   async init() {
     if (this.isReady) return;
-    logger.info('FlashCollection', 'initializing', { collection: this.name });
+    logger.info("FlashCollection", "initializing", { collection: this.name });
 
-    // 1. Load existing SSTables from disk
+    if (!fs.existsSync(this.storageDir)) {
+      fs.mkdirSync(this.storageDir, { recursive: true });
+    }
+
+    const persistedIds = await FlashIndexPersistence.load(this.storageDir, {
+      indexManager: this.indexManager,
+      secondaryManager: this.secondaryIndexManager,
+    });
+    if (persistedIds) {
+      for (const id of persistedIds) {
+        this._trackDocId(id);
+      }
+    }
+
     await this._loadExistingSSTables();
+    await this.oplog.open();
 
-    // 2. Open and replay FlashArc vault for fast crash recovery of un-flushed memory state
     let replayed = 0;
     await this.arc.open();
     await this.arc.recover((opCode, key, dataBuf) => {
@@ -52,22 +108,19 @@ export class FlashCollection {
         try {
           const doc = FlashBinary.deserialize(dataBuf);
           if (doc._blind) this.indexManager.indexDocument(key, doc._blind);
-          if (!this.docOrder.includes(key)) this.docOrder.push(key);
+          this._trackDocId(key);
           replayed++;
-        } catch {
-          // ignore corrupted recovery chunk
-        }
+        } catch {}
       } else if (opCode === ARC_OP.DELETE) {
         this.memtable.delete(key);
         this.indexManager.removeDocument(key);
-        const idx = this.docOrder.indexOf(key);
-        if (idx !== -1) this.docOrder.splice(idx, 1);
+        this._untrackDocId(key);
       }
     });
 
     this.isMerkleDirty = true;
     this.isReady = true;
-    logger.info('FlashCollection', 'ready', {
+    logger.info("FlashCollection", "ready", {
       collection: this.name,
       sstables: this.sstables.length,
       walReplayed: replayed,
@@ -78,10 +131,8 @@ export class FlashCollection {
     if (!fs.existsSync(this.storageDir)) return;
     const allFiles = await fs.promises.readdir(this.storageDir);
 
-    // Remove stale temp files from writes interrupted by a crash so they
-    // never confuse compaction or future flushes.
     for (const f of allFiles) {
-      if (f.endsWith('.sst.tmp') || f.endsWith('.tmp')) {
+      if (f.endsWith(".sst.tmp") || f.endsWith(".tmp")) {
         try {
           await fs.promises.unlink(path.join(this.storageDir, f));
         } catch {}
@@ -89,26 +140,31 @@ export class FlashCollection {
     }
 
     const sstFiles = allFiles
-      .filter(f => f.endsWith('.sst') && !f.includes('.tmp'))
-      .sort();
+      .filter((f) => f.endsWith(".sst") && !f.includes(".tmp"))
+      .sort((a, b) => {
+        const levelA = a.includes("_L")
+          ? parseInt(a.match(/_L(\d+)/)?.[1] || "0", 10)
+          : 0;
+        const levelB = b.includes("_L")
+          ? parseInt(b.match(/_L(\d+)/)?.[1] || "0", 10)
+          : 0;
+        if (levelA !== levelB) return levelA - levelB;
+        return a.localeCompare(b);
+      });
 
     for (const f of sstFiles) {
       const sstPath = path.join(this.storageDir, f);
       try {
-        const sstable = new FlashSSTable(sstPath);
+        const levelMatch = f.match(/_L(\d+)_/);
+        const level = levelMatch ? parseInt(levelMatch[1], 10) : 0;
+        const sstable = new FlashSSTable(sstPath, level);
         await sstable.load();
-        this.sstables.push(sstable);
-
-        // Populate indexes and docOrder from SSTable metadata
+        this.sstables.unshift(sstable);
         for (const [key] of sstable.indexMap.entries()) {
-          if (!this.docOrder.includes(key)) {
-            this.docOrder.push(key);
-          }
+          this._trackDocId(key);
         }
       } catch (err) {
-        // Torn/corrupt SSTable left by a crash mid-flush: skip it so the
-        // remaining tables and WAL can still recover data.
-        logger.warn('FlashCollection', 'skipping corrupt SSTable', {
+        logger.warn("FlashCollection", "skipping corrupt SSTable", {
           collection: this.name,
           file: f,
           error: err.message,
@@ -117,35 +173,52 @@ export class FlashCollection {
     }
   }
 
-  _rebuildMerkleTree() {
+  async _rebuildMerkleTree() {
     const leafHashes = [];
     for (const id of this.docOrder) {
-      const val = this.memtable.get(id);
-      if (val && !val._tombstone) {
-        const hash = crypto.createHash('sha256').update(val).digest('hex');
-        leafHashes.push(hash);
-      } else {
-        // Check loaded SSTables
-        for (const sst of this.sstables) {
-          if (sst._dataCache && sst.indexMap.has(id)) {
-            const meta = sst.indexMap.get(id);
-            const rawChunk = sst._dataCache.subarray(meta.offset, meta.offset + meta.len);
-            const hash = crypto.createHash('sha256').update(rawChunk).digest('hex');
-            leafHashes.push(hash);
-            break;
-          }
-        }
+      const raw = await this._getRawDoc(id);
+      if (raw) {
+        leafHashes.push(crypto.createHash("sha256").update(raw).digest("hex"));
       }
     }
     this.merkleTree = new FlashMerkle(leafHashes);
   }
 
-  /**
-   * Insert a single document (Already encrypted by client SDK)
-   * @param {object} doc - Document containing _id, _enc, _blind, etc.
-   * @returns {Promise<{ insertedId: string, merkleRoot: string }>}
-   */
-  async insertOne(doc) {
+  beginEngineTransaction(txId = null) {
+    const tx = this.mvcc.beginTransaction(txId);
+    this._activeTxId = tx.txId;
+    return tx;
+  }
+
+  async commitEngineTransaction(txId) {
+    const result = this.mvcc.commit(txId);
+    this._activeTxId = null;
+    return result;
+  }
+
+  abortEngineTransaction(txId) {
+    this.mvcc.abort(txId);
+    if (this._activeTxId === txId) this._activeTxId = null;
+  }
+
+  async applyRawInsert(docId, binaryBuf, blindPayload = null, options = {}) {
+    if (!this.isReady) await this.init();
+    await this.wal.append(WAL_OP.INSERT, String(docId), binaryBuf);
+    this.memtable.set(String(docId), binaryBuf, binaryBuf.length);
+    if (blindPayload) this.indexManager.indexDocument(String(docId), blindPayload);
+    this._trackDocId(String(docId));
+    this.isMerkleDirty = true;
+    if (!options.skipOplog) {
+      await this.oplog.append("insert", this.name, String(docId));
+    }
+    this._schedulePersistIndexes();
+  }
+
+  async verifyInvariants() {
+    return FlashInvariants.verify(this);
+  }
+
+  async insertOne(doc, options = {}) {
     if (!this.isReady) await this.init();
 
     if (!doc._id) {
@@ -155,38 +228,70 @@ export class FlashCollection {
     const docId = String(doc._id);
     const binaryBuf = FlashBinary.serialize(doc);
 
-    // 1. Write to WAL for Durability
     await this.wal.append(WAL_OP.INSERT, docId, binaryBuf);
-
-    // 2. Insert into MemTable
     this.memtable.set(docId, binaryBuf, binaryBuf.length);
 
-    // 3. Index Trapdoors
     if (doc._blind) {
       this.indexManager.indexDocument(docId, doc._blind);
     }
 
-    // 4. Mark Merkle Tree as dirty
-    if (!this.docOrder.includes(docId)) {
-      this.docOrder.push(docId);
-    }
+    this._trackDocId(docId);
     this.isMerkleDirty = true;
 
-    // 5. Auto-Flush to SSTable if MemTable exceeds threshold
+    if (!options.skipOplog) {
+      await this.oplog.append("insert", this.name, docId);
+    }
+
+    this._schedulePersistIndexes();
+
     if (this.memtable.byteSize >= this.memtableThreshold) {
       await this.flush();
     }
 
     return {
       insertedId: docId,
-      merkleRoot: this.getMerkleRoot()
+      merkleRoot: this.getMerkleRoot(),
     };
   }
 
-  /**
-   * Flushes current MemTable into an immutable on-disk SSTable segment (Checkpointing)
-   * Truncates the WAL to prevent unbounded log growth
-   */
+  async insertMany(docs, options = {}) {
+    if (!this.isReady) await this.init();
+    if (docs.length === 0) return { insertedCount: 0, insertedIds: [] };
+
+    const walOps = [];
+    const prepared = [];
+
+    for (const doc of docs) {
+      if (!doc._id) doc._id = crypto.randomUUID();
+      const docId = String(doc._id);
+      const binaryBuf = FlashBinary.serialize(doc);
+      walOps.push({ opCode: WAL_OP.INSERT, key: docId, data: binaryBuf });
+      prepared.push({ docId, binaryBuf, doc });
+    }
+
+    await this.wal.appendBatch(walOps);
+
+    const insertedIds = [];
+    for (const { docId, binaryBuf, doc } of prepared) {
+      this.memtable.set(docId, binaryBuf, binaryBuf.length);
+      if (doc._blind) this.indexManager.indexDocument(docId, doc._blind);
+      this._trackDocId(docId);
+      insertedIds.push(docId);
+      if (!options.skipOplog) {
+        await this.oplog.append("insert", this.name, docId);
+      }
+    }
+
+    this.isMerkleDirty = true;
+    this._schedulePersistIndexes();
+
+    if (this.memtable.byteSize >= this.memtableThreshold) {
+      await this.flush();
+    }
+
+    return { insertedCount: insertedIds.length, insertedIds };
+  }
+
   async flush() {
     if (!this.isReady) await this.init();
     const entries = this.memtable.entries();
@@ -194,46 +299,118 @@ export class FlashCollection {
 
     const t0 = Date.now();
     const timestamp = Date.now();
-    const sstPath = path.join(this.storageDir, `sstable_${timestamp}_${this.sstables.length + 1}.sst`);
+    const sstPath = path.join(
+      this.storageDir,
+      `sstable_L0_${timestamp}_${this.sstables.length + 1}.sst`,
+    );
 
-    const sstable = await FlashSSTable.write(sstPath, entries);
-    this.sstables.unshift(sstable); // Insert at beginning (newest first)
+    let sstable;
+    if (this.useWorkerFlush && entries.length >= 512) {
+      await this.workerPool.runFlush(sstPath, entries, 0);
+      sstable = new FlashSSTable(sstPath, 0);
+      await sstable.load();
+    } else {
+      sstable = await FlashSSTable.write(sstPath, entries, { level: 0 });
+    }
+    this.sstables.unshift(sstable);
 
-    // Clear MemTable and reset WAL checkpoint
     this.memtable.clear();
     await this.wal.truncate();
+    await this._schedulePersistIndexesImmediate();
 
-    const durationMs = Date.now() - t0;
-    logger.info('FlashCollection', 'flush completed', {
+    logger.info("FlashCollection", "flush completed", {
       collection: this.name,
       records: entries.length,
       sstables: this.sstables.length,
-      durationMs,
+      durationMs: Date.now() - t0,
     });
+
+    if (this._countSSTablesAtLevel(0) >= 4) {
+      this._scheduleBackgroundCompact();
+    }
 
     return sstable;
   }
 
-  /**
-   * Reads raw document buffer from MemTable first, falling back to SSTables (LSM-Tree multi-tier lookup)
-   * @param {string} docId
-   * @returns {Promise<Buffer|null>}
-   */
+  _scheduleBackgroundCompact() {
+    if (this._compacting) return;
+    this._compacting = true;
+
+    setImmediate(async () => {
+      try {
+        await this.flush();
+        const l0Tables = this.sstables.filter((s) => (s.level || 0) === 0);
+        if (l0Tables.length < 4) return;
+
+        const filePaths = l0Tables.map((s) => s.filePath);
+        const merged = await this.workerPool.runMerge(
+          this.storageDir,
+          filePaths,
+          1,
+        );
+
+        if (!merged.compacted || !merged.path) return;
+
+        for (const fp of filePaths) {
+          try {
+            await fs.promises.unlink(fp);
+          } catch {}
+        }
+        for (const sst of l0Tables) {
+          await sst.close();
+        }
+
+        this.sstables = this.sstables.filter(
+          (s) => !filePaths.includes(s.filePath),
+        );
+        const newTable = new FlashSSTable(merged.path, 1);
+        await newTable.load();
+        this.sstables.unshift(newTable);
+        await fsyncDir(this.storageDir);
+
+        logger.info("FlashCollection", "background compaction completed", {
+          collection: this.name,
+          mergedRecords: merged.count,
+          level: 1,
+        });
+      } catch (err) {
+        logger.warn("FlashCollection", "background compaction failed", {
+          collection: this.name,
+          error: err.message,
+        });
+      } finally {
+        this._compacting = false;
+      }
+    });
+  }
+
+  _countSSTablesAtLevel(level) {
+    return this.sstables.filter((s) => s.level === level).length;
+  }
+
+  async _schedulePersistIndexesImmediate() {
+    if (this._persistTimer) {
+      clearTimeout(this._persistTimer);
+      this._persistTimer = null;
+    }
+    await FlashIndexPersistence.save(this.storageDir, {
+      indexManager: this.indexManager,
+      secondaryManager: this.secondaryIndexManager,
+      docIds: this.docIdSet,
+    });
+  }
+
   async _getRawDoc(docId) {
     if (!this.isReady) await this.init();
 
-    // 1. Check In-Memory MemTable (L0)
     const memVal = this.memtable.get(docId);
     if (memVal) {
       return memVal._tombstone ? null : memVal;
     }
 
-    // 2. Check Immutable SSTables on disk (L1..LN) using Bloom Filter in microsecond time
     for (const sst of this.sstables) {
       const sstVal = await sst.get(docId);
-      if (sstVal) {
-        return sstVal;
-      }
+      if (sstVal) return sstVal;
     }
 
     return null;
@@ -241,10 +418,26 @@ export class FlashCollection {
 
   getMerkleRoot() {
     if (this.isMerkleDirty || !this.merkleTree) {
-      this._rebuildMerkleTree();
+      // Sync rebuild from memtable + cached SSTable data where available
+      const leafHashes = [];
+      for (const id of this.docOrder) {
+        const memVal = this.memtable.get(id);
+        if (memVal && !memVal._tombstone) {
+          leafHashes.push(
+            crypto.createHash("sha256").update(memVal).digest("hex"),
+          );
+        }
+      }
+      this.merkleTree = new FlashMerkle(leafHashes.length ? leafHashes : [""]);
       this.isMerkleDirty = false;
     }
-    return this.merkleTree ? this.merkleTree.getRoot() : '';
+    return this.merkleTree ? this.merkleTree.getRoot() : "";
+  }
+
+  async refreshMerkleRoot() {
+    await this._rebuildMerkleTree();
+    this.isMerkleDirty = false;
+    return this.merkleTree ? this.merkleTree.getRoot() : "";
   }
 
   getMerkleProof(docId) {
@@ -257,137 +450,202 @@ export class FlashCollection {
     return {
       index: idx,
       proof: this.merkleTree.getProof(idx),
-      root: this.getMerkleRoot()
+      root: this.getMerkleRoot(),
     };
   }
 
   verifyRecordIntegrity(docId) {
+    return this.verifyRecordIntegrityAsync(docId);
+  }
+
+  async verifyRecordIntegrityAsync(docId) {
+    await this._rebuildMerkleTree();
+    this.isMerkleDirty = false;
     const proof = this.getMerkleProof(docId);
-    if (!proof) return { isValid: false, reason: 'Record not found in state tree' };
-    const rawVal = this.memtable.get(String(docId));
-    if (!rawVal) return { isValid: false, reason: 'Document missing' };
-    const leafHash = crypto.createHash('sha256').update(rawVal).digest();
+    if (!proof)
+      return { isValid: false, reason: "Record not found in state tree" };
+    const rawVal = await this._getRawDoc(String(docId));
+    if (!rawVal) return { isValid: false, reason: "Document missing" };
+    const leafHash = crypto.createHash("sha256").update(rawVal).digest();
     const isValid = FlashMerkle.verifyProof(leafHash, proof.proof, proof.root);
-    return {
-      isValid,
-      leafHash: leafHash.toString('hex'),
-      root: proof.root
-    };
+    return { isValid, leafHash: leafHash.toString("hex"), root: proof.root };
   }
 
-  /**
-   * Insert multiple documents in high-speed batch
-   * @param {Array<object>} docs
-   * @returns {Promise<{ insertedCount: number, insertedIds: string[] }>}
-   */
-  async insertMany(docs) {
-    const insertedIds = [];
-    for (const doc of docs) {
-      const res = await this.insertOne(doc);
-      insertedIds.push(res.insertedId);
+  _availableIndexFields() {
+    const fields = new Set(["_id"]);
+    for (const field of this.indexManager.exactIndexes.keys())
+      fields.add(field);
+    for (const field of this.indexManager.ngramIndexes.keys())
+      fields.add(field);
+    for (const field of this.indexManager.rangeIndexes.keys())
+      fields.add(field);
+    if (this.secondaryIndexManager) {
+      for (const idx of this.secondaryIndexManager.indexes.values()) {
+        for (const f of idx.fields) fields.add(f);
+      }
     }
-    return {
-      insertedCount: insertedIds.length,
-      insertedIds
-    };
+    return fields;
   }
 
-  /**
-   * Finds documents matching a query envelope (Trapdoors, Range Buckets, or Raw IDs)
-   * @param {object} queryEnvelope
-   * @param {object} [options]
-   * @param {number} [options.limit=100]
-   * @param {number} [options.skip=0]
-   * @returns {Promise<Array<object>>}
-   */
   async find(queryEnvelope = {}, options = {}) {
     if (!this.isReady) await this.init();
-    const limit = options.limit || 1000;
-    const skip = options.skip || 0;
+    const limit = options.limit ?? 1000;
+    const skip = options.skip ?? 0;
+    const stats = options.stats || null;
+
+    const plan = FlashQueryPlanner.plan(
+      queryEnvelope,
+      this.secondaryIndexManager,
+      this._availableIndexFields(),
+      this.docIdSet.size,
+    );
+    if (stats) {
+      stats.plan = plan.plan;
+      stats.stage = plan.stage;
+      stats.indexName = plan.indexName;
+      stats.fields = plan.fields;
+      stats.covered = plan.covered;
+      stats.keysExamined = 0;
+      stats.docsExamined = 0;
+    }
 
     let candidateIds = null;
 
-    // 1. Point lookup by _id
-    if (queryEnvelope._id) {
+    if (queryEnvelope._id || plan.plan === "POINT_LOOKUP") {
       const id = String(queryEnvelope._id);
       const buf = await this._getRawDoc(id);
-      if (buf) {
-        return [FlashBinary.deserialize(buf)];
+      if (stats) {
+        stats.keysExamined = 1;
+        stats.docsExamined = buf ? 1 : 0;
       }
-      return [];
+      return buf ? [FlashBinary.deserialize(buf)] : [];
     }
 
-    // 2. Query using Exact Trapdoors
     if (queryEnvelope.$exact) {
       for (const [field, trapdoor] of Object.entries(queryEnvelope.$exact)) {
         const matches = this.indexManager.findExact(field, trapdoor);
-        candidateIds = candidateIds === null ? new Set(matches) : this._intersect(candidateIds, matches);
+        if (stats) stats.keysExamined += matches.size;
+        candidateIds =
+          candidateIds === null
+            ? new Set(matches)
+            : this._intersect(candidateIds, matches);
         if (candidateIds.size === 0) return [];
       }
     }
 
-    // 3. Query using N-Gram Trapdoors ($regex / $substr)
     if (queryEnvelope.$ngrams) {
       for (const [field, tokenList] of Object.entries(queryEnvelope.$ngrams)) {
         const matches = this.indexManager.findNGrams(field, tokenList);
-        candidateIds = candidateIds === null ? new Set(matches) : this._intersect(candidateIds, matches);
+        if (stats) stats.keysExamined += matches.size;
+        candidateIds =
+          candidateIds === null
+            ? new Set(matches)
+            : this._intersect(candidateIds, matches);
         if (candidateIds.size === 0) return [];
       }
     }
 
-    // 4. Query using Range Buckets ($gt, $lt)
     if (queryEnvelope.$range) {
-      for (const [field, bucketTokens] of Object.entries(queryEnvelope.$range)) {
+      for (const [field, bucketTokens] of Object.entries(
+        queryEnvelope.$range,
+      )) {
         const matches = this.indexManager.findRangeBuckets(field, bucketTokens);
-        candidateIds = candidateIds === null ? new Set(matches) : this._intersect(candidateIds, matches);
+        if (stats) stats.keysExamined += matches.size;
+        candidateIds =
+          candidateIds === null
+            ? new Set(matches)
+            : this._intersect(candidateIds, matches);
         if (candidateIds.size === 0) return [];
       }
     }
 
-    // 5. Query using Plaintext fields ($plain)
-    if (queryEnvelope.$plain) {
-      const plainMatches = new Set();
-      for (const id of this.docOrder) {
-        const buf = await this._getRawDoc(id);
-        if (buf) {
-          const doc = FlashBinary.deserialize(buf);
-          let matchesAll = true;
-          if (doc._plain) {
-            for (const [pk, pv] of Object.entries(queryEnvelope.$plain)) {
-              if (doc._plain[pk] !== pv) {
-                matchesAll = false;
-                break;
-              }
-            }
-          } else {
-            matchesAll = false;
+    if (queryEnvelope.$secondary && this.secondaryIndexManager) {
+      const compound = this.secondaryIndexManager.findBestIndexForQuery(
+        queryEnvelope.$secondary,
+      );
+      if (compound) {
+        const key = compound.fields
+          .map((f) => JSON.stringify(queryEnvelope.$secondary[f]))
+          .join("|");
+        const idx = this.secondaryIndexManager.indexes.get(compound.indexName);
+        const ids = idx?.map.get(key);
+        const matches = ids ? Array.from(ids) : [];
+        if (stats) stats.keysExamined += matches.length;
+        candidateIds =
+          candidateIds === null
+            ? new Set(matches)
+            : this._intersect(candidateIds, new Set(matches));
+        if (candidateIds.size === 0) return [];
+      } else {
+        for (const [field, value] of Object.entries(queryEnvelope.$secondary)) {
+          const matches = this.secondaryIndexManager.lookup(field, value);
+          if (matches !== null) {
+            if (stats) stats.keysExamined += matches.length;
+            candidateIds =
+              candidateIds === null
+                ? new Set(matches)
+                : this._intersect(candidateIds, new Set(matches));
+            if (candidateIds.size === 0) return [];
           }
-          if (matchesAll) plainMatches.add(String(doc._id));
         }
       }
-      candidateIds = candidateIds === null ? plainMatches : this._intersect(candidateIds, plainMatches);
+    }
+
+    if (queryEnvelope.$plain) {
+      const plainMatches = new Set();
+      const idsToScan = candidateIds || this.docIdSet;
+      for (const id of idsToScan) {
+        if (stats) stats.docsExamined++;
+        const buf = await this._getRawDoc(id);
+        if (!buf) continue;
+        const doc = FlashBinary.deserialize(buf);
+        let matchesAll = !!doc._plain;
+        if (doc._plain) {
+          for (const [pk, pv] of Object.entries(queryEnvelope.$plain)) {
+            if (doc._plain[pk] !== pv) {
+              matchesAll = false;
+              break;
+            }
+          }
+        }
+        if (matchesAll) plainMatches.add(String(doc._id));
+      }
+      candidateIds =
+        candidateIds === null
+          ? plainMatches
+          : this._intersect(candidateIds, plainMatches);
       if (candidateIds.size === 0) return [];
     }
 
-    // 6. If no indexes were queried, scan all active records across MemTable & SSTables
-    const results = [];
-    if (candidateIds === null) {
-      for (const id of this.docOrder) {
-        const buf = await this._getRawDoc(id);
-        if (buf) {
-          results.push(FlashBinary.deserialize(buf));
-        }
-      }
-    } else {
-      for (const id of candidateIds) {
-        const buf = await this._getRawDoc(id);
-        if (buf) {
-          results.push(FlashBinary.deserialize(buf));
-        }
-      }
+    if (queryEnvelope.$ids) {
+      const idSet = new Set(queryEnvelope.$ids.map(String));
+      if (stats) stats.keysExamined += idSet.size;
+      candidateIds =
+        candidateIds === null ? idSet : this._intersect(candidateIds, idSet);
     }
 
-    return results.slice(skip, skip + limit);
+    const results = [];
+    const idsToFetch = candidateIds === null ? this.docOrder : candidateIds;
+    let skipped = 0;
+
+    if (candidateIds === null && stats) {
+      stats.docsExamined = 0;
+    }
+
+    for (const id of idsToFetch) {
+      const buf = await this._getRawDoc(id);
+      if (!buf) continue;
+      if (candidateIds !== null && stats) stats.docsExamined++;
+      if (skipped < skip) {
+        skipped++;
+        continue;
+      }
+      results.push(FlashBinary.deserialize(buf));
+      if (results.length >= limit) break;
+    }
+
+    if (stats) stats.nReturned = results.length;
+    return results;
   }
 
   async findOne(queryEnvelope) {
@@ -403,10 +661,10 @@ export class FlashCollection {
     await this.wal.append(WAL_OP.DELETE, docId, Buffer.alloc(0));
     this.memtable.delete(docId);
     this.indexManager.removeDocument(docId);
-
-    const idx = this.docOrder.indexOf(docId);
-    if (idx !== -1) this.docOrder.splice(idx, 1);
-    this._rebuildMerkleTree();
+    this._untrackDocId(docId);
+    this.isMerkleDirty = true;
+    await this.oplog.append("delete", this.name, docId);
+    this._schedulePersistIndexes();
 
     return { deletedCount: 1 };
   }
@@ -421,31 +679,39 @@ export class FlashCollection {
 
   async count() {
     let activeCount = 0;
-    for (const id of this.docOrder) {
-      const buf = await this._getRawDoc(id);
-      if (buf) activeCount++;
+    for (const id of this.docIdSet) {
+      if (await this._getRawDoc(id)) activeCount++;
     }
     return activeCount;
   }
 
-  /**
-   * Triggers LSM-Tree compaction to merge SSTables and reclaim disk space
-   * @returns {Promise<{ compacted: boolean, originalFiles: number, totalRecordsMerged: number }>}
-   */
   async compact() {
     if (!this.isReady) await this.init();
-    await this.flush(); // Flush any pending memtable first
+    await this.flush();
 
-    const { FlashCompactor } = await import('../engine/compactor.mjs');
+    const { FlashCompactor } = await import("../engine/compactor.mjs");
     const compactor = new FlashCompactor();
-    const res = await compactor.compactCollection(this);
+    const res = await compactor.compactCollection(this, { force: true });
 
-    // Reload SSTables
+    for (const sst of this.sstables) {
+      await sst.close();
+    }
     this.sstables = [];
     await this._loadExistingSSTables();
 
     return res;
   }
+
+  async close() {
+    if (this._persistTimer) {
+      clearTimeout(this._persistTimer);
+      this._persistTimer = null;
+    }
+    await this._schedulePersistIndexesImmediate();
+    for (const sst of this.sstables) {
+      await sst.close();
+    }
+    await this.oplog.close();
+    await this.wal.close();
+  }
 }
-
-
