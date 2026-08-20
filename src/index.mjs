@@ -21,6 +21,8 @@ export { FlashDatabase } from "./core/database.mjs";
 export { FlashClient, FlashClientCollection } from "./client/flash_client.mjs";
 export { FlashVectorIndex, FlashHNSWIndex } from "./vector/vector_index.mjs";
 export { FlashChangeStream } from "./reactive/change_stream.mjs";
+export { FlashEventHub } from "./reactive/event_hub.mjs";
+export { FlashPluginHost } from "./core/plugin_host.mjs";
 export { FlashSession } from "./transactions/session.mjs";
 export { FlashMVCC } from "./transactions/mvcc.mjs";
 export { FlashSchema } from "./schema/schema_validator.mjs";
@@ -39,6 +41,9 @@ export {
 } from "./engine/secondary_index.mjs";
 export { FlashQueryEvaluator } from "./engine/query_evaluator.mjs";
 export { FlashTTLManager } from "./engine/ttl_manager.mjs";
+export { FlashLifecycle } from "./engine/lifecycle.mjs";
+export { FlashPaginator } from "./engine/paginator.mjs";
+export { FlashMaintenance } from "./engine/maintenance.mjs";
 export { FlashBulkWriter } from "./engine/bulk_writer.mjs";
 export { FlashBackupManager } from "./engine/backup_restore.mjs";
 export { FlashExplain } from "./engine/explain.mjs";
@@ -55,6 +60,7 @@ export { FlashBSON } from "./protocol/bson.mjs";
 export { FlashQuery } from "./client/fluent_query.mjs";
 export { FlashModel, FlashSchemaExtended } from "./odm/flash_model.mjs";
 export { FlashETL } from "./tools/exporter.mjs";
+export { FlashPipeline } from "./tools/pipeline.mjs";
 
 // 🚀 Next-Gen Hyper-Scale Engines
 export { FlashSemanticCache } from "./ai/semantic_cache.mjs";

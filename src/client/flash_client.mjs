@@ -47,6 +47,12 @@ import { FlashCloudSync } from "../sync/cloud_sync.mjs";
 import { FlashEncryptedCRDT } from "../sync/encrypted_crdt.mjs";
 import { FlashBrowserVault } from "../storage/browser_vault.mjs";
 import { FlashAuditStream } from "../reactive/audit_stream.mjs";
+import { FlashEventHub } from "../reactive/event_hub.mjs";
+import { FlashPluginHost } from "../core/plugin_host.mjs";
+import { FlashLifecycle } from "../engine/lifecycle.mjs";
+import { FlashPaginator } from "../engine/paginator.mjs";
+import { FlashMaintenance } from "../engine/maintenance.mjs";
+import { FlashPipeline } from "../tools/pipeline.mjs";
 
 /**
  * FLASH Zero-Knowledge Client SDK (FlashClient)
@@ -86,6 +92,11 @@ export class FlashClient {
 
     this.mvcc = new FlashMVCC();
     this._activeSession = null;
+    this.eventHub = new FlashEventHub();
+    this.plugins = new FlashPluginHost(this);
+    this._lifecycles = new Map();
+    this._maintenance = null;
+    this._collections = new Map();
 
     if (this.uri) {
       // Remote Client-Server Mode
@@ -272,11 +283,57 @@ export class FlashClient {
     return new FlashAuditStream(this.collection(collectionName), options);
   }
 
+  /** Unified event bus — subscribe to `collection:name:insert`, `*`, etc. */
+  events() {
+    return this.eventHub;
+  }
+
+  /** Register a plugin with optional CRUD hooks. */
+  use(plugin) {
+    return this.plugins.use(plugin);
+  }
+
+  /**
+   * Lifecycle policy for a collection (expiry, max docs, archive).
+   * @param {string} collectionName
+   * @param {object} [options]
+   */
+  lifecycle(collectionName, options = {}) {
+    const col = this.collection(collectionName);
+    const lc = new FlashLifecycle(col, options);
+    this._lifecycles.set(collectionName, lc);
+    return lc;
+  }
+
+  /**
+   * Background maintenance scheduler (lifecycle, flush, compaction).
+   * @param {object} [options]
+   * @param {boolean} [options.autoStart=false]
+   */
+  maintenance(options = {}) {
+    if (!this._maintenance) {
+      this._maintenance = new FlashMaintenance(this, options);
+    }
+    if (options.autoStart) {
+      this._maintenance.start();
+    }
+    return this._maintenance;
+  }
+
+  /** Build a data import/export pipeline. */
+  pipeline() {
+    return new FlashPipeline(this);
+  }
+
   collection(name, options = {}) {
+    if (this._collections.has(name) && !options.schema) {
+      return this._collections.get(name);
+    }
     const col = new FlashClientCollection(name, this);
     if (options.schema) {
       col.setSchema(options.schema, options);
     }
+    this._collections.set(name, col);
     return col;
   }
 
@@ -443,6 +500,9 @@ export class FlashClient {
   }
 
   async close() {
+    if (this._maintenance) {
+      this._maintenance.stop();
+    }
     await this.db.close();
   }
 }
@@ -524,6 +584,32 @@ export class FlashClientCollection {
     return stream;
   }
 
+  /**
+   * Cursor-based pagination — stable for feeds, logs, lists at any scale.
+   * @param {object} [query={}]
+   * @param {object} [options]
+   * @param {string} [options.cursor]
+   * @param {number} [options.limit=20]
+   * @param {object} [options.sort]
+   */
+  async paginate(query = {}, options = {}) {
+    return FlashPaginator.paginate(this, query, options);
+  }
+
+  _publishEvent(type, doc) {
+    const hub = this.client.eventHub;
+    if (!hub) return;
+    const payload = {
+      type,
+      collection: this.name,
+      doc,
+      at: Date.now(),
+    };
+    hub.publish(`collection:${this.name}:${type}`, payload);
+    hub.publish(`collection:${this.name}:*`, payload);
+    hub.publish("*", payload);
+  }
+
   async vectorSearch({ vector, topK = 5, filter = null }) {
     if (!this.isReady) await this.init();
     const searchLimit = filter ? 1000 : topK;
@@ -552,7 +638,13 @@ export class FlashClientCollection {
 
   async insertOne(doc) {
     if (!this.isReady) await this.init();
-    const validatedDoc = this.schema.validate(doc);
+    let validatedDoc = this.schema.validate(doc);
+    validatedDoc =
+      (await this.client.plugins.runHook(
+        "beforeInsert",
+        validatedDoc,
+        this,
+      )) ?? validatedDoc;
     validatedDoc._id = validatedDoc._id
       ? String(validatedDoc._id)
       : crypto.randomUUID();
@@ -573,6 +665,8 @@ export class FlashClientCollection {
     for (const stream of this.changeStreams) {
       stream.emitChange("insert", validatedDoc);
     }
+    this._publishEvent("insert", validatedDoc);
+    await this.client.plugins.runHook("afterInsert", validatedDoc, this);
 
     return res;
   }
@@ -602,6 +696,7 @@ export class FlashClientCollection {
       for (const stream of this.changeStreams) {
         stream.emitChange("insert", validated);
       }
+      this._publishEvent("insert", validated);
     }
 
     this.raw._schedulePersistIndexes();
@@ -750,6 +845,8 @@ export class FlashClientCollection {
     for (const stream of this.changeStreams) {
       stream.emitChange("update", validated);
     }
+    this._publishEvent("update", validated);
+    await this.client.plugins.runHook("afterUpdate", validated, this);
 
     return { matchedCount: 1, modifiedCount: 1, doc: validated };
   }
@@ -789,6 +886,7 @@ export class FlashClientCollection {
       for (const stream of this.changeStreams) {
         stream.emitChange("delete", docToDelete);
       }
+      this._publishEvent("delete", docToDelete);
     }
 
     return res;

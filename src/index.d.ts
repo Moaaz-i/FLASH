@@ -31,6 +31,34 @@ export interface FlashClientOptions {
   engineOptions?: FlashEngineOptions;
 }
 
+export interface FlashLifecycleOptions {
+  expireAfterMs?: number;
+  maxDocuments?: number;
+  timeField?: string;
+  archivePath?: string;
+}
+
+export interface FlashPaginationResult<T = Record<string, unknown>> {
+  docs: T[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+export interface FlashMaintenanceOptions {
+  sweepIntervalMs?: number;
+  flushIntervalMs?: number;
+  compactIntervalMs?: number;
+  autoStart?: boolean;
+}
+
+export interface FlashPlugin {
+  name: string;
+  onRegister?: (client: FlashClient) => void;
+  beforeInsert?: (doc: Record<string, unknown>, collection: FlashClientCollection) => Record<string, unknown> | Promise<Record<string, unknown>>;
+  afterInsert?: (doc: Record<string, unknown>, collection: FlashClientCollection) => void | Promise<void>;
+  afterUpdate?: (doc: Record<string, unknown>, collection: FlashClientCollection) => void | Promise<void>;
+}
+
 export type FieldPolicyType = 'searchable' | 'counter' | 'plaintext' | 'zk-secret';
 
 export interface QueryOptions {
@@ -691,6 +719,44 @@ export class FlashChangeStream {
   close(): void;
 }
 
+export class FlashEventHub {
+  subscribe(topic: string, handler: (payload: Record<string, unknown>, topic?: string) => void): () => void;
+  unsubscribe(topic: string, handler: (payload: Record<string, unknown>, topic?: string) => void): void;
+  publish(topic: string, payload: Record<string, unknown>): void;
+}
+
+export class FlashPluginHost {
+  readonly plugins: FlashPlugin[];
+  use(plugin: FlashPlugin): this;
+  runHook(hook: string, ...args: unknown[]): Promise<unknown>;
+}
+
+export class FlashLifecycle {
+  constructor(collection: FlashClientCollection, options?: FlashLifecycleOptions);
+  sweep(): Promise<{ expired: number; trimmed: number }>;
+}
+
+export class FlashPaginator {
+  static paginate(collection: FlashClientCollection, query?: Record<string, unknown>, options?: { cursor?: string; limit?: number; sort?: Record<string, 1 | -1> }): Promise<FlashPaginationResult>;
+  static encodeCursor(doc: Record<string, unknown>, sortSpec?: Record<string, 1 | -1>): string;
+  static decodeCursor(cursor: string): { k: string; v: unknown; id: string } | null;
+}
+
+export class FlashMaintenance {
+  start(): this;
+  stop(): void;
+  runNow(): Promise<void>;
+}
+
+export class FlashPipeline {
+  fromNDJSON(filePath: string): this;
+  fromCollection(name: string, query?: Record<string, unknown>): this;
+  toCollection(name: string): this;
+  toNDJSON(filePath: string): this;
+  batchSize(n: number): this;
+  run(): Promise<Record<string, unknown>>;
+}
+
 // ============================================================================
 // Client: FlashQuery (Fluent)
 // ============================================================================
@@ -733,6 +799,7 @@ export class FlashClientCollection<T extends Record<string, unknown> = Record<st
   listIndexes(): IndexInfo[];
   dropIndex(name: string): boolean;
   watch(filter?: Record<string, unknown> | null): FlashChangeStream;
+  paginate(filter?: Record<string, unknown>, options?: { cursor?: string; limit?: number; sort?: Record<string, 1 | -1> }): Promise<FlashPaginationResult<T>>;
   vectorSearch(params: { vector: number[] | Float32Array; topK?: number; filter?: Record<string, unknown> | null }): Promise<(T & { _score: number })[]>;
   verifyRecordIntegrity(docId: string): Promise<MerkleProofResult>;
   setSchema(schema: SchemaDefinition | FlashSchema, options?: { expireAfterSeconds?: number; ttlField?: string }): this;
@@ -948,6 +1015,11 @@ export class FlashClient {
   encryptedCRDT(collectionName: string, nodeId?: string | null): FlashEncryptedCRDT;
   browserVault(vaultName?: string): FlashBrowserVault;
   auditStream(collectionName: string, options?: Record<string, unknown>): FlashAuditStream;
+  events(): FlashEventHub;
+  use(plugin: FlashPlugin): FlashPluginHost;
+  lifecycle(collectionName: string, options?: FlashLifecycleOptions): FlashLifecycle;
+  maintenance(options?: FlashMaintenanceOptions): FlashMaintenance;
+  pipeline(): FlashPipeline;
   listCollections(): Promise<string[]>;
   encryptDocument(doc: Record<string, unknown>): EncryptedDocument;
   decryptDocument(encryptedRecord: EncryptedDocument): Record<string, unknown>;
