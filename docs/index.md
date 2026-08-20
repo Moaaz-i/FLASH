@@ -16,6 +16,9 @@ hero:
       text: Why FLASH?
       link: /guide/positioning
     - theme: alt
+      text: Universal Foundations
+      link: /guide/foundations
+    - theme: alt
       text: View Architecture
       link: /guide/architecture
     - theme: alt
@@ -23,6 +26,9 @@ hero:
       link: /api/benchmarks
 
 features:
+  - icon: 🧱
+    title: Universal Foundations
+    details: Cross-domain primitives — eventLog, counter, queue, lifecycle, pagination, health, snapshot — one API for apps, chat, games, AI, and jobs.
   - icon: 🧠
     title: AI-Native Intelligence Layer
     details: HNSW vector search, semantic cache, RAG context optimizer, NL query compiler, and LLM tool-calling — storage and AI in one engine.
