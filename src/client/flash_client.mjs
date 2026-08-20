@@ -53,6 +53,11 @@ import { FlashLifecycle } from "../engine/lifecycle.mjs";
 import { FlashPaginator } from "../engine/paginator.mjs";
 import { FlashMaintenance } from "../engine/maintenance.mjs";
 import { FlashPipeline } from "../tools/pipeline.mjs";
+import { FlashEventLog } from "../engine/event_log.mjs";
+import { FlashCounter } from "../engine/counter.mjs";
+import { FlashQueue } from "../engine/queue.mjs";
+import { FlashHealth } from "../core/health.mjs";
+import { FlashSnapshot } from "../tools/snapshot.mjs";
 
 /**
  * FLASH Zero-Knowledge Client SDK (FlashClient)
@@ -68,6 +73,7 @@ export class FlashClient {
    * @param {string} [config.authKey] - Remote server authentication token
    * @param {boolean} [config.pqcHardened=false] - Enable Post-Quantum Cryptography (PQC) key expansion
    * @param {object} [config.engineOptions] - Engine tuning: durability, memtableThreshold, useWorkerFlush
+   * @param {boolean} [config.autoTimestamps=true] - Auto createdAt/updatedAt via built-in plugin
    * @param {object} [config.fieldPolicy] - Custom encryption levels per field
    */
   constructor(config = {}) {
@@ -131,6 +137,22 @@ export class FlashClient {
       this.db = new FlashDatabase(config.dbName || "flash_db", {
         storagePath: config.storagePath || "./data",
         engineOptions: config.engineOptions,
+      });
+    }
+
+    if (config.autoTimestamps !== false) {
+      this.use({
+        name: "flash-auto-timestamps",
+        beforeInsert(doc) {
+          const now = new Date();
+          if (doc.createdAt == null) doc.createdAt = now;
+          doc.updatedAt = now;
+          return doc;
+        },
+        beforeUpdate(doc) {
+          doc.updatedAt = new Date();
+          return doc;
+        },
       });
     }
   }
@@ -323,6 +345,31 @@ export class FlashClient {
   /** Build a data import/export pipeline. */
   pipeline() {
     return new FlashPipeline(this);
+  }
+
+  /** Append-only time-ordered stream on a collection. */
+  eventLog(collectionName, options = {}) {
+    return new FlashEventLog(this.collection(collectionName), options);
+  }
+
+  /** Named atomic counter. */
+  counter(name, options = {}) {
+    return new FlashCounter(this, name, options);
+  }
+
+  /** FIFO queue on a collection. */
+  queue(collectionName, options = {}) {
+    return new FlashQueue(this.collection(collectionName), options);
+  }
+
+  /** Engine health / capacity report. */
+  async health() {
+    return new FlashHealth(this).report();
+  }
+
+  /** Portable snapshot export/import. */
+  snapshot() {
+    return new FlashSnapshot(this);
   }
 
   collection(name, options = {}) {
@@ -555,6 +602,10 @@ export class FlashClientCollection {
         expireAfterSeconds: options.expireAfterSeconds,
       });
       this.ttlManager.start();
+      this.client.lifecycle(this.name, {
+        expireAfterMs: options.expireAfterSeconds * 1000,
+        timeField: options.ttlField || "createdAt",
+      });
     }
 
     return this;
@@ -835,7 +886,14 @@ export class FlashClientCollection {
     const updated = FlashUpdateEngine.applyUpdate(existing, update);
     this.indexManager.validateUniqueConstraints(updated, existing._id);
 
-    const validated = this.schema.validate(updated);
+    let validated = this.schema.validate(updated);
+    validated =
+      (await this.client.plugins.runHook(
+        "beforeUpdate",
+        validated,
+        this,
+        existing,
+      )) ?? validated;
     const encrypted = this.client.encryptDocument(validated);
     await this.raw.insertOne(encrypted);
 
@@ -1100,9 +1158,12 @@ export class FlashClientCollection {
     return results;
   }
 
-  async count() {
-    const res = await this.find({}).exec();
-    return res.length;
+  async count(filter = {}) {
+    if (!this.isReady) await this.init();
+    if (!filter || Object.keys(filter).length === 0) {
+      return await this.raw.count();
+    }
+    return (await this.find(filter).exec()).length;
   }
 }
 

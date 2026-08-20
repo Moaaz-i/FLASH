@@ -499,16 +499,21 @@ export class FlashCollection {
 
   getMerkleProof(docId) {
     if (this.isMerkleDirty || !this.merkleTree) {
-      this._rebuildMerkleTree();
-      this.isMerkleDirty = false;
+      return null;
     }
     const idx = this.docOrder.indexOf(String(docId));
     if (idx === -1 || !this.merkleTree) return null;
     return {
       index: idx,
       proof: this.merkleTree.getProof(idx),
-      root: this.getMerkleRoot(),
+      root: this.merkleTree.getRoot(),
     };
+  }
+
+  async getMerkleProofAsync(docId) {
+    await this._rebuildMerkleTree();
+    this.isMerkleDirty = false;
+    return this.getMerkleProof(docId);
   }
 
   verifyRecordIntegrity(docId) {

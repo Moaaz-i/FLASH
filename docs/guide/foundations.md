@@ -33,7 +33,9 @@ do {
     { threadId: "t1" },
     { limit: 50, sort: { createdAt: -1 }, cursor },
   );
-  for (const doc of page.docs) { /* ... */ }
+  for (const doc of page.docs) {
+    /* ... */
+  }
   cursor = page.nextCursor;
 } while (page.hasMore);
 ```
@@ -77,13 +79,15 @@ await client.maintenance().runNow(); // manual
 ## 5. Pipeline (import / export)
 
 ```javascript
-await client.pipeline()
+await client
+  .pipeline()
   .fromNDJSON("./seed.jsonl")
   .toCollection("users")
   .batchSize(500)
   .run();
 
-await client.pipeline()
+await client
+  .pipeline()
   .fromCollection("users")
   .toNDJSON("./backup.jsonl")
   .run();
@@ -98,7 +102,9 @@ client.events().subscribe("collection:orders:insert", (evt) => {
   console.log(evt.collection, evt.doc);
 });
 
-client.events().subscribe("*", (evt) => { /* all mutations */ });
+client.events().subscribe("*", (evt) => {
+  /* all mutations */
+});
 ```
 
 Works alongside `col.watch()` (oplog change streams).
@@ -118,7 +124,7 @@ client.use({
 });
 ```
 
-Hooks: `beforeInsert`, `afterInsert`, `afterUpdate`, `onRegister`.
+Hooks: `beforeInsert`, `beforeUpdate`, `afterInsert`, `afterUpdate`, `onRegister`.
 
 ---
 
@@ -131,20 +137,81 @@ await userDb.collection("data").insertOne({ ... });
 
 ---
 
+## 9. Event log (append-only stream)
+
+```javascript
+const log = client.eventLog("telemetry");
+await log.append({ kind: "login", userId: "u1" });
+await log.appendMany([{ kind: "a" }, { kind: "b" }]);
+
+const tail = await log.tail({}, { limit: 50 });
+```
+
+---
+
+## 10. Counter
+
+```javascript
+const views = client.counter("page_views");
+await views.increment();
+const total = await views.get();
+```
+
+---
+
+## 11. Queue (FIFO)
+
+```javascript
+const jobs = client.queue("tasks");
+await jobs.enqueue({ type: "email", to: "a@b.com" }, { priority: 5 });
+const job = await jobs.dequeue();
+await jobs.ack(job._id);
+```
+
+---
+
+## 12. Health & snapshot
+
+```javascript
+const stats = await client.health();
+// { collections, totalDocuments, memtableBytes, sstables, ... }
+
+await client.snapshot().exportTo("./backup.flashpack");
+await client.snapshot().importFrom("./backup.flashpack");
+```
+
+---
+
+## 13. Auto timestamps
+
+Enabled by default (`autoTimestamps: true`):
+
+```javascript
+// inserts get createdAt + updatedAt automatically
+const client = new FlashClient({ secretKey: "key", autoTimestamps: false });
+```
+
+---
+
 ## Pattern matrix
 
-| Need | API |
-|------|-----|
-| CRUD | `collection()` |
-| Large lists | `paginate()` |
-| Old data cleanup | `lifecycle()` |
-| Background ops | `maintenance()` |
-| Bulk IO | `pipeline()` |
-| React to writes | `events()` / `watch()` |
-| Shared hooks | `use()` |
-| Isolated users | `tenant()` |
-| Bulk mutations | `bulkWrite()` |
-| Realtime wire | WebSocket / PubSub (see Real-Time docs) |
+| Need                | API                                     |
+| ------------------- | --------------------------------------- |
+| CRUD                | `collection()`                          |
+| Large lists         | `paginate()`                            |
+| Old data cleanup    | `lifecycle()`                           |
+| Background ops      | `maintenance()`                         |
+| Bulk IO             | `pipeline()`                            |
+| React to writes     | `events()` / `watch()`                  |
+| Shared hooks        | `use()`                                 |
+| Isolated users      | `tenant()`                              |
+| Bulk mutations      | `bulkWrite()`                           |
+| Time-ordered stream | `eventLog()`                            |
+| Metrics / IDs       | `counter()`                             |
+| Background jobs     | `queue()`                               |
+| Ops visibility      | `health()`                              |
+| Backup / migrate    | `snapshot()`                            |
+| Realtime wire       | WebSocket / PubSub (see Real-Time docs) |
 
 ---
 

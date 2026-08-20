@@ -33,7 +33,7 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Run Test Suite (136 Tests)
+      - name: Run Test Suite (140 Tests)
         run: npm test
 
   deploy-docs:

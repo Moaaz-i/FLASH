@@ -11,7 +11,7 @@
 
 export interface FlashEngineOptions {
   /** @default 'balanced' */
-  durability?: 'strict' | 'balanced' | 'throughput';
+  durability?: "strict" | "balanced" | "throughput";
   /** Memtable flush threshold in bytes. @default 4194304 (4 MB) */
   memtableThreshold?: number;
   /** Use worker thread for large SSTable flushes. @default true */
@@ -27,6 +27,7 @@ export interface FlashClientOptions {
   uri?: string;
   authKey?: string;
   pqcHardened?: boolean;
+  autoTimestamps?: boolean;
   fieldPolicy?: Record<string, FieldPolicyType>;
   engineOptions?: FlashEngineOptions;
 }
@@ -54,12 +55,23 @@ export interface FlashMaintenanceOptions {
 export interface FlashPlugin {
   name: string;
   onRegister?: (client: FlashClient) => void;
-  beforeInsert?: (doc: Record<string, unknown>, collection: FlashClientCollection) => Record<string, unknown> | Promise<Record<string, unknown>>;
-  afterInsert?: (doc: Record<string, unknown>, collection: FlashClientCollection) => void | Promise<void>;
-  afterUpdate?: (doc: Record<string, unknown>, collection: FlashClientCollection) => void | Promise<void>;
+  beforeInsert?: (
+    doc: Record<string, unknown>,
+    collection: FlashClientCollection,
+  ) => Record<string, unknown> | Promise<Record<string, unknown>>;
+  afterInsert?: (
+    doc: Record<string, unknown>,
+    collection: FlashClientCollection,
+  ) => void | Promise<void>;
+  beforeUpdate?: (
+    doc: Record<string, unknown>,
+    collection: FlashClientCollection,
+    previous?: Record<string, unknown>,
+  ) => Record<string, unknown> | Promise<Record<string, unknown>>;
 }
 
-export type FieldPolicyType = 'searchable' | 'counter' | 'plaintext' | 'zk-secret';
+export type FieldPolicyType =
+  "searchable" | "counter" | "plaintext" | "zk-secret";
 
 export interface QueryOptions {
   limit?: number;
@@ -168,7 +180,8 @@ export interface IndexInfo {
 // ============================================================================
 
 export interface SchemaRule {
-  type?: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'date' | 'buffer';
+  type?:
+    "string" | "number" | "boolean" | "object" | "array" | "date" | "buffer";
   required?: boolean;
   default?: unknown | (() => unknown);
   min?: number;
@@ -211,7 +224,17 @@ export interface FLASH_TYPE {
 export interface FlashBinaryInterface {
   serialize(doc: Record<string, unknown>): Buffer;
   deserialize(buffer: Buffer): Record<string, unknown>;
-  getField(buffer: Buffer, targetKey: string): string | number | boolean | null | undefined | Record<string, unknown> | unknown[];
+  getField(
+    buffer: Buffer,
+    targetKey: string,
+  ):
+    | string
+    | number
+    | boolean
+    | null
+    | undefined
+    | Record<string, unknown>
+    | unknown[];
   hashKey(str: string): number;
 }
 
@@ -241,14 +264,30 @@ export interface FlashSSTableMeta {
 // Logger
 // ============================================================================
 
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+export type LogLevel = "debug" | "info" | "warn" | "error";
 
 export interface FlashLoggerInterface {
   setLevel(level: LogLevel): void;
-  debug(module: string, message: string, context?: Record<string, unknown>): void;
-  info(module: string, message: string, context?: Record<string, unknown>): void;
-  warn(module: string, message: string, context?: Record<string, unknown>): void;
-  error(module: string, message: string, context?: Record<string, unknown>): void;
+  debug(
+    module: string,
+    message: string,
+    context?: Record<string, unknown>,
+  ): void;
+  info(
+    module: string,
+    message: string,
+    context?: Record<string, unknown>,
+  ): void;
+  warn(
+    module: string,
+    message: string,
+    context?: Record<string, unknown>,
+  ): void;
+  error(
+    module: string,
+    message: string,
+    context?: Record<string, unknown>,
+  ): void;
 }
 
 // ============================================================================
@@ -267,7 +306,10 @@ export interface CipherDecryptOptions {
 export class FlashCipher {
   readonly key: Buffer;
   constructor(masterKey: string | Buffer, salt?: string);
-  encrypt(data: string | Buffer | Record<string, unknown>, options?: CipherEncryptOptions): string;
+  encrypt(
+    data: string | Buffer | Record<string, unknown>,
+    options?: CipherEncryptOptions,
+  ): string;
   decrypt(payloadBase64: string, options?: CipherDecryptOptions): string;
   decrypt(payloadBase64: string, asJson: boolean): string;
   encryptDeterministic(plaintext: string, domainKey?: Buffer): string;
@@ -286,11 +328,28 @@ export interface RangeBucketResult {
 export class FlashBlindIndex {
   readonly ngramSize: number;
   readonly bucketSize: number;
-  constructor(secretKey: string | Buffer, options?: { ngramSize?: number; bucketSize?: number });
-  generateTrapdoor(fieldName: string, value: string | number | boolean | null): string | null;
-  generateNGramTrapdoors(fieldName: string, text: string, addHoneyPadding?: boolean): string[];
-  generateRangeBuckets(fieldName: string, value: number | Date): RangeBucketResult;
-  generateRangeQueryTokens(fieldName: string, min: number, max: number): string[];
+  constructor(
+    secretKey: string | Buffer,
+    options?: { ngramSize?: number; bucketSize?: number },
+  );
+  generateTrapdoor(
+    fieldName: string,
+    value: string | number | boolean | null,
+  ): string | null;
+  generateNGramTrapdoors(
+    fieldName: string,
+    text: string,
+    addHoneyPadding?: boolean,
+  ): string[];
+  generateRangeBuckets(
+    fieldName: string,
+    value: number | Date,
+  ): RangeBucketResult;
+  generateRangeQueryTokens(
+    fieldName: string,
+    min: number,
+    max: number,
+  ): string[];
 }
 
 // ============================================================================
@@ -305,9 +364,16 @@ export interface HomomorphicCiphertext {
 
 export class FlashHomomorphic {
   constructor(secretKey: string | Buffer);
-  encryptAdd(value: number, recordId: string, fieldName: string): HomomorphicCiphertext;
+  encryptAdd(
+    value: number,
+    recordId: string,
+    fieldName: string,
+  ): HomomorphicCiphertext;
   aggregateSum(ciphertexts: string[]): string;
-  decryptSum(aggregateCiphertext: string, recordsMetadata: Array<{ recordId: string; fieldName: string }>): number;
+  decryptSum(
+    aggregateCiphertext: string,
+    recordsMetadata: Array<{ recordId: string; fieldName: string }>,
+  ): number;
 }
 
 // ============================================================================
@@ -318,7 +384,11 @@ export class FlashMerkle {
   constructor(leafHashes: string[]);
   getRoot(): string;
   getProof(leafIndex: number): string[];
-  static verifyProof(leafHash: Buffer | string, proof: string[], root: string): boolean;
+  static verifyProof(
+    leafHash: Buffer | string,
+    proof: string[],
+    root: string,
+  ): boolean;
   static hash(data: string | Buffer): Buffer;
 }
 
@@ -346,12 +416,19 @@ export class FlashFuzzyEngine {
 
 export class FlashKeyRotationManager {
   constructor(masterKey: string | Buffer);
-  rotateKey(): { previousVersion: number; newVersion: number; activeKeysCount: number };
+  rotateKey(): {
+    previousVersion: number;
+    newVersion: number;
+    activeKeysCount: number;
+  };
   encrypt(data: string | Record<string, unknown>): string;
   decrypt(versionedCiphertext: string): string | Record<string, unknown>;
   needsReEncryption(versionedCiphertext: string): boolean;
   reEncrypt(oldCiphertext: string): string;
-  batchReEncrypt<T extends Record<string, unknown>>(documents: T[], encryptedFields: string[]): { upgradedCount: number };
+  batchReEncrypt<T extends Record<string, unknown>>(
+    documents: T[],
+    encryptedFields: string[],
+  ): { upgradedCount: number };
 }
 
 // ============================================================================
@@ -362,7 +439,10 @@ export class FlashORE {
   constructor(secretKey: string | Buffer);
   encrypt(value: number | Date | string, fieldScope?: string): string;
   static compare(oreTokenA: string, oreTokenB: string): -1 | 0 | 1;
-  static matchesRange(oreToken: string, rangeCriteria: { $gt?: string; $gte?: string; $lt?: string; $lte?: string }): boolean;
+  static matchesRange(
+    oreToken: string,
+    rangeCriteria: { $gt?: string; $gte?: string; $lt?: string; $lte?: string },
+  ): boolean;
 }
 
 // ============================================================================
@@ -400,10 +480,18 @@ export interface MemTableEntry {
 export class FlashMemTable {
   readonly size: number;
   readonly byteSize: number;
-  set(key: string, value: Buffer | Record<string, unknown>, approxBytes?: number): void;
+  set(
+    key: string,
+    value: Buffer | Record<string, unknown>,
+    approxBytes?: number,
+  ): void;
   get(key: string): Buffer | Record<string, unknown> | null;
   delete(key: string): void;
-  scan(minKey?: string | null, maxKey?: string | null, limit?: number): MemTableEntry[];
+  scan(
+    minKey?: string | null,
+    maxKey?: string | null,
+    limit?: number,
+  ): MemTableEntry[];
   entries(): MemTableEntry[];
   clear(): void;
 }
@@ -422,7 +510,9 @@ export class FlashArc {
   constructor(arcPath: string, options?: FlashArcOptions);
   open(): Promise<void>;
   append(opCode: number, key: string, data: Buffer | string): Promise<void>;
-  recover(onRecord: (opCode: number, key: string, dataBuffer: Buffer) => void): Promise<void>;
+  recover(
+    onRecord: (opCode: number, key: string, dataBuffer: Buffer) => void,
+  ): Promise<void>;
   truncate(): Promise<void>;
   close(): Promise<void>;
 }
@@ -437,7 +527,10 @@ export class FlashSSTable {
   readonly filePath: string;
   readonly indexMap: Map<string, FlashSSTableMeta>;
   readonly isLoaded: boolean;
-  static write(filePath: string, sortedEntries: MemTableEntry[]): Promise<FlashSSTable>;
+  static write(
+    filePath: string,
+    sortedEntries: MemTableEntry[],
+  ): Promise<FlashSSTable>;
   constructor(filePath: string);
   load(): Promise<void>;
   get(key: string): Promise<Buffer | null>;
@@ -473,7 +566,10 @@ export interface CompactionResult {
 
 export class FlashCompactor {
   readonly isRunning: boolean;
-  constructor(options?: { maxSSTablesBeforeCompact?: number; compactionIntervalMs?: number });
+  constructor(options?: {
+    maxSSTablesBeforeCompact?: number;
+    compactionIntervalMs?: number;
+  });
   start(collections?: FlashCollection[]): void;
   stop(): void;
   compactCollection(collection: FlashCollection): Promise<CompactionResult>;
@@ -494,11 +590,14 @@ export interface UpdateSpecification {
   $pull?: Record<string, unknown>;
   $addToSet?: Record<string, unknown>;
   $pop?: Record<string, 1 | -1>;
-  $currentDate?: Record<string, 1 | true | { $type: 'date' | 'timestamp' }>;
+  $currentDate?: Record<string, 1 | true | { $type: "date" | "timestamp" }>;
 }
 
 export class FlashUpdateEngine {
-  static applyUpdate(doc: Record<string, unknown>, updateSpec: UpdateSpecification | Record<string, unknown>): Record<string, unknown>;
+  static applyUpdate(
+    doc: Record<string, unknown>,
+    updateSpec: UpdateSpecification | Record<string, unknown>,
+  ): Record<string, unknown>;
 }
 
 // ============================================================================
@@ -506,7 +605,10 @@ export class FlashUpdateEngine {
 // ============================================================================
 
 export class FlashQueryEvaluator {
-  static matches(doc: Record<string, unknown>, query: Record<string, unknown>): boolean;
+  static matches(
+    doc: Record<string, unknown>,
+    query: Record<string, unknown>,
+  ): boolean;
 }
 
 // ============================================================================
@@ -521,12 +623,18 @@ export class DuplicateKeyError extends Error {
 }
 
 export class FlashSecondaryIndexManager {
-  createIndex(keySpec: IndexSpecification, options?: CreateIndexOptions): string;
+  createIndex(
+    keySpec: IndexSpecification,
+    options?: CreateIndexOptions,
+  ): string;
   listIndexes(): IndexInfo[];
   dropIndex(name: string): boolean;
   indexDocument(doc: Record<string, unknown>): void;
   unindexDocument(doc: Record<string, unknown>): void;
-  validateUniqueConstraints(doc: Record<string, unknown>, excludeId?: string): void;
+  validateUniqueConstraints(
+    doc: Record<string, unknown>,
+    excludeId?: string,
+  ): void;
 }
 
 // ============================================================================
@@ -534,7 +642,14 @@ export class FlashSecondaryIndexManager {
 // ============================================================================
 
 export class FlashTTLManager {
-  constructor(collection: FlashCollection, options?: { field?: string; expireAfterSeconds?: number; intervalMs?: number });
+  constructor(
+    collection: FlashCollection,
+    options?: {
+      field?: string;
+      expireAfterSeconds?: number;
+      intervalMs?: number;
+    },
+  );
   start(): void;
   stop(): void;
   purgeExpired(): Promise<number>;
@@ -546,14 +661,35 @@ export class FlashTTLManager {
 
 export type BulkWriteOperation =
   | { insertOne: { document: Record<string, unknown> } }
-  | { updateOne: { filter: Record<string, unknown>; update: UpdateSpecification; upsert?: boolean } }
-  | { updateMany: { filter: Record<string, unknown>; update: UpdateSpecification; upsert?: boolean } }
+  | {
+      updateOne: {
+        filter: Record<string, unknown>;
+        update: UpdateSpecification;
+        upsert?: boolean;
+      };
+    }
+  | {
+      updateMany: {
+        filter: Record<string, unknown>;
+        update: UpdateSpecification;
+        upsert?: boolean;
+      };
+    }
   | { deleteOne: { filter: Record<string, unknown> } }
   | { deleteMany: { filter: Record<string, unknown> } }
-  | { replaceOne: { filter: Record<string, unknown>; replacement: Record<string, unknown> } };
+  | {
+      replaceOne: {
+        filter: Record<string, unknown>;
+        replacement: Record<string, unknown>;
+      };
+    };
 
 export class FlashBulkWriter {
-  static execute(collection: FlashClientCollection, operations: BulkWriteOperation[], options?: { ordered?: boolean }): Promise<BulkWriteResult>;
+  static execute(
+    collection: FlashClientCollection,
+    operations: BulkWriteOperation[],
+    options?: { ordered?: boolean },
+  ): Promise<BulkWriteResult>;
 }
 
 // ============================================================================
@@ -561,8 +697,14 @@ export class FlashBulkWriter {
 // ============================================================================
 
 export class FlashBackupManager {
-  static backup(sourcePath: string, destinationPath: string): Promise<BackupResult>;
-  static restore(backupPath: string, destinationPath: string): Promise<RestoreResult>;
+  static backup(
+    sourcePath: string,
+    destinationPath: string,
+  ): Promise<BackupResult>;
+  static restore(
+    backupPath: string,
+    destinationPath: string,
+  ): Promise<RestoreResult>;
 }
 
 // ============================================================================
@@ -576,9 +718,9 @@ export interface ExplainResult {
     indexFilterSet: boolean;
     parsedQuery: Record<string, unknown>;
     winningPlan: {
-      stage: 'INDEX_SCAN' | 'COLL_SCAN';
+      stage: "INDEX_SCAN" | "COLL_SCAN";
       indexName: string | null;
-      direction: 'forward';
+      direction: "forward";
     };
   };
   executionStats: {
@@ -588,7 +730,7 @@ export interface ExplainResult {
     totalKeysExamined: number;
     totalDocsExamined: number;
     executionStages: {
-      stage: 'INDEX_SCAN' | 'COLL_SCAN';
+      stage: "INDEX_SCAN" | "COLL_SCAN";
       nReturned: number;
       executionTimeMillisEstimate: number;
       docsExamined: number;
@@ -597,7 +739,14 @@ export interface ExplainResult {
 }
 
 export class FlashExplain {
-  static analyze(collectionName: string, query: Record<string, unknown>, options: QueryOptions, results: Record<string, unknown>[], durationMs: number, indexHit?: string | null): ExplainResult;
+  static analyze(
+    collectionName: string,
+    query: Record<string, unknown>,
+    options: QueryOptions,
+    results: Record<string, unknown>[],
+    durationMs: number,
+    indexHit?: string | null,
+  ): ExplainResult;
 }
 
 // ============================================================================
@@ -618,7 +767,10 @@ export class FlashOnlineIndexer {
   static buildIndexOnline(
     collection: FlashCollection,
     fieldName: string,
-    options?: { chunkSize?: number; onProgress?: (progress: { indexed: number; total: number }) => void }
+    options?: {
+      chunkSize?: number;
+      onProgress?: (progress: { indexed: number; total: number }) => void;
+    },
   ): Promise<{ indexedCount: number; durationMs: number }>;
 }
 
@@ -643,10 +795,20 @@ export interface HookNext {
 
 export class FlashSchemaExtended extends FlashSchema {
   pre(action: string, fn: (next: HookNext) => void | Promise<void>): this;
-  post(action: string, fn: (doc: Record<string, unknown>) => void | Promise<void>): this;
-  virtual(name: string): { get(fn: (this: Record<string, unknown>) => unknown): { set(fn: (this: Record<string, unknown>, value: unknown) => void): void } };
+  post(
+    action: string,
+    fn: (doc: Record<string, unknown>) => void | Promise<void>,
+  ): this;
+  virtual(name: string): {
+    get(fn: (this: Record<string, unknown>) => unknown): {
+      set(fn: (this: Record<string, unknown>, value: unknown) => void): void;
+    };
+  };
   method(name: string, fn: (...args: unknown[]) => unknown): this;
-  staticMethod(name: string, fn: (...args: unknown[]) => unknown): typeof FlashSchemaExtended;
+  staticMethod(
+    name: string,
+    fn: (...args: unknown[]) => unknown,
+  ): typeof FlashSchemaExtended;
 }
 
 export interface FlashModelInterface<T extends Record<string, unknown>> {
@@ -654,13 +816,24 @@ export interface FlashModelInterface<T extends Record<string, unknown>> {
   find(filter?: Record<string, unknown>): FlashQuery;
   findOne(filter?: Record<string, unknown>): Promise<T | null>;
   findById(id: string): Promise<T | null>;
-  updateOne(filter: Record<string, unknown>, update: UpdateSpecification): Promise<UpdateResult>;
+  updateOne(
+    filter: Record<string, unknown>,
+    update: UpdateSpecification,
+  ): Promise<UpdateResult>;
   deleteOne(filter: Record<string, unknown>): Promise<DeleteResult>;
   count(filter?: Record<string, unknown>): Promise<number>;
 }
 
 export class FlashModel {
-  static compile<T extends Record<string, unknown>>(name: string, schema: FlashSchemaExtended | SchemaDefinition | Record<string, unknown> | undefined, collection: FlashClientCollection<T>): FlashModelInterface<T>;
+  static compile<T extends Record<string, unknown>>(
+    name: string,
+    schema:
+      | FlashSchemaExtended
+      | SchemaDefinition
+      | Record<string, unknown>
+      | undefined,
+    collection: FlashClientCollection<T>,
+  ): FlashModelInterface<T>;
 }
 
 // ============================================================================
@@ -705,7 +878,7 @@ export class FlashSession {
 // ============================================================================
 
 export interface ChangeEvent {
-  operationType: 'insert' | 'update' | 'delete';
+  operationType: "insert" | "update" | "delete";
   doc: Record<string, unknown>;
   id: string;
   timestamp: number;
@@ -713,15 +886,27 @@ export interface ChangeEvent {
 
 export class FlashChangeStream {
   readonly isOpen: boolean;
-  constructor(filter?: Record<string, unknown> | null, onClose?: (() => void) | null);
-  emitChange(operationType: 'insert' | 'update' | 'delete', doc: Record<string, unknown>): void;
-  on(event: 'change', listener: (event: ChangeEvent) => void): this;
+  constructor(
+    filter?: Record<string, unknown> | null,
+    onClose?: (() => void) | null,
+  );
+  emitChange(
+    operationType: "insert" | "update" | "delete",
+    doc: Record<string, unknown>,
+  ): void;
+  on(event: "change", listener: (event: ChangeEvent) => void): this;
   close(): void;
 }
 
 export class FlashEventHub {
-  subscribe(topic: string, handler: (payload: Record<string, unknown>, topic?: string) => void): () => void;
-  unsubscribe(topic: string, handler: (payload: Record<string, unknown>, topic?: string) => void): void;
+  subscribe(
+    topic: string,
+    handler: (payload: Record<string, unknown>, topic?: string) => void,
+  ): () => void;
+  unsubscribe(
+    topic: string,
+    handler: (payload: Record<string, unknown>, topic?: string) => void,
+  ): void;
   publish(topic: string, payload: Record<string, unknown>): void;
 }
 
@@ -732,14 +917,30 @@ export class FlashPluginHost {
 }
 
 export class FlashLifecycle {
-  constructor(collection: FlashClientCollection, options?: FlashLifecycleOptions);
+  constructor(
+    collection: FlashClientCollection,
+    options?: FlashLifecycleOptions,
+  );
   sweep(): Promise<{ expired: number; trimmed: number }>;
 }
 
 export class FlashPaginator {
-  static paginate(collection: FlashClientCollection, query?: Record<string, unknown>, options?: { cursor?: string; limit?: number; sort?: Record<string, 1 | -1> }): Promise<FlashPaginationResult>;
-  static encodeCursor(doc: Record<string, unknown>, sortSpec?: Record<string, 1 | -1>): string;
-  static decodeCursor(cursor: string): { k: string; v: unknown; id: string } | null;
+  static paginate(
+    collection: FlashClientCollection,
+    query?: Record<string, unknown>,
+    options?: {
+      cursor?: string;
+      limit?: number;
+      sort?: Record<string, 1 | -1>;
+    },
+  ): Promise<FlashPaginationResult>;
+  static encodeCursor(
+    doc: Record<string, unknown>,
+    sortSpec?: Record<string, 1 | -1>,
+  ): string;
+  static decodeCursor(
+    cursor: string,
+  ): { k: string; v: unknown; id: string } | null;
 }
 
 export class FlashMaintenance {
@@ -757,20 +958,82 @@ export class FlashPipeline {
   run(): Promise<Record<string, unknown>>;
 }
 
+export class FlashEventLog {
+  append(data?: Record<string, unknown>): Promise<Record<string, unknown>>;
+  appendMany(items?: Record<string, unknown>[]): Promise<InsertManyResult>;
+  tail(
+    query?: Record<string, unknown>,
+    options?: {
+      limit?: number;
+      cursor?: string | null;
+      sort?: Record<string, 1 | -1>;
+    },
+  ): Promise<FlashPaginationResult>;
+  since(
+    when: Date | number,
+    query?: Record<string, unknown>,
+    options?: { limit?: number },
+  ): Promise<Record<string, unknown>[]>;
+}
+
+export class FlashCounter {
+  get(): Promise<number>;
+  increment(by?: number): Promise<number>;
+  decrement(by?: number): Promise<number>;
+  set(value: number): Promise<number>;
+  reset(value?: number): Promise<number>;
+}
+
+export class FlashQueue {
+  enqueue(
+    payload: unknown,
+    options?: { priority?: number },
+  ): Promise<Record<string, unknown>>;
+  dequeue(): Promise<Record<string, unknown> | null>;
+  ack(id: string): Promise<void>;
+  fail(id: string, error?: string): Promise<void>;
+  depth(): Promise<number>;
+}
+
+export class FlashHealth {
+  report(): Promise<Record<string, unknown>>;
+}
+
+export class FlashSnapshot {
+  exportTo(
+    filePath: string,
+    collectionNames?: string[] | null,
+  ): Promise<Record<string, unknown>>;
+  importFrom(filePath: string): Promise<Record<string, unknown>>;
+}
+
 // ============================================================================
 // Client: FlashQuery (Fluent)
 // ============================================================================
 
-export class FlashQuery<T = Record<string, unknown>> implements PromiseLike<T[]> {
+export class FlashQuery<T = Record<string, unknown>> implements PromiseLike<
+  T[]
+> {
   sort(spec: string | Record<string, 1 | -1>): this;
   limit(n: number): this;
   skip(n: number): this;
   select(fields: string | Record<string, 0 | 1>): this;
-  where(field: string): { equals(value: unknown): this; gt(value: unknown): this; lt(value: unknown): this; gte(value: unknown): this; lte(value: unknown): this; in(values: unknown[]): this; regex(pattern: string): this };
+  where(field: string): {
+    equals(value: unknown): this;
+    gt(value: unknown): this;
+    lt(value: unknown): this;
+    gte(value: unknown): this;
+    lte(value: unknown): this;
+    in(values: unknown[]): this;
+    regex(pattern: string): this;
+  };
   lean(): this;
   explain(): Promise<ExplainResult>;
   stream(): AsyncIterable<T>;
-  then<TResult1 = T[], TResult2 = never>(onfulfilled?: (value: T[]) => TResult1 | PromiseLike<TResult1>, onrejected?: (reason: unknown) => TResult2 | PromiseLike<TResult2>): Promise<TResult1 | TResult2>;
+  then<TResult1 = T[], TResult2 = never>(
+    onfulfilled?: (value: T[]) => TResult1 | PromiseLike<TResult1>,
+    onrejected?: (reason: unknown) => TResult2 | PromiseLike<TResult2>,
+  ): Promise<TResult1 | TResult2>;
   exec(): Promise<T[]>;
 }
 
@@ -778,7 +1041,9 @@ export class FlashQuery<T = Record<string, unknown>> implements PromiseLike<T[]>
 // Client: FlashClientCollection
 // ============================================================================
 
-export class FlashClientCollection<T extends Record<string, unknown> = Record<string, unknown>> {
+export class FlashClientCollection<
+  T extends Record<string, unknown> = Record<string, unknown>,
+> {
   readonly name: string;
   readonly raw: FlashCollection;
   insertOne(doc: T): Promise<InsertResult>;
@@ -786,26 +1051,72 @@ export class FlashClientCollection<T extends Record<string, unknown> = Record<st
   find(filter?: Record<string, unknown>, options?: QueryOptions): FlashQuery<T>;
   findOne(filter?: Record<string, unknown>): Promise<T | null>;
   findById(id: string): Promise<T | null>;
-  updateOne(filter: Record<string, unknown>, update: UpdateSpecification, options?: { upsert?: boolean }): Promise<UpdateResult>;
-  updateMany(filter: Record<string, unknown>, update: UpdateSpecification, options?: { upsert?: boolean }): Promise<UpdateResult>;
-  findOneAndUpdate(filter: Record<string, unknown>, update: UpdateSpecification, options?: { new?: boolean }): Promise<T | null>;
-  findByIdAndUpdate(id: string, update: UpdateSpecification, options?: { new?: boolean }): Promise<T | null>;
+  updateOne(
+    filter: Record<string, unknown>,
+    update: UpdateSpecification,
+    options?: { upsert?: boolean },
+  ): Promise<UpdateResult>;
+  updateMany(
+    filter: Record<string, unknown>,
+    update: UpdateSpecification,
+    options?: { upsert?: boolean },
+  ): Promise<UpdateResult>;
+  findOneAndUpdate(
+    filter: Record<string, unknown>,
+    update: UpdateSpecification,
+    options?: { new?: boolean },
+  ): Promise<T | null>;
+  findByIdAndUpdate(
+    id: string,
+    update: UpdateSpecification,
+    options?: { new?: boolean },
+  ): Promise<T | null>;
   deleteOne(filter: Record<string, unknown>): Promise<DeleteResult>;
   deleteMany(filter: Record<string, unknown>): Promise<DeleteResult>;
-  bulkWrite(operations: BulkWriteOperation[], options?: { ordered?: boolean }): Promise<BulkWriteResult>;
+  bulkWrite(
+    operations: BulkWriteOperation[],
+    options?: { ordered?: boolean },
+  ): Promise<BulkWriteResult>;
   aggregate(pipeline: AggregateStage[]): Promise<Record<string, unknown>[]>;
   count(filter?: Record<string, unknown>): Promise<number>;
-  createIndex(keySpec: IndexSpecification, options?: CreateIndexOptions): string;
+  createIndex(
+    keySpec: IndexSpecification,
+    options?: CreateIndexOptions,
+  ): string;
   listIndexes(): IndexInfo[];
   dropIndex(name: string): boolean;
   watch(filter?: Record<string, unknown> | null): FlashChangeStream;
-  paginate(filter?: Record<string, unknown>, options?: { cursor?: string; limit?: number; sort?: Record<string, 1 | -1> }): Promise<FlashPaginationResult<T>>;
-  vectorSearch(params: { vector: number[] | Float32Array; topK?: number; filter?: Record<string, unknown> | null }): Promise<(T & { _score: number })[]>;
+  paginate(
+    filter?: Record<string, unknown>,
+    options?: {
+      cursor?: string;
+      limit?: number;
+      sort?: Record<string, 1 | -1>;
+    },
+  ): Promise<FlashPaginationResult<T>>;
+  vectorSearch(params: {
+    vector: number[] | Float32Array;
+    topK?: number;
+    filter?: Record<string, unknown> | null;
+  }): Promise<(T & { _score: number })[]>;
   verifyRecordIntegrity(docId: string): Promise<MerkleProofResult>;
-  setSchema(schema: SchemaDefinition | FlashSchema, options?: { expireAfterSeconds?: number; ttlField?: string }): this;
-  ask(prompt: string, options?: QueryOptions): Promise<(T & { _interpretedQuery?: Record<string, unknown> })[]>;
-  timeSeriesBucket(timeField: string, interval: number, aggregations: Record<string, unknown>): Promise<Record<string, unknown>[]>;
-  spatialNear(field: string, nearSpec: Record<string, unknown>): Promise<Record<string, unknown>[]>;
+  setSchema(
+    schema: SchemaDefinition | FlashSchema,
+    options?: { expireAfterSeconds?: number; ttlField?: string },
+  ): this;
+  ask(
+    prompt: string,
+    options?: QueryOptions,
+  ): Promise<(T & { _interpretedQuery?: Record<string, unknown> })[]>;
+  timeSeriesBucket(
+    timeField: string,
+    interval: number,
+    aggregations: Record<string, unknown>,
+  ): Promise<Record<string, unknown>[]>;
+  spatialNear(
+    field: string,
+    nearSpec: Record<string, unknown>,
+  ): Promise<Record<string, unknown>[]>;
 }
 
 // ============================================================================
@@ -834,7 +1145,12 @@ export interface PrivateRAGIngestResult {
 export interface PrivateRAGAskResult {
   question: string;
   contextPack: string;
-  sources: Array<{ id: string; text: string; metadata: Record<string, unknown>; score: number }>;
+  sources: Array<{
+    id: string;
+    text: string;
+    metadata: Record<string, unknown>;
+    score: number;
+  }>;
   tokens: { used: number; savedEstimate: number };
   serverSawPlaintext: false;
 }
@@ -850,16 +1166,40 @@ export interface AgentMemoryEntry {
 }
 
 export class FlashPrivateRAG {
-  constructor(client: FlashClient, collectionName?: string, options?: { chunkSize?: number; chunkOverlap?: number; dimensions?: number });
+  constructor(
+    client: FlashClient,
+    collectionName?: string,
+    options?: {
+      chunkSize?: number;
+      chunkOverlap?: number;
+      dimensions?: number;
+    },
+  );
   ingest(input: PrivateRAGIngestInput): Promise<PrivateRAGIngestResult>;
-  ask(question: string, options?: { topK?: number; maxTokens?: number }): Promise<PrivateRAGAskResult>;
-  exportBundle(question: string, options?: Record<string, unknown>): Promise<Record<string, unknown>>;
+  ask(
+    question: string,
+    options?: { topK?: number; maxTokens?: number },
+  ): Promise<PrivateRAGAskResult>;
+  exportBundle(
+    question: string,
+    options?: Record<string, unknown>,
+  ): Promise<Record<string, unknown>>;
 }
 
 export class FlashAgentMemory {
-  constructor(client: FlashClient, namespace?: string, options?: { defaultTtlMs?: number; dimensions?: number });
-  remember(content: string, options?: { tags?: string[]; importance?: number; ttlMs?: number }): Promise<{ memoryId: string; expiresAt: number }>;
-  recall(query: string, options?: { topK?: number }): Promise<AgentMemoryEntry[]>;
+  constructor(
+    client: FlashClient,
+    namespace?: string,
+    options?: { defaultTtlMs?: number; dimensions?: number },
+  );
+  remember(
+    content: string,
+    options?: { tags?: string[]; importance?: number; ttlMs?: number },
+  ): Promise<{ memoryId: string; expiresAt: number }>;
+  recall(
+    query: string,
+    options?: { topK?: number },
+  ): Promise<AgentMemoryEntry[]>;
   forget(memoryId: string): Promise<DeleteResult>;
   pruneExpired(): Promise<number>;
 }
@@ -868,7 +1208,10 @@ export class FlashSealedVault {
   readonly isLocked: boolean;
   unlock(passphrase: string): void;
   lock(): void;
-  put(recordId: string, payload: Record<string, unknown>): Promise<InsertResult>;
+  put(
+    recordId: string,
+    payload: Record<string, unknown>,
+  ): Promise<InsertResult>;
   get(recordId: string): Promise<Record<string, unknown> | null>;
   list(): Promise<Record<string, unknown>[]>;
   remove(recordId: string): Promise<DeleteResult>;
@@ -876,40 +1219,90 @@ export class FlashSealedVault {
 }
 
 export class FlashEmbeddingVault {
-  ingest(text: string, metadata?: Record<string, unknown>): Promise<Record<string, unknown>>;
-  ask(question: string, options?: Record<string, unknown>): Promise<PrivateRAGAskResult>;
+  ingest(
+    text: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<Record<string, unknown>>;
+  ask(
+    question: string,
+    options?: Record<string, unknown>,
+  ): Promise<PrivateRAGAskResult>;
   exportTextCache(): Record<string, string>;
 }
 
 export class FlashPortableBundle {
-  exportToFile(collections: string[], filePath: string, options?: Record<string, unknown>): Promise<Record<string, unknown>>;
-  static importFromFile(filePath: string, client: FlashClient): Promise<Record<string, unknown>>;
+  exportToFile(
+    collections: string[],
+    filePath: string,
+    options?: Record<string, unknown>,
+  ): Promise<Record<string, unknown>>;
+  static importFromFile(
+    filePath: string,
+    client: FlashClient,
+  ): Promise<Record<string, unknown>>;
 }
 
 export class FlashLangChainAdapter {
-  asVectorStore(): { addDocuments(docs: Array<{ pageContent: string; metadata?: Record<string, unknown> }>): Promise<void>; similaritySearch(query: string, k?: number): Promise<Array<{ pageContent: string; metadata: Record<string, unknown> }>> };
-  asMemory(): { saveContext(input: string, output: string): Promise<void>; loadMemoryVariables(vars: Record<string, unknown>): Promise<Record<string, unknown>> };
+  asVectorStore(): {
+    addDocuments(
+      docs: Array<{ pageContent: string; metadata?: Record<string, unknown> }>,
+    ): Promise<void>;
+    similaritySearch(
+      query: string,
+      k?: number,
+    ): Promise<
+      Array<{ pageContent: string; metadata: Record<string, unknown> }>
+    >;
+  };
+  asMemory(): {
+    saveContext(input: string, output: string): Promise<void>;
+    loadMemoryVariables(
+      vars: Record<string, unknown>,
+    ): Promise<Record<string, unknown>>;
+  };
 }
 
 export class FlashFederatedQuery {
   addPeer(name: string, client: FlashClient): this;
-  find(collection: string, filter: Record<string, unknown>, options?: QueryOptions): Promise<Record<string, unknown>[]>;
+  find(
+    collection: string,
+    filter: Record<string, unknown>,
+    options?: QueryOptions,
+  ): Promise<Record<string, unknown>[]>;
   count(collection: string, filter: Record<string, unknown>): Promise<number>;
 }
 
 export class FlashMultiAgentSync {
   registerAgent(agentId: string): void;
   share(agentId: string, content: string): Promise<Record<string, unknown>>;
-  getSharedContext(query: string, options?: { topK?: number }): Promise<Record<string, unknown>>;
+  getSharedContext(
+    query: string,
+    options?: { topK?: number },
+  ): Promise<Record<string, unknown>>;
 }
 
 export class FlashComplianceExport {
-  exportSubjectData(collection: string, filter: Record<string, unknown>): Promise<Record<string, unknown>>;
-  eraseSubjectData(collection: string, filter: Record<string, unknown>, actor: string): Promise<Record<string, unknown>>;
+  exportSubjectData(
+    collection: string,
+    filter: Record<string, unknown>,
+  ): Promise<Record<string, unknown>>;
+  eraseSubjectData(
+    collection: string,
+    filter: Record<string, unknown>,
+    actor: string,
+  ): Promise<Record<string, unknown>>;
 }
 
 export class FlashPromptFirewall {
-  static scan(text: string, options?: { redact?: boolean }): { safe: boolean; violations: string[]; redacted: string; originalLength: number };
+  static scan(
+    text: string,
+    options?: { redact?: boolean },
+  ): {
+    safe: boolean;
+    violations: string[];
+    redacted: string;
+    originalLength: number;
+  };
   static assertSafe(text: string): void;
 }
 
@@ -925,12 +1318,22 @@ export class FlashKeyCeremony {
 }
 
 export class FlashIntegrityProof {
-  static export(client: FlashClient, collectionName: string, options?: { actor?: string }): Promise<Record<string, unknown>>;
-  static verify(proof: Record<string, unknown>, secretKey: string | Buffer): boolean;
+  static export(
+    client: FlashClient,
+    collectionName: string,
+    options?: { actor?: string },
+  ): Promise<Record<string, unknown>>;
+  static verify(
+    proof: Record<string, unknown>,
+    secretKey: string | Buffer,
+  ): boolean;
 }
 
 export class FlashTimeSeal {
-  seal(event: string, metadata?: Record<string, unknown>): Record<string, unknown>;
+  seal(
+    event: string,
+    metadata?: Record<string, unknown>,
+  ): Record<string, unknown>;
   verify(): { valid: boolean; entries: number };
 }
 
@@ -961,7 +1364,10 @@ export class FlashAuditStream {
 }
 
 export class FlashWireServer {
-  constructor(db: FlashDatabase, options?: { port?: number; host?: string; replicaSet?: string });
+  constructor(
+    db: FlashDatabase,
+    options?: { port?: number; host?: string; replicaSet?: string },
+  );
   start(): Promise<unknown>;
   stop(): Promise<void>;
 }
@@ -979,10 +1385,17 @@ export class FlashEdgeNode {
 
 export class FlashReplicaSet {
   constructor(options?: Record<string, unknown>);
-  addNode(nodeId: string, peers: string[], options?: Record<string, unknown>): void;
+  addNode(
+    nodeId: string,
+    peers: string[],
+    options?: Record<string, unknown>,
+  ): void;
   startNetworkNodes(): Promise<void>;
   electLeader(nodeId: string): void;
-  replicateInsert(collection: string, doc: Record<string, unknown>): Promise<void>;
+  replicateInsert(
+    collection: string,
+    doc: Record<string, unknown>,
+  ): Promise<void>;
   failover(newLeaderId: string): Promise<void>;
 }
 
@@ -993,18 +1406,43 @@ export class FlashReplicaSet {
 export class FlashClient {
   readonly secretKey: string | Buffer;
   constructor(config: FlashClientOptions);
-  collection<T extends Record<string, unknown> = Record<string, unknown>>(name: string, options?: { schema?: SchemaDefinition | FlashSchema }): FlashClientCollection<T>;
-  model<T extends Record<string, unknown>>(name: string, schema?: FlashSchemaExtended | SchemaDefinition | Record<string, unknown>): FlashModelInterface<T>;
+  collection<T extends Record<string, unknown> = Record<string, unknown>>(
+    name: string,
+    options?: { schema?: SchemaDefinition | FlashSchema },
+  ): FlashClientCollection<T>;
+  model<T extends Record<string, unknown>>(
+    name: string,
+    schema?: FlashSchemaExtended | SchemaDefinition | Record<string, unknown>,
+  ): FlashModelInterface<T>;
   tenant(tenantId: string): FlashClient;
   startSession(): FlashSession;
   backup(destinationPath: string): Promise<BackupResult>;
   restore(backupPath: string): Promise<RestoreResult>;
   openDashboard(options?: FlashDashboardOptions): import("node:http").Server;
-  privateRAG(collectionName?: string, options?: { chunkSize?: number; chunkOverlap?: number; dimensions?: number }): FlashPrivateRAG;
-  agentMemory(namespace?: string, options?: { defaultTtlMs?: number; dimensions?: number }): FlashAgentMemory;
-  sealedVault(vaultName: string, options?: { autoLockMs?: number }): FlashSealedVault;
-  integrityProof(collectionName: string, options?: { actor?: string }): Promise<Record<string, unknown>>;
-  embeddingVault(collectionName?: string, options?: Record<string, unknown>): FlashEmbeddingVault;
+  privateRAG(
+    collectionName?: string,
+    options?: {
+      chunkSize?: number;
+      chunkOverlap?: number;
+      dimensions?: number;
+    },
+  ): FlashPrivateRAG;
+  agentMemory(
+    namespace?: string,
+    options?: { defaultTtlMs?: number; dimensions?: number },
+  ): FlashAgentMemory;
+  sealedVault(
+    vaultName: string,
+    options?: { autoLockMs?: number },
+  ): FlashSealedVault;
+  integrityProof(
+    collectionName: string,
+    options?: { actor?: string },
+  ): Promise<Record<string, unknown>>;
+  embeddingVault(
+    collectionName?: string,
+    options?: Record<string, unknown>,
+  ): FlashEmbeddingVault;
   portableBundle(): FlashPortableBundle;
   langChainAdapter(options?: Record<string, unknown>): FlashLangChainAdapter;
   federatedQuery(): FlashFederatedQuery;
@@ -1012,14 +1450,31 @@ export class FlashClient {
   complianceExport(): FlashComplianceExport;
   timeSeal(sealPath?: string): FlashTimeSeal;
   cloudSync(syncDir: string): FlashCloudSync;
-  encryptedCRDT(collectionName: string, nodeId?: string | null): FlashEncryptedCRDT;
+  encryptedCRDT(
+    collectionName: string,
+    nodeId?: string | null,
+  ): FlashEncryptedCRDT;
   browserVault(vaultName?: string): FlashBrowserVault;
-  auditStream(collectionName: string, options?: Record<string, unknown>): FlashAuditStream;
+  auditStream(
+    collectionName: string,
+    options?: Record<string, unknown>,
+  ): FlashAuditStream;
   events(): FlashEventHub;
   use(plugin: FlashPlugin): FlashPluginHost;
-  lifecycle(collectionName: string, options?: FlashLifecycleOptions): FlashLifecycle;
+  lifecycle(
+    collectionName: string,
+    options?: FlashLifecycleOptions,
+  ): FlashLifecycle;
   maintenance(options?: FlashMaintenanceOptions): FlashMaintenance;
   pipeline(): FlashPipeline;
+  eventLog(
+    collectionName: string,
+    options?: { timeField?: string },
+  ): FlashEventLog;
+  counter(name: string, options?: { namespace?: string }): FlashCounter;
+  queue(collectionName: string, options?: { statusField?: string }): FlashQueue;
+  health(): Promise<Record<string, unknown>>;
+  snapshot(): FlashSnapshot;
   listCollections(): Promise<string[]>;
   encryptDocument(doc: Record<string, unknown>): EncryptedDocument;
   decryptDocument(encryptedRecord: EncryptedDocument): Record<string, unknown>;
@@ -1064,14 +1519,24 @@ export class FlashCollection {
   init(): Promise<void>;
   insertOne(doc: Record<string, unknown>): Promise<InsertResult>;
   insertMany(docs: Array<Record<string, unknown>>): Promise<InsertManyResult>;
-  find(queryEnvelope?: QueryEnvelope, options?: QueryOptions): Promise<Array<Record<string, unknown>>>;
-  findOne(queryEnvelope?: QueryEnvelope): Promise<Record<string, unknown> | null>;
+  find(
+    queryEnvelope?: QueryEnvelope,
+    options?: QueryOptions,
+  ): Promise<Array<Record<string, unknown>>>;
+  findOne(
+    queryEnvelope?: QueryEnvelope,
+  ): Promise<Record<string, unknown> | null>;
   deleteOne(queryEnvelope?: QueryEnvelope): Promise<DeleteResult>;
   flush(): Promise<FlashSSTable | null>;
   compact(): Promise<CompactionResult>;
   count(): Promise<number>;
   getMerkleRoot(): string;
-  getMerkleProof(docId: string): { index: number; proof: string[]; root: string } | null;
+  getMerkleProof(
+    docId: string,
+  ): { index: number; proof: string[]; root: string } | null;
+  getMerkleProofAsync(
+    docId: string,
+  ): Promise<{ index: number; proof: string[]; root: string } | null>;
   verifyRecordIntegrity(docId: string): MerkleProofResult;
 }
 
@@ -1103,14 +1568,15 @@ export interface FlashServerOptions {
 }
 
 export class FlashServer {
-  static start(options?: FlashServerOptions): import('node:http').Server;
+  static start(options?: FlashServerOptions): import("node:http").Server;
 }
 
 // ============================================================================
 // Server: FlashMetrics
 // ============================================================================
 
-export type MetricOp = 'insert' | 'find' | 'update' | 'delete' | 'flush' | 'compact';
+export type MetricOp =
+  "insert" | "find" | "update" | "delete" | "flush" | "compact";
 
 export class FlashMetrics {
   constructor(options?: { latencyBuckets?: number[] });
@@ -1135,21 +1601,32 @@ export interface HNSWOptions {
   efConstruction?: number;
   efSearch?: number;
   mL?: number;
-  metric?: 'cosine' | 'euclidean' | 'dot';
+  metric?: "cosine" | "euclidean" | "dot";
 }
 
 export class FlashHNSWIndex {
   constructor(options?: HNSWOptions);
   insert(id: string, vector: number[] | Float32Array): void;
-  search(queryVector: number[] | Float32Array, k?: number, options?: { efSearch?: number; filter?: Set<string> }): VectorSearchResult[];
+  search(
+    queryVector: number[] | Float32Array,
+    k?: number,
+    options?: { efSearch?: number; filter?: Set<string> },
+  ): VectorSearchResult[];
   size(): number;
 }
 
 export class FlashVectorIndex {
-  constructor(options?: { engine?: 'exact' | 'hnsw'; hnswOptions?: HNSWOptions });
+  constructor(options?: {
+    engine?: "exact" | "hnsw";
+    hnswOptions?: HNSWOptions;
+  });
   set(docId: string, vector: number[] | Float32Array): void;
   delete(docId: string): void;
-  search(queryVector: number[] | Float32Array, topK?: number, candidateFilter?: Set<string>): VectorSearchResult[];
+  search(
+    queryVector: number[] | Float32Array,
+    topK?: number,
+    candidateFilter?: Set<string>,
+  ): VectorSearchResult[];
 }
 
 // ============================================================================
@@ -1162,13 +1639,13 @@ export interface SQ8Quantized {
   max: number;
   scale: number;
   dimensions: number;
-  format: 'sq8';
+  format: "sq8";
 }
 
 export interface BinaryQuantized {
   data: Uint32Array;
   dimensions: number;
-  format: 'binary1bit';
+  format: "binary1bit";
 }
 
 export interface MemorySavingsEstimate {
@@ -1184,13 +1661,33 @@ export interface MemorySavingsEstimate {
 export class FlashQuantizer {
   static popcount32(n: number): number;
   static quantizeSQ8(vector: Float32Array | number[]): SQ8Quantized;
-  static dequantizeSQ8(quantizedData: Uint8Array, min: number, scale: number): Float32Array;
-  static asymmetricCosineSQ8(queryVec: Float32Array | number[], targetSQ8Data: Uint8Array, min: number, scale: number): number;
+  static dequantizeSQ8(
+    quantizedData: Uint8Array,
+    min: number,
+    scale: number,
+  ): Float32Array;
+  static asymmetricCosineSQ8(
+    queryVec: Float32Array | number[],
+    targetSQ8Data: Uint8Array,
+    min: number,
+    scale: number,
+  ): number;
   static quantizeBinary(vector: Float32Array | number[]): BinaryQuantized;
   static hammingDistance(binA: Uint32Array, binB: Uint32Array): number;
-  static hammingSimilarity(binA: Uint32Array, binB: Uint32Array, totalDimensions?: number): number;
-  static cosineApproxFromBinary(binA: Uint32Array, binB: Uint32Array, totalDimensions?: number): number;
-  static estimateMemorySavings(count: number, dimensions: number): MemorySavingsEstimate;
+  static hammingSimilarity(
+    binA: Uint32Array,
+    binB: Uint32Array,
+    totalDimensions?: number,
+  ): number;
+  static cosineApproxFromBinary(
+    binA: Uint32Array,
+    binB: Uint32Array,
+    totalDimensions?: number,
+  ): number;
+  static estimateMemorySavings(
+    count: number,
+    dimensions: number,
+  ): MemorySavingsEstimate;
 }
 
 // ============================================================================
@@ -1212,9 +1709,20 @@ export interface CacheStats {
 }
 
 export class FlashSemanticCache {
-  constructor(options?: { similarityThreshold?: number; maxEntries?: number; ttlMs?: number });
-  get(queryEmbedding: number[] | Float32Array, promptText?: string): CacheHit | null;
-  set(prompt: string, embedding: number[] | Float32Array, response: string): void;
+  constructor(options?: {
+    similarityThreshold?: number;
+    maxEntries?: number;
+    ttlMs?: number;
+  });
+  get(
+    queryEmbedding: number[] | Float32Array,
+    promptText?: string,
+  ): CacheHit | null;
+  set(
+    prompt: string,
+    embedding: number[] | Float32Array,
+    response: string,
+  ): void;
   clear(): void;
   getStats(): CacheStats;
 }
@@ -1248,9 +1756,18 @@ export interface TokenBudgetResult {
 
 export class FlashContextOptimizer {
   static estimateTokens(text: string): number;
-  static reciprocalRankFusion(rankedLists: RRFInput[][], options?: { k?: number; weights?: number[] }): RRFOutput[];
-  static deduplicate<T extends { id: string; text: string }>(docs: T[], similarityThreshold?: number): T[];
-  static optimizeTokenBudget(documents: RRFOutput[], options?: { maxTokens?: number; preserveTopK?: number }): TokenBudgetResult;
+  static reciprocalRankFusion(
+    rankedLists: RRFInput[][],
+    options?: { k?: number; weights?: number[] },
+  ): RRFOutput[];
+  static deduplicate<T extends { id: string; text: string }>(
+    docs: T[],
+    similarityThreshold?: number,
+  ): T[];
+  static optimizeTokenBudget(
+    documents: RRFOutput[],
+    options?: { maxTokens?: number; preserveTopK?: number },
+  ): TokenBudgetResult;
 }
 
 // ============================================================================
@@ -1276,13 +1793,20 @@ export interface ToolDefinition {
 
 export class FlashLLMAdapter {
   registerTool(tool: ToolDefinition): void;
-  executeToolCall(toolName: string, args: Record<string, unknown>): Promise<Record<string, unknown>>;
+  executeToolCall(
+    toolName: string,
+    args: Record<string, unknown>,
+  ): Promise<Record<string, unknown>>;
 }
 
 export class FlashAIDatabase {
   constructor(client: FlashClient, options?: { model?: string });
   ask(prompt: string): Promise<string>;
-  semanticSearch(collection: string, query: string, topK?: number): Promise<Record<string, unknown>[]>;
+  semanticSearch(
+    collection: string,
+    query: string,
+    topK?: number,
+  ): Promise<Record<string, unknown>[]>;
 }
 
 // ============================================================================
@@ -1290,9 +1814,20 @@ export class FlashAIDatabase {
 // ============================================================================
 
 export class FlashETL {
-  static exportToNDJSON(collection: FlashCollection, destFilePath: string): Promise<{ exportedCount: number; filePath: string }>;
-  static importFromNDJSON(collection: FlashCollection, sourceFilePath: string, batchSize?: number): Promise<{ importedCount: number }>;
-  static exportToCSV(collection: FlashCollection, destFilePath: string, fields?: string[]): Promise<{ exportedCount: number }>;
+  static exportToNDJSON(
+    collection: FlashCollection,
+    destFilePath: string,
+  ): Promise<{ exportedCount: number; filePath: string }>;
+  static importFromNDJSON(
+    collection: FlashCollection,
+    sourceFilePath: string,
+    batchSize?: number,
+  ): Promise<{ importedCount: number }>;
+  static exportToCSV(
+    collection: FlashCollection,
+    destFilePath: string,
+    fields?: string[],
+  ): Promise<{ exportedCount: number }>;
 }
 
 export class FlashFaker {
@@ -1302,7 +1837,12 @@ export class FlashFaker {
 
 export class FlashMigrator {
   constructor(db: FlashDatabase);
-  register(version: number, name: string, up: (db: FlashDatabase) => Promise<void>, down?: (db: FlashDatabase) => Promise<void>): void;
+  register(
+    version: number,
+    name: string,
+    up: (db: FlashDatabase) => Promise<void>,
+    down?: (db: FlashDatabase) => Promise<void>,
+  ): void;
   up(): Promise<Array<{ version: number; name: string; status: string }>>;
   rollback(): Promise<Array<{ version: number; name: string; status: string }>>;
 }
@@ -1358,7 +1898,13 @@ export class FlashCluster {
 export class FlashDistributedTxCoordinator {
   constructor(cluster: FlashCluster);
   beginTransaction(customTxId?: string): string;
-  stageOperation(dtxId: string, collection: string, docKey: string, type: 'insert' | 'update' | 'delete', payload?: Record<string, unknown>): void;
+  stageOperation(
+    dtxId: string,
+    collection: string,
+    docKey: string,
+    type: "insert" | "update" | "delete",
+    payload?: Record<string, unknown>,
+  ): void;
   commitTransaction(dtxId: string): Promise<TxCommitResult>;
   abortTransaction(dtxId: string): Promise<void>;
 }
@@ -1384,10 +1930,19 @@ export interface AppendEntriesResult {
 }
 
 export class FlashRaft {
-  constructor(nodeId: string, peerIds?: string[], options?: { electionTimeoutMs?: number; heartbeatIntervalMs?: number });
+  constructor(
+    nodeId: string,
+    peerIds?: string[],
+    options?: { electionTimeoutMs?: number; heartbeatIntervalMs?: number },
+  );
   startElection(): ElectionResult;
   replicate(command: Record<string, unknown>): ReplicateResult;
-  handleAppendEntries(leaderId: string, term: number, entries?: Array<Record<string, unknown>>[], leaderCommit?: number): AppendEntriesResult;
+  handleAppendEntries(
+    leaderId: string,
+    term: number,
+    entries?: Array<Record<string, unknown>>[],
+    leaderCommit?: number,
+  ): AppendEntriesResult;
 }
 
 // ============================================================================
@@ -1415,7 +1970,10 @@ export class FlashGraphQL {
 // ============================================================================
 
 export class FlashBrowserAdapter {
-  constructor(dbName?: string, options?: { driver?: 'indexeddb' | 'memory' | 'opfs' });
+  constructor(
+    dbName?: string,
+    options?: { driver?: "indexeddb" | "memory" | "opfs" },
+  );
   set(collection: string, key: string, buffer: Buffer): Promise<boolean>;
   get(collection: string, key: string): Promise<Buffer | null>;
   delete(collection: string, key: string): Promise<boolean>;
@@ -1424,7 +1982,12 @@ export class FlashBrowserAdapter {
 
 export class FlashBlobStore {
   constructor(options?: { chunkSizeBytes?: number });
-  writeBlob(fileId: string, filename: string, buffer: Buffer, mimeType?: string): { fileId: string; totalChunks: number; sha256: string };
+  writeBlob(
+    fileId: string,
+    filename: string,
+    buffer: Buffer,
+    mimeType?: string,
+  ): { fileId: string; totalChunks: number; sha256: string };
   readBlob(fileId: string): Buffer | null;
   deleteBlob(fileId: string): boolean;
 }
@@ -1458,8 +2021,18 @@ export interface PathResult {
 }
 
 export class FlashGraph {
-  addNode(id: string, label: string, properties?: Record<string, unknown>): GraphNode;
-  addEdge(fromId: string, toId: string, label: string, weight?: number, properties?: Record<string, unknown>): void;
+  addNode(
+    id: string,
+    label: string,
+    properties?: Record<string, unknown>,
+  ): GraphNode;
+  addEdge(
+    fromId: string,
+    toId: string,
+    label: string,
+    weight?: number,
+    properties?: Record<string, unknown>,
+  ): void;
   getNeighbors(nodeId: string, edgeLabel?: string): NeighborResult[];
   findShortestPath(startId: string, endId: string): PathResult | null;
 }
@@ -1479,20 +2052,32 @@ export interface AuditEntry {
 
 export class FlashAuditVault {
   constructor(vaultSecret?: string);
-  log(actor: string, action: string, target: string, metadata?: Record<string, unknown>): AuditEntry;
+  log(
+    actor: string,
+    action: string,
+    target: string,
+    metadata?: Record<string, unknown>,
+  ): AuditEntry;
   verifyChain(): { valid: boolean; totalEntries: number; brokenAt?: number };
 }
 
 export class FlashDataMasker {
   static maskEmail(email: string): string;
   static maskCard(cardNumber: string): string;
-  static maskDocument(doc: Record<string, unknown>, rules?: Record<string, 'email' | 'card' | 'full' | 'phone'>): Record<string, unknown>;
+  static maskDocument(
+    doc: Record<string, unknown>,
+    rules?: Record<string, "email" | "card" | "full" | "phone">,
+  ): Record<string, unknown>;
 }
 
 export class FlashRBAC {
   createRole(roleName: string, permissions: string[]): void;
   assignRole(userId: string, roleName: string): void;
-  can(userId: string, collection: string, action: 'read' | 'write' | 'delete' | 'admin'): boolean;
+  can(
+    userId: string,
+    collection: string,
+    action: "read" | "write" | "delete" | "admin",
+  ): boolean;
 }
 
 // ============================================================================
@@ -1507,13 +2092,37 @@ export interface SpatialPoint {
 }
 
 export class FlashSpatialRTree {
-  insertPoint(id: string, lat: number, lon: number, data?: Record<string, unknown>): void;
-  searchBoundingBox(minLat: number, minLon: number, maxLat: number, maxLon: number): Array<{ id: string; lat: number; lon: number; data: Record<string, unknown> }>;
-  searchNearest(lat: number, lon: number, k?: number, maxDistanceKm?: number): SpatialPoint[];
+  insertPoint(
+    id: string,
+    lat: number,
+    lon: number,
+    data?: Record<string, unknown>,
+  ): void;
+  searchBoundingBox(
+    minLat: number,
+    minLon: number,
+    maxLat: number,
+    maxLon: number,
+  ): Array<{
+    id: string;
+    lat: number;
+    lon: number;
+    data: Record<string, unknown>;
+  }>;
+  searchNearest(
+    lat: number,
+    lon: number,
+    k?: number,
+    maxDistanceKm?: number,
+  ): SpatialPoint[];
 }
 
 export class FlashSpatialPlugin {
-  static filterNear(docs: Record<string, unknown>[], field: string, nearSpec: Record<string, unknown>): Record<string, unknown>[];
+  static filterNear(
+    docs: Record<string, unknown>[],
+    field: string,
+    nearSpec: Record<string, unknown>,
+  ): Record<string, unknown>[];
 }
 
 // ============================================================================
@@ -1530,11 +2139,19 @@ export interface TimeSeriesBucket {
 }
 
 export class FlashTimeSeriesPlugin {
-  static bucket(docs: Record<string, unknown>[], timeField: string, interval: number, aggregations: Record<string, unknown>): TimeSeriesBucket[];
+  static bucket(
+    docs: Record<string, unknown>[],
+    timeField: string,
+    interval: number,
+    aggregations: Record<string, unknown>,
+  ): TimeSeriesBucket[];
 }
 
 export class FlashTimeSeriesRollup {
-  static rollup(dataPoints?: Array<{ timestamp: number; value: number }>, windowSizeMs?: number): TimeSeriesBucket[];
+  static rollup(
+    dataPoints?: Array<{ timestamp: number; value: number }>,
+    windowSizeMs?: number,
+  ): TimeSeriesBucket[];
 }
 
 export class FlashTextSearchPlugin {
@@ -1543,7 +2160,10 @@ export class FlashTextSearchPlugin {
 }
 
 export class FlashCRDTSync {
-  merge(local: Record<string, unknown>, remote: Record<string, unknown>): Record<string, unknown>;
+  merge(
+    local: Record<string, unknown>,
+    remote: Record<string, unknown>,
+  ): Record<string, unknown>;
 }
 
 // ============================================================================
@@ -1551,7 +2171,10 @@ export class FlashCRDTSync {
 // ============================================================================
 
 export class FlashConnectionPool {
-  constructor(serverEndpoints?: string[], options?: { maxConnectionsPerHost?: number });
+  constructor(
+    serverEndpoints?: string[],
+    options?: { maxConnectionsPerHost?: number },
+  );
   acquire(): string;
   release(endpoint: string): void;
   setHealthy(endpoint: string, isHealthy: boolean): void;
@@ -1559,7 +2182,10 @@ export class FlashConnectionPool {
 
 export class FlashRateLimiter {
   constructor(options?: { capacity?: number; refillRatePerSec?: number });
-  consume(clientId: string, cost?: number): { allowed: boolean; remainingTokens: number; retryAfterMs: number };
+  consume(
+    clientId: string,
+    cost?: number,
+  ): { allowed: boolean; remainingTokens: number; retryAfterMs: number };
   reset(clientId: string): void;
 }
 
@@ -1577,14 +2203,19 @@ export class FlashDistributedLock {
 export interface CDCEvent {
   id: string;
   collection: string;
-  op: 'INSERT' | 'UPDATE' | 'DELETE';
+  op: "INSERT" | "UPDATE" | "DELETE";
   docId: string;
   payload: Record<string, unknown>;
   timestamp: number;
 }
 
 export class FlashCDC {
-  recordChange(collection: string, op: 'INSERT' | 'UPDATE' | 'DELETE', docId: string, payload?: Record<string, unknown>): CDCEvent;
+  recordChange(
+    collection: string,
+    op: "INSERT" | "UPDATE" | "DELETE",
+    docId: string,
+    payload?: Record<string, unknown>,
+  ): CDCEvent;
   pollPending(batchSize?: number): CDCEvent[];
   ackEvents(eventIds: string[]): void;
   subscribe(callback: (event: CDCEvent) => void): () => void;
@@ -1592,7 +2223,11 @@ export class FlashCDC {
 
 export class FlashFederation {
   registerMember(name: string, dbInstance: FlashDatabase): void;
-  federatedFind(collectionName: string, queryEnvelope?: QueryEnvelope, options?: QueryOptions): Promise<Array<Record<string, unknown>>>;
+  federatedFind(
+    collectionName: string,
+    queryEnvelope?: QueryEnvelope,
+    options?: QueryOptions,
+  ): Promise<Array<Record<string, unknown>>>;
 }
 
 // ============================================================================
@@ -1606,7 +2241,11 @@ export interface QueryPlan {
 }
 
 export class FlashCostOptimizer {
-  static planQuery(query?: Record<string, unknown>, availableIndexes?: Set<string>, totalDocuments?: number): QueryPlan;
+  static planQuery(
+    query?: Record<string, unknown>,
+    availableIndexes?: Set<string>,
+    totalDocuments?: number,
+  ): QueryPlan;
 }
 
 // ============================================================================
@@ -1624,7 +2263,10 @@ export class FlashTimeTravel {
 // ============================================================================
 
 export class FlashSQL {
-  static execute(db: FlashDatabase, sqlQuery: string): Promise<Array<Record<string, unknown>>>;
+  static execute(
+    db: FlashDatabase,
+    sqlQuery: string,
+  ): Promise<Array<Record<string, unknown>>>;
   static parse(sql: string): Record<string, unknown>;
 }
 
@@ -1654,16 +2296,32 @@ export class FlashWebSocket {
 
 export class FlashWebSocketServer {
   readonly size: number;
-  constructor(httpServer: import('node:http').Server, options?: WebSocketOptions);
-  on(event: 'connection', listener: (ws: FlashWebSocket) => void): this;
-  on(event: 'disconnect', listener: (ws: FlashWebSocket) => void): this;
-  on(event: 'message', listener: (ws: FlashWebSocket, data: Record<string, unknown>) => void): this;
-  on(event: 'join', listener: (ws: FlashWebSocket, room: string) => void): this;
-  on(event: 'leave', listener: (ws: FlashWebSocket, room: string) => void): this;
+  constructor(
+    httpServer: import("node:http").Server,
+    options?: WebSocketOptions,
+  );
+  on(event: "connection", listener: (ws: FlashWebSocket) => void): this;
+  on(event: "disconnect", listener: (ws: FlashWebSocket) => void): this;
+  on(
+    event: "message",
+    listener: (ws: FlashWebSocket, data: Record<string, unknown>) => void,
+  ): this;
+  on(event: "join", listener: (ws: FlashWebSocket, room: string) => void): this;
+  on(
+    event: "leave",
+    listener: (ws: FlashWebSocket, room: string) => void,
+  ): this;
   joinRoom(ws: FlashWebSocket, room: string): void;
   leaveRoom(ws: FlashWebSocket, room: string): void;
-  to(room: string, data: string | Record<string, unknown>, exclude?: FlashWebSocket): void;
-  broadcast(data: string | Record<string, unknown>, exclude?: FlashWebSocket): void;
+  to(
+    room: string,
+    data: string | Record<string, unknown>,
+    exclude?: FlashWebSocket,
+  ): void;
+  broadcast(
+    data: string | Record<string, unknown>,
+    exclude?: FlashWebSocket,
+  ): void;
   getRoomMembers(room: string): Set<FlashWebSocket>;
   close(): void;
 }
@@ -1687,9 +2345,18 @@ export interface PresenceInfo {
 
 export class FlashPresence {
   constructor(options?: PresenceOptions);
-  on(event: 'online', listener: (userId: string, info: PresenceInfo) => void): this;
-  on(event: 'offline', listener: (userId: string, info: PresenceInfo) => void): this;
-  on(event: 'status', listener: (userId: string, status: string, info: PresenceInfo) => void): this;
+  on(
+    event: "online",
+    listener: (userId: string, info: PresenceInfo) => void,
+  ): this;
+  on(
+    event: "offline",
+    listener: (userId: string, info: PresenceInfo) => void,
+  ): this;
+  on(
+    event: "status",
+    listener: (userId: string, status: string, info: PresenceInfo) => void,
+  ): this;
   track(userId: string, meta?: Record<string, unknown>): PresenceInfo;
   heartbeat(userId: string): void;
   disconnect(userId: string): void;
@@ -1762,11 +2429,23 @@ export type AckFn = (ack: boolean) => void;
 
 export class FlashEnhancedPubSub {
   constructor(options?: EnhancedPubSubOptions);
-  on(event: 'publish', listener: (msg: PubSubMessage) => void): this;
-  on(event: 'dead-letter', listener: (msg: PubSubMessage) => void): this;
-  publish(topic: string, payload: unknown, options?: { id?: string; ttl?: number }): string;
-  subscribe(topic: string, subscriberId: string, callback: (msg: PubSubMessage, ack: AckFn) => void): this;
-  subscribeWildcard(pattern: string, subscriberId: string, callback: (msg: PubSubMessage, ack: AckFn) => void): this;
+  on(event: "publish", listener: (msg: PubSubMessage) => void): this;
+  on(event: "dead-letter", listener: (msg: PubSubMessage) => void): this;
+  publish(
+    topic: string,
+    payload: unknown,
+    options?: { id?: string; ttl?: number },
+  ): string;
+  subscribe(
+    topic: string,
+    subscriberId: string,
+    callback: (msg: PubSubMessage, ack: AckFn) => void,
+  ): this;
+  subscribeWildcard(
+    pattern: string,
+    subscriberId: string,
+    callback: (msg: PubSubMessage, ack: AckFn) => void,
+  ): this;
   unsubscribe(topic: string, subscriberId: string): this;
   unsubscribeAll(subscriberId: string): void;
   getHistory(topic: string, limit?: number): PubSubMessage[];

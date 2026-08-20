@@ -44,6 +44,9 @@ export { FlashTTLManager } from "./engine/ttl_manager.mjs";
 export { FlashLifecycle } from "./engine/lifecycle.mjs";
 export { FlashPaginator } from "./engine/paginator.mjs";
 export { FlashMaintenance } from "./engine/maintenance.mjs";
+export { FlashEventLog } from "./engine/event_log.mjs";
+export { FlashCounter } from "./engine/counter.mjs";
+export { FlashQueue } from "./engine/queue.mjs";
 export { FlashBulkWriter } from "./engine/bulk_writer.mjs";
 export { FlashBackupManager } from "./engine/backup_restore.mjs";
 export { FlashExplain } from "./engine/explain.mjs";
@@ -61,6 +64,8 @@ export { FlashQuery } from "./client/fluent_query.mjs";
 export { FlashModel, FlashSchemaExtended } from "./odm/flash_model.mjs";
 export { FlashETL } from "./tools/exporter.mjs";
 export { FlashPipeline } from "./tools/pipeline.mjs";
+export { FlashSnapshot } from "./tools/snapshot.mjs";
+export { FlashHealth } from "./core/health.mjs";
 
 // 🚀 Next-Gen Hyper-Scale Engines
 export { FlashSemanticCache } from "./ai/semantic_cache.mjs";

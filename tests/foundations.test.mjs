@@ -185,3 +185,96 @@ test("foundations: maintenance runNow flushes memtable", async () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test("foundations: event log tail and counter", async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flash-evlog-"));
+  const client = new FlashClient({
+    secretKey: "foundations_evlog_key_32chars!!!!",
+    storagePath: tmpDir,
+    autoTimestamps: false,
+  });
+
+  try {
+    const log = client.eventLog("telemetry");
+    await log.appendMany([{ kind: "a" }, { kind: "b" }, { kind: "c" }]);
+    const tail = await log.tail({}, { limit: 2 });
+    assert.strictEqual(tail.docs.length, 2);
+
+    const counter = client.counter("page_views");
+    assert.strictEqual(await counter.get(), 0);
+    assert.strictEqual(await counter.increment(5), 5);
+    assert.strictEqual(await counter.increment(3), 8);
+  } finally {
+    await client.close();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test("foundations: queue enqueue and dequeue", async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flash-queue-"));
+  const client = new FlashClient({
+    secretKey: "foundations_queue_key_32chars!!!!",
+    storagePath: tmpDir,
+    autoTimestamps: false,
+  });
+
+  try {
+    const q = client.queue("jobs");
+    await q.enqueue({ task: "low" }, { priority: 1 });
+    await q.enqueue({ task: "high" }, { priority: 10 });
+
+    const first = await q.dequeue();
+    assert.strictEqual(first.payload.task, "high");
+    await q.ack(first._id);
+
+    assert.strictEqual(await q.depth(), 1);
+  } finally {
+    await client.close();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test("foundations: health report and fast count", async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flash-health-"));
+  const client = new FlashClient({
+    secretKey: "foundations_health_key_32chars!!!",
+    storagePath: tmpDir,
+  });
+
+  try {
+    const col = client.collection("items");
+    await col.insertMany([{ a: 1 }, { a: 2 }, { a: 3 }]);
+    assert.strictEqual(await col.count(), 3);
+
+    const health = await client.health();
+    assert.strictEqual(health.status, "ok");
+    assert.ok(health.totalDocuments >= 3);
+  } finally {
+    await client.close();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test("foundations: TTL manager purges from SSTable-backed data", async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flash-ttl-"));
+  const client = new FlashClient({
+    secretKey: "foundations_ttl_key_32chars!!!!!!",
+    storagePath: tmpDir,
+    fieldPolicy: { createdAt: "plaintext" },
+    autoTimestamps: false,
+  });
+
+  try {
+    const col = client.collection("logs");
+    col.setSchema({}, { expireAfterSeconds: 30, ttlField: "createdAt" });
+    await col.insertOne({ createdAt: new Date(Date.now() - 60000) });
+    await col.raw.flush();
+
+    const purged = await col.ttlManager.purgeExpired();
+    assert.ok(purged >= 1);
+    assert.strictEqual(await col.count(), 0);
+  } finally {
+    await client.close();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
