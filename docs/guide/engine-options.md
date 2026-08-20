@@ -13,10 +13,10 @@ const client = new FlashClient({
   secretKey: "your-master-key",
   storagePath: "./flash_data",
   engineOptions: {
-    durability: "balanced",       // strict | balanced | throughput
+    durability: "balanced", // strict | balanced | throughput
     memtableThreshold: 4 * 1024 * 1024, // 4 MB default
-    useWorkerFlush: true,           // background SSTable writes
-    deferMerkleOnWrite: true,       // defer Merkle rebuild on bulk paths
+    useWorkerFlush: true, // background SSTable writes
+    deferMerkleOnWrite: true, // defer Merkle rebuild on bulk paths
   },
 });
 ```
@@ -25,18 +25,22 @@ const client = new FlashClient({
 
 ## Durability Modes
 
-| Mode | WAL / Oplog behavior | Use when |
-|------|---------------------|----------|
-| **`strict`** | `fsync` after every frame | Financial logs, audit trails, max safety |
-| **`balanced`** *(default)* | Batch fsync every 64 ops or 25 ms; full sync on `close()` | Production apps, encrypted CRUD |
-| **`throughput`** | No automatic fsync until `close()` | Benchmarks, bulk import, disposable data |
+| Mode                       | WAL / Oplog behavior                                      | Use when                                 |
+| -------------------------- | --------------------------------------------------------- | ---------------------------------------- |
+| **`strict`**               | `fsync` after every frame                                 | Financial logs, audit trails, max safety |
+| **`balanced`** _(default)_ | Batch fsync every 64 ops or 25 ms; full sync on `close()` | Production apps, encrypted CRUD          |
+| **`throughput`**           | No automatic fsync until `close()`                        | Benchmarks, bulk import, disposable data |
 
 ```javascript
 // Maximum durability
-engineOptions: { durability: "strict" }
+engineOptions: {
+  durability: "strict";
+}
 
 // Bulk import (call client.close() to flush)
-engineOptions: { durability: "throughput" }
+engineOptions: {
+  durability: "throughput";
+}
 ```
 
 ::: tip
@@ -64,18 +68,20 @@ engineOptions: {
 When enabled (default), large flushes (≥512 records) run in a worker thread:
 
 ```javascript
-engineOptions: { useWorkerFlush: true }
+engineOptions: {
+  useWorkerFlush: true;
+}
 ```
 
 ---
 
 ## Write Patterns
 
-| Pattern | Expected throughput* | Notes |
-|---------|---------------------|-------|
-| `insertOne` loop | ~300 ops/sec | Merkle + encryption per doc |
+| Pattern            | Expected throughput* | Notes                              |
+| ------------------ | -------------------- | ---------------------------------- |
+| `insertOne` loop   | ~300 ops/sec         | Merkle + encryption per doc        |
 | `insertMany` batch | ~2,500–4,000 ops/sec | Single WAL batch + deferred Merkle |
-| Blind index reads | ~5,000–6,000 ops/sec | Point lookups |
+| Blind index reads  | ~5,000–6,000 ops/sec | Point lookups                      |
 
 \*Apple Silicon / Node 20+, encrypted E2E. Run `npm run benchmark` on your hardware.
 

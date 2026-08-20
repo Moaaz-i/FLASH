@@ -40,12 +40,12 @@ Measured with `npm run benchmark` on Apple Silicon (Node 20+):
 
 ## Workload Guide
 
-| Workload | Recommended API | Durability |
-|----------|----------------|------------|
-| Single encrypted inserts | `insertOne` | `balanced` (default) |
-| Bulk import / seed data | `insertMany` | `balanced` or `throughput` |
-| Audit / financial log | `insertOne` | `strict` |
-| Benchmark / disposable data | `insertMany` | `throughput` + `close()` |
+| Workload                    | Recommended API | Durability                 |
+| --------------------------- | --------------- | -------------------------- |
+| Single encrypted inserts    | `insertOne`     | `balanced` (default)       |
+| Bulk import / seed data     | `insertMany`    | `balanced` or `throughput` |
+| Audit / financial log       | `insertOne`     | `strict`                   |
+| Benchmark / disposable data | `insertMany`    | `throughput` + `close()`   |
 
 See [Engine Options](/guide/engine-options) for configuration.
 
@@ -63,9 +63,9 @@ Results vary by CPU, disk (SSD vs HDD), and Node version.
 
 ## What Changed in v1.2.5
 
-| Setting | Before | After |
-|---------|--------|-------|
-| Memtable threshold | 64 KB | 4 MB |
-| Default durability | fsync every write | `balanced` (batch 64 ops / 25 ms) |
-| Bulk oplog | per-doc append | `appendBatch` |
-| L0 compaction trigger | 4 SSTables | 8 SSTables |
+| Setting               | Before            | After                             |
+| --------------------- | ----------------- | --------------------------------- |
+| Memtable threshold    | 64 KB             | 4 MB                              |
+| Default durability    | fsync every write | `balanced` (batch 64 ops / 25 ms) |
+| Bulk oplog            | per-doc append    | `appendBatch`                     |
+| L0 compaction trigger | 4 SSTables        | 8 SSTables                        |

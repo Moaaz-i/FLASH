@@ -22,7 +22,10 @@ const client = new FlashClient({
 
 // 1. Private RAG — ingest & ask (server-blind)
 const rag = client.privateRAG("knowledge");
-await rag.ingest({ title: "Security Policy", text: "All data is encrypted client-side..." });
+await rag.ingest({
+  title: "Security Policy",
+  text: "All data is encrypted client-side...",
+});
 const ctx = await rag.ask("How is data protected?");
 console.log(ctx.sources[0]?.text);
 

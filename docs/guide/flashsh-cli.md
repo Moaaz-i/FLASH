@@ -60,12 +60,12 @@ flashsh proof users
 
 ## Options
 
-| Flag | Description |
-|------|-------------|
-| `--storage ./data` | Storage directory (default: `./flash_data`) |
-| `--key secret` | Master secret key |
-| `--uri flash://host:6742` | Remote FLASH server |
-| `--quiet` / `-q` | Suppress metadata output |
+| Flag                      | Description                                 |
+| ------------------------- | ------------------------------------------- |
+| `--storage ./data`        | Storage directory (default: `./flash_data`) |
+| `--key secret`            | Master secret key                           |
+| `--uri flash://host:6742` | Remote FLASH server                         |
+| `--quiet` / `-q`          | Suppress metadata output                    |
 
 ---
 

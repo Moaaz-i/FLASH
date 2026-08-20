@@ -65,11 +65,11 @@ await vault.put("openai_key", { value: "sk-..." });
 
 ## When Server-Blind Matters
 
-| Industry | Risk without server-blind storage |
-|----------|-----------------------------------|
-| Healthcare | PHI exposure in vector indexes |
-| Legal | Privileged documents in cloud RAG |
-| Finance | Client data in LLM context logs |
+| Industry    | Risk without server-blind storage         |
+| ----------- | ----------------------------------------- |
+| Healthcare  | PHI exposure in vector indexes            |
+| Legal       | Privileged documents in cloud RAG         |
+| Finance     | Client data in LLM context logs           |
 | Personal AI | Notes and journals on third-party servers |
 
 ---

@@ -2,11 +2,11 @@
 
 Three minimal examples showing FLASH's core identity: **private intelligence storage**.
 
-| Example | What it demonstrates |
-|---------|---------------------|
-| [private-rag-cli](./private-rag-cli/) | Ingest text → semantic ask (server-blind RAG) |
-| [agent-memory-bot](./agent-memory-bot/) | Encrypted episodic agent memory |
-| [sealed-vault-secrets](./sealed-vault-secrets/) | Passphrase-sealed secret vault |
+| Example                                         | What it demonstrates                          |
+| ----------------------------------------------- | --------------------------------------------- |
+| [private-rag-cli](./private-rag-cli/)           | Ingest text → semantic ask (server-blind RAG) |
+| [agent-memory-bot](./agent-memory-bot/)         | Encrypted episodic agent memory               |
+| [sealed-vault-secrets](./sealed-vault-secrets/) | Passphrase-sealed secret vault                |
 
 ## Run from repo root
 

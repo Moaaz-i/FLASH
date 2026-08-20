@@ -27,23 +27,23 @@ Client Request → WAL Frame(s) → fsync (mode-dependent) → MemTable Update �
 
 ### Durability Modes (v1.2.5+)
 
-| Mode | Behavior | Default |
-|------|----------|---------|
-| **`strict`** | fsync after every frame | — |
-| **`balanced`** | Batch fsync every 64 ops or 25 ms; full sync on `close()` | ✅ |
-| **`throughput`** | No auto-fsync until `close()` | — |
+| Mode             | Behavior                                                  | Default |
+| ---------------- | --------------------------------------------------------- | ------- |
+| **`strict`**     | fsync after every frame                                   | —       |
+| **`balanced`**   | Batch fsync every 64 ops or 25 ms; full sync on `close()` | ✅      |
+| **`throughput`** | No auto-fsync until `close()`                             | —       |
 
 ```js
-import { FlashClient } from '@moaaz-yahia-zakaria/flash-db';
+import { FlashClient } from "@moaaz-yahia-zakaria/flash-db";
 
 const client = new FlashClient({
-  secretKey: 'your-key',
-  engineOptions: { durability: 'strict' }, // max safety
+  secretKey: "your-key",
+  engineOptions: { durability: "strict" }, // max safety
 });
 
 // Low-level WAL
-import { FlashArc } from '@moaaz-yahia-zakaria/flash-db/engine/arc.mjs';
-const wal = new FlashArc('./data/commit.farc', { durability: 'balanced' });
+import { FlashArc } from "@moaaz-yahia-zakaria/flash-db/engine/arc.mjs";
+const wal = new FlashArc("./data/commit.farc", { durability: "balanced" });
 ```
 
 See [Engine Options](/guide/engine-options) for full tuning.
@@ -75,27 +75,32 @@ SSTables are written atomically using a temp-file → rename pattern:
 ```
 
 This guarantees that either:
+
 - The **complete** SSTable exists after a crash, or
 - The **old** SSTable is intact (no partial writes)
 
 ## Durability Guarantees
 
-| Scenario | Data Safe? | Recovery |
-|----------|-----------|----------|
-| Crash after WAL fsync / close() | ✅ Yes | WAL replay |
-| Crash during SSTable flush | ✅ Yes | Atomic rename |
-| Crash during WAL append (balanced) | ⚠️ Last batch may replay | WAL replay |
-| Crash in throughput mode before close | ⚠️ Unsynced frames lost | Partial replay |
-| Power loss mid-write (strict mode) | ✅ Yes | fsync ensures disk write |
+| Scenario                              | Data Safe?               | Recovery                 |
+| ------------------------------------- | ------------------------ | ------------------------ |
+| Crash after WAL fsync / close()       | ✅ Yes                   | WAL replay               |
+| Crash during SSTable flush            | ✅ Yes                   | Atomic rename            |
+| Crash during WAL append (balanced)    | ⚠️ Last batch may replay | WAL replay               |
+| Crash in throughput mode before close | ⚠️ Unsynced frames lost  | Partial replay           |
+| Power loss mid-write (strict mode)    | ✅ Yes                   | fsync ensures disk write |
 
 ## Performance Tuning
 
 ```js
 // Bulk import — call close() to flush
-engineOptions: { durability: 'throughput' }
+engineOptions: {
+  durability: "throughput";
+}
 
 // Production default
-engineOptions: { durability: 'balanced' }
+engineOptions: {
+  durability: "balanced";
+}
 ```
 
 ::: warning

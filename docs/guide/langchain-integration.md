@@ -44,7 +44,8 @@ await vectorStore.addDocuments([
     metadata: { source: "docs" },
   },
   {
-    pageContent: "Private RAG ingests client-side and searches by embedding similarity.",
+    pageContent:
+      "Private RAG ingests client-side and searches by embedding similarity.",
     metadata: { source: "docs" },
   },
 ]);
