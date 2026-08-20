@@ -122,7 +122,8 @@ export class FlashDashboard {
         }
 
         if (url.pathname === "/api/stats" && req.method === "GET") {
-          const collections = await (typeof client.listCollections === "function"
+          const collections = await (typeof client.listCollections ===
+          "function"
             ? client.listCollections()
             : client.db.listCollections());
           const stats = [];
@@ -167,10 +168,7 @@ export class FlashDashboard {
           return json(res, 201, { success: true, result });
         }
 
-        if (
-          url.pathname.startsWith("/api/docs/") &&
-          req.method === "DELETE"
-        ) {
+        if (url.pathname.startsWith("/api/docs/") && req.method === "DELETE") {
           const parts = url.pathname.split("/").filter(Boolean);
           const colName = decodeURIComponent(parts[2]);
           const docId = decodeURIComponent(parts[3] || "");
@@ -187,10 +185,7 @@ export class FlashDashboard {
           return json(res, 201, { success: true, name });
         }
 
-        if (
-          url.pathname.startsWith("/api/flush/") &&
-          req.method === "POST"
-        ) {
+        if (url.pathname.startsWith("/api/flush/") && req.method === "POST") {
           const colName = decodeURIComponent(
             url.pathname.replace("/api/flush/", ""),
           );

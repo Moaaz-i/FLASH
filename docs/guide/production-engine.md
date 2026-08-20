@@ -8,7 +8,7 @@ Features for production-grade encrypted intelligence workloads.
 
 ```javascript
 const explained = await users
-  .find({ tenantId: 't1', status: 'active' })
+  .find({ tenantId: "t1", status: "active" })
   .explain()
   .exec();
 
@@ -34,7 +34,7 @@ const report = await users.raw.verifyInvariants();
 ```javascript
 const session = client.startSession();
 session.startTransaction();
-await session.insert('accounts', { account: 'A1', balance: 100 });
+await session.insert("accounts", { account: "A1", balance: 100 });
 await session.commitTransaction();
 ```
 
@@ -49,21 +49,21 @@ await client.db.recoverTransactions({ replay: true });
 ## Replica Set
 
 ```javascript
-import { FlashReplicaSet } from '@moaaz-yahia-zakaria/flash-db';
+import { FlashReplicaSet } from "@moaaz-yahia-zakaria/flash-db";
 
 const rs = new FlashReplicaSet({
-  storageRoot: './replica_data',
+  storageRoot: "./replica_data",
   network: true,
-  writeConcern: 'majority',
+  writeConcern: "majority",
 });
 
-rs.addNode('leader', ['follower'], { port: 6751 });
-rs.addNode('follower', ['leader'], { port: 6750 });
+rs.addNode("leader", ["follower"], { port: 6751 });
+rs.addNode("follower", ["leader"], { port: 6750 });
 await rs.startNetworkNodes();
-rs.electLeader('leader');
+rs.electLeader("leader");
 
-await rs.replicateInsert('events', { type: 'click', value: 42 });
-await rs.failover('follower');
+await rs.replicateInsert("events", { type: "click", value: 42 });
+await rs.failover("follower");
 ```
 
 ---
