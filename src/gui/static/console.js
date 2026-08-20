@@ -1,6 +1,6 @@
 /* FLASH Intelligence Console */
 document.addEventListener("DOMContentLoaded", function () {
-  var activePanel = "rag";
+  var activePanel = "home";
   var token =
     new URLSearchParams(window.location.search).get("token") ||
     localStorage.getItem("flash_token") ||
@@ -81,6 +81,12 @@ document.addEventListener("DOMContentLoaded", function () {
   document.querySelectorAll(".nav-item").forEach(function (btn) {
     btn.addEventListener("click", function () {
       showPanel(btn.dataset.panel);
+    });
+  });
+
+  document.querySelectorAll(".welcome-card[data-goto]").forEach(function (card) {
+    card.addEventListener("click", function () {
+      showPanel(card.dataset.goto);
     });
   });
 

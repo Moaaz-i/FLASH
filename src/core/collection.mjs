@@ -13,6 +13,11 @@ import { FlashInvariants } from "../engine/invariants.mjs";
 import { FlashBinary } from "../binary/flash_binary.mjs";
 import { FlashMerkle } from "../crypto/merkle.mjs";
 import { FlashWorkerPool } from "../engine/worker_pool.mjs";
+import {
+  DEFAULT_MEMTABLE_THRESHOLD,
+  DEFAULT_DURABILITY,
+  L0_COMPACT_TRIGGER,
+} from "../engine/perf_defaults.mjs";
 import { logger } from "./logger.mjs";
 
 /**
@@ -23,13 +28,21 @@ export class FlashCollection {
   constructor(name, storageDir, options = {}) {
     this.name = name;
     this.storageDir = path.join(storageDir, name);
-    this.memtableThreshold = options.memtableThreshold || 64 * 1024;
+    this.memtableThreshold =
+      options.memtableThreshold ?? DEFAULT_MEMTABLE_THRESHOLD;
     this.memtable = new FlashMemTable();
     this.indexManager = new FlashIndexManager();
     this.secondaryIndexManager = options.secondaryIndexManager || null;
-    this.arc = new FlashArc(path.join(this.storageDir, "commit.farc"));
+    const durability = options.durability ?? DEFAULT_DURABILITY;
+    this.deferMerkleOnWrite = options.deferMerkleOnWrite !== false;
+    this._lastMerkleRoot = "";
+    this.arc = new FlashArc(path.join(this.storageDir, "commit.farc"), {
+      durability,
+    });
     this.wal = this.arc;
-    this.oplog = new FlashOplog(path.join(this.storageDir, "oplog.flog"));
+    this.oplog = new FlashOplog(path.join(this.storageDir, "oplog.flog"), {
+      durability,
+    });
     this.mvcc = options.mvcc || new FlashMVCC();
     this.sstables = [];
     this.merkleTree = null;
@@ -40,7 +53,7 @@ export class FlashCollection {
     this._persistTimer = null;
     this._activeTxId = null;
     this._compacting = false;
-    this.useWorkerFlush = options.useWorkerFlush === true;
+    this.useWorkerFlush = options.useWorkerFlush !== false;
     this.workerPool = options.workerPool || FlashWorkerPool.getDefault();
   }
 
@@ -205,7 +218,8 @@ export class FlashCollection {
     if (!this.isReady) await this.init();
     await this.wal.append(WAL_OP.INSERT, String(docId), binaryBuf);
     this.memtable.set(String(docId), binaryBuf, binaryBuf.length);
-    if (blindPayload) this.indexManager.indexDocument(String(docId), blindPayload);
+    if (blindPayload)
+      this.indexManager.indexDocument(String(docId), blindPayload);
     this._trackDocId(String(docId));
     this.isMerkleDirty = true;
     if (!options.skipOplog) {
@@ -250,7 +264,7 @@ export class FlashCollection {
 
     return {
       insertedId: docId,
-      merkleRoot: this.getMerkleRoot(),
+      merkleRoot: await this._getMerkleRootAccurate(),
     };
   }
 
@@ -260,6 +274,7 @@ export class FlashCollection {
 
     const walOps = [];
     const prepared = [];
+    const oplogEntries = [];
 
     for (const doc of docs) {
       if (!doc._id) doc._id = crypto.randomUUID();
@@ -278,8 +293,16 @@ export class FlashCollection {
       this._trackDocId(docId);
       insertedIds.push(docId);
       if (!options.skipOplog) {
-        await this.oplog.append("insert", this.name, docId);
+        oplogEntries.push({
+          operationType: "insert",
+          collectionName: this.name,
+          docId,
+        });
       }
+    }
+
+    if (oplogEntries.length > 0) {
+      await this.oplog.appendBatch(oplogEntries);
     }
 
     this.isMerkleDirty = true;
@@ -325,7 +348,17 @@ export class FlashCollection {
       durationMs: Date.now() - t0,
     });
 
-    if (this._countSSTablesAtLevel(0) >= 4) {
+    if (this.deferMerkleOnWrite) {
+      await this._rebuildMerkleTree();
+      this._lastMerkleRoot = this.merkleTree ? this.merkleTree.getRoot() : "";
+      this.isMerkleDirty = false;
+    } else {
+      await this._rebuildMerkleTree();
+      this._lastMerkleRoot = this.merkleTree ? this.merkleTree.getRoot() : "";
+      this.isMerkleDirty = false;
+    }
+
+    if (this._countSSTablesAtLevel(0) >= L0_COMPACT_TRIGGER) {
       this._scheduleBackgroundCompact();
     }
 
@@ -340,7 +373,7 @@ export class FlashCollection {
       try {
         await this.flush();
         const l0Tables = this.sstables.filter((s) => (s.level || 0) === 0);
-        if (l0Tables.length < 4) return;
+        if (l0Tables.length < L0_COMPACT_TRIGGER) return;
 
         const filePaths = l0Tables.map((s) => s.filePath);
         const merged = await this.workerPool.runMerge(
@@ -417,21 +450,45 @@ export class FlashCollection {
   }
 
   getMerkleRoot() {
-    if (this.isMerkleDirty || !this.merkleTree) {
-      // Sync rebuild from memtable + cached SSTable data where available
-      const leafHashes = [];
-      for (const id of this.docOrder) {
-        const memVal = this.memtable.get(id);
-        if (memVal && !memVal._tombstone) {
-          leafHashes.push(
-            crypto.createHash("sha256").update(memVal).digest("hex"),
-          );
-        }
+    if (this.merkleTree && !this.isMerkleDirty) {
+      return this.merkleTree.getRoot();
+    }
+
+    const leafHashes = [];
+    for (const id of this.docOrder) {
+      const memVal = this.memtable.get(id);
+      if (memVal && !memVal._tombstone) {
+        leafHashes.push(
+          crypto.createHash("sha256").update(memVal).digest("hex"),
+        );
       }
+    }
+
+    if (leafHashes.length === this.docOrder.length) {
       this.merkleTree = new FlashMerkle(leafHashes.length ? leafHashes : [""]);
       this.isMerkleDirty = false;
+      this._lastMerkleRoot = this.merkleTree.getRoot();
+      return this._lastMerkleRoot;
     }
-    return this.merkleTree ? this.merkleTree.getRoot() : "";
+
+    return this._lastMerkleRoot || "";
+  }
+
+  async _getMerkleRootAccurate() {
+    const allInMem = this.docOrder.every((id) => {
+      const v = this.memtable.get(id);
+      return v && !v._tombstone;
+    });
+    if (allInMem) {
+      return this.getMerkleRoot();
+    }
+    if (this.deferMerkleOnWrite && this._lastMerkleRoot) {
+      return this._lastMerkleRoot;
+    }
+    await this._rebuildMerkleTree();
+    this.isMerkleDirty = false;
+    this._lastMerkleRoot = this.merkleTree ? this.merkleTree.getRoot() : "";
+    return this._lastMerkleRoot;
   }
 
   async refreshMerkleRoot() {

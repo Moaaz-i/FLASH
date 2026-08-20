@@ -1,6 +1,6 @@
 # flashsh CLI
 
-The `flashsh` command provides a sovereign zero-knowledge shell for FLASH DB.
+The `flashsh` command is FLASH's **sovereign zero-knowledge shell** — optimized for private RAG, agent memory, and integrity proofs.
 
 ---
 
@@ -13,12 +13,20 @@ npm install -g @moaaz-yahia-zakaria/flash-db
 Or via npx:
 
 ```bash
-npx @moaaz-yahia-zakaria/flash-db flashsh ask "question"
+npx @moaaz-yahia-zakaria/flash-db flashsh init
 ```
 
 ---
 
 ## Commands
+
+### Initialize workspace
+
+```bash
+flashsh init
+```
+
+Creates `./flash_data`, writes a welcome sample, and ingests it into Private RAG (`cli_knowledge`).
 
 ### Interactive REPL
 
@@ -64,13 +72,24 @@ flashsh proof users
 ## Workflow
 
 ```bash
-# 1. Add documents
-flashsh ingest medical-notes.txt
-flashsh ingest legal-contract.pdf.txt
+# 1. Bootstrap
+flashsh init
 
-# 2. Search
+# 2. Add documents
+flashsh ingest medical-notes.txt
+flashsh ingest legal-contract.txt
+
+# 3. Search
 flashsh ask "side effects"
 flashsh ask "termination clause"
 ```
 
 Collection used: `cli_knowledge` under `{storagePath}/flash_db/`.
+
+---
+
+## Related
+
+- [Positioning & Identity](/guide/positioning)
+- [Intelligence Console](/guide/intelligence-console)
+- [Private RAG](/guide/private-rag)

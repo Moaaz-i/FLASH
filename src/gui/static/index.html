@@ -33,7 +33,11 @@
         <div>
           <div class="nav-group-label">Intelligence</div>
           <nav style="display:flex;flex-direction:column;gap:2px;">
-            <button class="nav-item active" data-panel="rag">
+            <button class="nav-item active" data-panel="home">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1V9.5z"/></svg>
+              Home
+            </button>
+            <button class="nav-item" data-panel="rag">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 017 7c0 2.5-1.5 4.5-3 6l-4 7-4-7c-1.5-1.5-3-3.5-3-6a7 7 0 017-7z"/><circle cx="12" cy="9" r="2"/></svg>
               Private RAG
             </button>
@@ -66,8 +70,46 @@
       </aside>
 
       <main class="content">
+        <!-- Welcome / Home -->
+        <section class="panel active" id="panel-home">
+          <header class="page-header welcome-hero">
+            <div class="page-eyebrow">Zero-Knowledge Encrypted Intelligence</div>
+            <h1>The database that never sees your data — but still powers your AI.</h1>
+            <p>Server-blind by architecture. Private RAG, agent memory, and sealed vaults — all encrypted client-side before touching disk.</p>
+          </header>
+
+          <div class="welcome-grid">
+            <div class="welcome-card" data-goto="rag">
+              <div class="welcome-icon">🔍</div>
+              <h3>Private RAG</h3>
+              <p>Ingest documents with client-side encryption, then retrieve by semantic similarity.</p>
+              <span class="welcome-cta">Open RAG →</span>
+            </div>
+            <div class="welcome-card" data-goto="memory">
+              <div class="welcome-icon">🧠</div>
+              <h3>Agent Memory</h3>
+              <p>Encrypted episodic memory for AI agents — recall facts without cloud retention.</p>
+              <span class="welcome-cta">Open Memory →</span>
+            </div>
+            <div class="welcome-card" data-goto="vault">
+              <div class="welcome-icon">🔐</div>
+              <h3>Sealed Vault</h3>
+              <p>Passphrase-isolated secrets with auto-lock — separate from general collections.</p>
+              <span class="welcome-cta">Open Vault →</span>
+            </div>
+          </div>
+
+          <div class="card welcome-principles">
+            <div class="card-body">
+              <div class="principle-row"><strong>Server-blind</strong><span>Plaintext never reaches storage or query engine</span></div>
+              <div class="principle-row"><strong>Local-first</strong><span>Your key, your disk, your rules</span></div>
+              <div class="principle-row"><strong>Intelligence-native</strong><span>RAG + memory + vault in one engine</span></div>
+            </div>
+          </div>
+        </section>
+
         <!-- Private RAG -->
-        <section class="panel active" id="panel-rag">
+        <section class="panel" id="panel-rag">
           <header class="page-header">
             <div class="page-eyebrow">Intelligence</div>
             <h1>Private RAG</h1>

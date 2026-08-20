@@ -61,6 +61,7 @@ export class FlashClient {
    * @param {string} [config.uri] - Network URI for remote server connection (e.g. 'flash://localhost:6742')
    * @param {string} [config.authKey] - Remote server authentication token
    * @param {boolean} [config.pqcHardened=false] - Enable Post-Quantum Cryptography (PQC) key expansion
+   * @param {object} [config.engineOptions] - Engine tuning: durability, memtableThreshold, useWorkerFlush
    * @param {object} [config.fieldPolicy] - Custom encryption levels per field
    */
   constructor(config = {}) {
@@ -118,6 +119,7 @@ export class FlashClient {
       // Embedded In-Process Mode
       this.db = new FlashDatabase(config.dbName || "flash_db", {
         storagePath: config.storagePath || "./data",
+        engineOptions: config.engineOptions,
       });
     }
   }

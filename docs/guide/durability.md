@@ -1,6 +1,6 @@
 # Durability: Crash-Safe Writes & Atomic Operations
 
-FLASH DB ensures data durability through **fsync-powered WAL writes** and **atomic SSTable operations**.
+FLASH DB ensures data durability through **configurable WAL fsync** and **atomic SSTable operations**.
 
 ## Architecture
 
@@ -22,22 +22,31 @@ FLASH DB ensures data durability through **fsync-powered WAL writes** and **atom
 Every mutation goes through the WAL before hitting memory:
 
 ```
-Client Request → WAL Frame → fsync → MemTable Update → Response
+Client Request → WAL Frame(s) → fsync (mode-dependent) → MemTable Update → Response
 ```
 
-### fsync Behavior
+### Durability Modes (v1.2.5+)
 
-The WAL automatically fsyncs after every frame append (configurable):
+| Mode | Behavior | Default |
+|------|----------|---------|
+| **`strict`** | fsync after every frame | — |
+| **`balanced`** | Batch fsync every 64 ops or 25 ms; full sync on `close()` | ✅ |
+| **`throughput`** | No auto-fsync until `close()` | — |
 
 ```js
-import { FlashArc } from '@moaaz-yahia-zakaria/flash-db';
+import { FlashClient } from '@moaaz-yahia-zakaria/flash-db';
 
-// Default: fsyncOnWrite = true (maximum durability)
-const wal = new FlashArc('./data/mydb/mycol/wal.arc');
+const client = new FlashClient({
+  secretKey: 'your-key',
+  engineOptions: { durability: 'strict' }, // max safety
+});
 
-// Disable fsync for maximum throughput (data loss risk on crash)
-const fastWal = new FlashArc('./data/fast.arc', { syncOnWrite: false });
+// Low-level WAL
+import { FlashArc } from '@moaaz-yahia-zakaria/flash-db/engine/arc.mjs';
+const wal = new FlashArc('./data/commit.farc', { durability: 'balanced' });
 ```
+
+See [Engine Options](/guide/engine-options) for full tuning.
 
 ### Crash Recovery
 
@@ -49,9 +58,8 @@ On startup, WAL records are replayed to restore in-memory state:
 4. Corrupt or truncated frames are skipped with a warning
 
 ```js
-// WAL recovery is automatic
-const arc = new FlashArc('./data/wal.arc');
-await arc.open(); // Automatically replays valid frames
+// WAL recovery is automatic on collection.init()
+await collection.init();
 ```
 
 ## Atomic SSTable Writes
@@ -70,77 +78,31 @@ This guarantees that either:
 - The **complete** SSTable exists after a crash, or
 - The **old** SSTable is intact (no partial writes)
 
-```js
-import { FlashSSTable, fsyncDir } from 'flash-db/engine/sstable.mjs';
-
-// Atomic write is used automatically by the collection
-// But you can use it directly:
-await FlashSSTable.write('./data/sstable.arc', sortedEntries);
-```
-
-## Corrupt SSTable Handling
-
-If a SSTable becomes corrupt (truncated, invalid magic, etc.):
-
-1. Collection logs a warning with the file path
-2. The corrupt SSTable is **skipped** (not loaded)
-3. Remaining SSTables are loaded normally
-4. The system continues operating
-
-```js
-// Corrupt files are automatically skipped on init
-await collection.init();
-// Warning logged: "Skipping corrupt SSTable: data.arc (truncated, expected X bytes)"
-```
-
-## Stale Temp File Cleanup
-
-On startup, any leftover `.tmp` files from a previous crash are automatically removed:
-
-```js
-// Automatic cleanup on collection.init()
-// Logs: "Removed stale temp file: data.tmp"
-```
-
 ## Durability Guarantees
 
 | Scenario | Data Safe? | Recovery |
 |----------|-----------|----------|
-| Crash after WAL fsync | ✅ Yes | WAL replay |
+| Crash after WAL fsync / close() | ✅ Yes | WAL replay |
 | Crash during SSTable flush | ✅ Yes | Atomic rename |
-| Crash during WAL append | ✅ Yes | Corrupt frame skipped |
-| Power loss mid-write | ✅ Yes | fsync ensures disk write |
-| Disk failure | ⚠️ Depends | Use backup/restore |
-
-## Backup & Restore
-
-For full disaster recovery:
-
-```js
-import { FlashClient } from '@moaaz-yahia-zakaria/flash-db';
-
-const client = new FlashClient({ secretKey: 'your-key' });
-
-// Backup all collections
-const backup = await client.backup('/backups/flash-2024-01-15');
-// { bytesWritten: 1048576, files: ['col1.sst', 'col2.sst'], timestamp: '...' }
-
-// Restore from backup
-await client.restore('/backups/flash-2024-01-15', './restored-data');
-```
+| Crash during WAL append (balanced) | ⚠️ Last batch may replay | WAL replay |
+| Crash in throughput mode before close | ⚠️ Unsynced frames lost | Partial replay |
+| Power loss mid-write (strict mode) | ✅ Yes | fsync ensures disk write |
 
 ## Performance Tuning
 
-Disable fsync for write-heavy workloads where you can tolerate data loss:
-
 ```js
-// Maximum throughput (no fsync)
-const wal = new FlashArc('./data/wal.arc', { syncOnWrite: false });
+// Bulk import — call close() to flush
+engineOptions: { durability: 'throughput' }
 
-// Default: maximum durability (fsync every write)
-const wal = new FlashArc('./data/wal.arc'); // syncOnWrite: true
+// Production default
+engineOptions: { durability: 'balanced' }
 ```
 
 ::: warning
-Disabling fsync means data in the WAL may be lost on power failure or system crash. Only use this for non-critical data or when performance is critical.
+`throughput` mode may lose recent WAL frames on crash. Use only for disposable data or when you explicitly call `close()` before shutdown.
 :::
+
+## Related
+
+- [Engine Options & Durability Modes](/guide/engine-options)
+- [Performance Benchmarks](/api/benchmarks)

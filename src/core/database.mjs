@@ -13,6 +13,7 @@ export class FlashDatabase {
     this.storagePath = path.resolve(options.storagePath || './data', dbName);
     this.collections = new Map();
     this.mvcc = new FlashMVCC();
+    this.engineOptions = options.engineOptions || {};
     this._ensureDir();
   }
 
@@ -32,7 +33,10 @@ export class FlashDatabase {
       return this.collections.get(name);
     }
 
-    const col = new FlashCollection(name, this.storagePath, { mvcc: this.mvcc });
+    const col = new FlashCollection(name, this.storagePath, {
+      mvcc: this.mvcc,
+      ...this.engineOptions,
+    });
     this.collections.set(name, col);
     return col;
   }

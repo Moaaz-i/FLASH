@@ -2,7 +2,7 @@ import { defineConfig } from "vitepress";
 
 export default defineConfig({
   title: "FLASH DB",
-  description: "Next-Gen Ultra-Fast Zero-Knowledge Encrypted Document DBMS",
+  description: "Zero-knowledge encrypted intelligence database — local-first, AI-native, server-blind",
   base: "/FLASH/",
   themeConfig: {
     logo: "/logo.svg",
@@ -11,6 +11,8 @@ export default defineConfig({
       {
         text: "📖 Guide",
         items: [
+          { text: "Positioning & Identity", link: "/guide/positioning" },
+          { text: "Why Server-Blind AI", link: "/guide/why-server-blind-ai" },
           { text: "Getting Started", link: "/guide/getting-started" },
           { text: "Architecture & Zero-Copy", link: "/guide/architecture" },
           { text: "TypeScript Support", link: "/guide/typescript" },
@@ -29,6 +31,7 @@ export default defineConfig({
           },
           { text: "flashsh CLI", link: "/guide/flashsh-cli" },
           { text: "Intelligence Console", link: "/guide/intelligence-console" },
+          { text: "Engine Options", link: "/guide/engine-options" },
           { text: "Production Engine", link: "/guide/production-engine" },
         ],
       },
@@ -37,6 +40,7 @@ export default defineConfig({
         items: [
           { text: "Exclusive Stack Overview", link: "/guide/flash-exclusive" },
           { text: "Private RAG & Agent Memory", link: "/guide/private-rag" },
+          { text: "LangChain Integration", link: "/guide/langchain-integration" },
           { text: "Trust & Compliance Tools", link: "/guide/trust-compliance" },
           { text: "Portable Bundles & Sync", link: "/guide/portable-sync" },
           { text: "FLASH Wire Protocol", link: "/guide/flash-wire" },
@@ -135,6 +139,8 @@ export default defineConfig({
           text: "Getting Started & Architecture",
           collapsed: false,
           items: [
+            { text: "Positioning & Identity", link: "/guide/positioning" },
+            { text: "Why Server-Blind AI", link: "/guide/why-server-blind-ai" },
             { text: "Getting Started", link: "/guide/getting-started" },
             { text: "TypeScript Support", link: "/guide/typescript" },
             { text: "Architecture & Zero-Copy", link: "/guide/architecture" },
@@ -156,6 +162,7 @@ export default defineConfig({
               text: "Intelligence Console",
               link: "/guide/intelligence-console",
             },
+            { text: "Engine Options", link: "/guide/engine-options" },
             { text: "Production Engine", link: "/guide/production-engine" },
           ],
         },
@@ -168,6 +175,10 @@ export default defineConfig({
               link: "/guide/flash-exclusive",
             },
             { text: "Private RAG & Agent Memory", link: "/guide/private-rag" },
+            {
+              text: "LangChain Integration",
+              link: "/guide/langchain-integration",
+            },
             {
               text: "Trust & Compliance Tools",
               link: "/guide/trust-compliance",

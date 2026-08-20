@@ -4,6 +4,67 @@
 
 It is **not** a generic document store with encryption added later. Every layer — storage (`.farc`, `FlashBinary`), indexing (blind trapdoors, ORE), and query — assumes the engine never sees plaintext.
 
+> New here? Read [Positioning](/guide/positioning) and [Why Server-Blind AI Storage](/guide/why-server-blind-ai).
+
+---
+
+## Intelligence in 5 Minutes
+
+The fastest path to FLASH's identity — **Private RAG → Agent Memory → Sealed Vault**:
+
+```javascript
+import { FlashClient } from "@moaaz-yahia-zakaria/flash-db";
+
+const client = new FlashClient({
+  secretKey: "my_super_secret_master_passphrase_2026",
+  storagePath: "./flash_data",
+});
+
+// 1. Private RAG — ingest & ask (server-blind)
+const rag = client.privateRAG("knowledge");
+await rag.ingest({ title: "Security Policy", text: "All data is encrypted client-side..." });
+const ctx = await rag.ask("How is data protected?");
+console.log(ctx.sources[0]?.text);
+
+// 2. Agent Memory — encrypted episodic recall
+const memory = client.agentMemory("assistant");
+await memory.remember("User prefers dark mode", { importance: 2 });
+const facts = await memory.recall("UI preferences");
+
+// 3. Sealed Vault — passphrase-isolated secrets
+const vault = client.sealedVault("secrets");
+vault.unlock("my-passphrase");
+await vault.put("api_key", { service: "openai", value: "sk-..." });
+
+await client.close();
+```
+
+**CLI equivalent:**
+
+```bash
+flashsh init                          # bootstrap local intelligence workspace
+flashsh ingest ./notes.txt            # add to private RAG
+flashsh ask "what did I ingest?"      # semantic retrieval
+```
+
+**Web UI:** `npx flash-console` → [Intelligence Console](/guide/intelligence-console)
+
+---
+
+## Engine Options (v1.2.5+)
+
+```javascript
+const client = new FlashClient({
+  secretKey: "key",
+  engineOptions: {
+    durability: "balanced", // strict | balanced | throughput
+    memtableThreshold: 4 * 1024 * 1024,
+  },
+});
+```
+
+See [Engine Options & Durability](/guide/engine-options).
+
 ---
 
 ## 📦 Installation

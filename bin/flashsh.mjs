@@ -1,7 +1,16 @@
 #!/usr/bin/env node
 import repl from "node:repl";
 import path from "node:path";
+import fs from "node:fs";
 import { FlashClient, logger } from "../src/index.mjs";
+
+const BANNER = `
+\u001b[35m\u001b[1m
+  ⚡ FLASH — Zero-Knowledge Encrypted Intelligence Database
+\u001b[0m
+  \u001b[2mServer-blind · Local-first · AI-native\u001b[0m
+  \u001b[2mThe database that powers private AI — encrypted by architecture.\u001b[0m
+`;
 
 const args = process.argv.slice(2);
 let uri = null;
@@ -15,7 +24,12 @@ for (let i = 0; i < args.length; i++) {
   if (args[i] === "--storage" && args[i + 1]) storagePath = args[++i];
   if (args[i] === "--key" && args[i + 1]) secretKey = args[++i];
   if (args[i] === "--quiet" || args[i] === "-q") quiet = true;
-  if (args[i] === "ask" || args[i] === "ingest" || args[i] === "proof") {
+  if (
+    args[i] === "ask" ||
+    args[i] === "ingest" ||
+    args[i] === "proof" ||
+    args[i] === "init"
+  ) {
     command = args[i];
   }
 }
@@ -26,12 +40,51 @@ if (command || quiet || process.env.FLASH_LOG_LEVEL === undefined) {
 
 const client = new FlashClient({ uri, storagePath, secretKey });
 
+async function runInit() {
+  const resolved = path.resolve(storagePath);
+  fs.mkdirSync(resolved, { recursive: true });
+
+  const samplePath = path.join(resolved, "WELCOME.txt");
+  const sampleText = `Welcome to FLASH Intelligence Storage.
+
+FLASH is server-blind: this text is encrypted client-side before it touches disk.
+Use 'flashsh ingest ${samplePath}' to add this file to Private RAG.
+Then: flashsh ask "what is FLASH?"
+`;
+  fs.writeFileSync(samplePath, sampleText, "utf-8");
+
+  const rag = client.privateRAG("cli_knowledge");
+  const result = await rag.ingest({
+    title: "FLASH Welcome",
+    text: sampleText,
+  });
+
+  console.log(BANNER);
+  console.log(`✓ Initialized intelligence workspace`);
+  console.log(`  Storage:     ${resolved}`);
+  console.log(`  Sample file: ${samplePath}`);
+  console.log(`  RAG chunks:  ${result.chunks} ingested into cli_knowledge`);
+  console.log(`
+Next steps:
+  flashsh ask "what is FLASH?"
+  flashsh ingest ./your-notes.txt
+  flashsh proof cli_knowledge
+`);
+  await client.close();
+  process.exit(0);
+}
+
 async function runCommand() {
+  if (command === "init") {
+    await runInit();
+    return;
+  }
+
   if (command === "ask") {
     const question = args.slice(args.indexOf("ask") + 1).join(" ").trim();
     if (!question) {
       console.error('Usage: flashsh ask "your question"');
-      console.error("Tip: ingest documents first → flashsh ingest mydoc.txt");
+      console.error("Tip: run flashsh init first, or flashsh ingest mydoc.txt");
       process.exit(1);
     }
 
@@ -43,6 +96,7 @@ async function runCommand() {
       console.log("");
       console.log("The private RAG collection is empty or has no relevant chunks.");
       console.log("Add knowledge first:");
+      console.log("  flashsh init");
       console.log("  flashsh ingest ./my-notes.txt");
       console.log("  echo 'FLASH is encrypted intelligence storage' | flashsh ingest -");
       console.log("");
@@ -77,7 +131,7 @@ async function runCommand() {
       console.error("       flashsh ingest -   # read from stdin");
       process.exit(1);
     }
-    const fs = await import("node:fs/promises");
+    const fsPromises = await import("node:fs/promises");
     let text;
     if (file === "-") {
       text = await new Promise((resolve, reject) => {
@@ -90,7 +144,7 @@ async function runCommand() {
         process.stdin.on("error", reject);
       });
     } else {
-      text = await fs.readFile(file, "utf-8");
+      text = await fsPromises.readFile(file, "utf-8");
     }
     const rag = client.privateRAG("cli_knowledge");
     const result = await rag.ingest({
@@ -104,14 +158,14 @@ async function runCommand() {
     process.exit(0);
   }
 
-  console.log(`
-⚡ FLASH Sovereign Zero-Knowledge Shell (flashsh)
-Connected: ${uri ? `Remote (${uri})` : `Embedded (${storagePath})`}
+  console.log(BANNER);
+  console.log(`Connected: ${uri ? `Remote (${uri})` : `Embedded (${storagePath})`}
 
 CLI:
-  flashsh ingest notes.txt     # add knowledge to private RAG
-  flashsh ask "your question"  # semantic search over ingested docs
-  flashsh proof collectionName # integrity proof
+  flashsh init                   # bootstrap workspace + sample RAG
+  flashsh ingest notes.txt       # add knowledge to private RAG
+  flashsh ask "your question"    # semantic search over ingested docs
+  flashsh proof collectionName   # integrity proof
 
 Options: --storage ./data  --key secret  --quiet
 REPL: help() | client.privateRAG() | client.agentMemory()

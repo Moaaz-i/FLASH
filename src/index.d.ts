@@ -9,6 +9,17 @@
 // Core Result & Option Types
 // ============================================================================
 
+export interface FlashEngineOptions {
+  /** @default 'balanced' */
+  durability?: 'strict' | 'balanced' | 'throughput';
+  /** Memtable flush threshold in bytes. @default 4194304 (4 MB) */
+  memtableThreshold?: number;
+  /** Use worker thread for large SSTable flushes. @default true */
+  useWorkerFlush?: boolean;
+  /** Defer Merkle rebuild on bulk write paths. @default true */
+  deferMerkleOnWrite?: boolean;
+}
+
 export interface FlashClientOptions {
   secretKey: string | Buffer;
   dbName?: string;
@@ -17,6 +28,7 @@ export interface FlashClientOptions {
   authKey?: string;
   pqcHardened?: boolean;
   fieldPolicy?: Record<string, FieldPolicyType>;
+  engineOptions?: FlashEngineOptions;
 }
 
 export type FieldPolicyType = 'searchable' | 'counter' | 'plaintext' | 'zk-secret';

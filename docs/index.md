@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "FLASH DB"
   text: "Zero-Knowledge Encrypted Intelligence Database"
-  tagline: "Server-blind by architecture. Local-first. AI-native. 1M+ ops/sec with AES-256-GCM, blind indexes, and HNSW vector search."
+  tagline: "Server-blind by architecture. Local-first. AI-native. Private RAG, agent memory, and sealed vaults — encrypted end-to-end."
   image:
     src: /logo.svg
     alt: FLASH DB
@@ -12,6 +12,9 @@ hero:
     - theme: brand
       text: Get Started
       link: /guide/getting-started
+    - theme: alt
+      text: Why FLASH?
+      link: /guide/positioning
     - theme: alt
       text: View Architecture
       link: /guide/architecture
@@ -36,8 +39,8 @@ features:
     title: Homomorphic Arithmetic
     details: Compute sums and aggregations ($sum, $inc) directly over encrypted numerical fields without server-side decryption.
   - icon: 💾
-    title: Crash-Safe Durability
-    details: WAL frames are fsync'd after every write. SSTables are written atomically (temp file → fsync → rename). Corrupt SSTables are skipped safely.
+    title: Balanced Durability Engine
+    details: Configurable strict / balanced / throughput modes. Default balanced batches fsync (64 ops / 25 ms) with full sync on close. Atomic SSTable writes.
   - icon: 📊
     title: Structured Logging
     details: JSON structured logger with level filtering, sensitive key redaction, and integration with ELK, Datadog, Grafana Loki, and CloudWatch.

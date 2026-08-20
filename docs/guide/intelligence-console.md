@@ -6,6 +6,13 @@ The **Intelligence Console** is a local web UI focused on FLASH-exclusive capabi
 
 ## Launch
 
+```bash
+npx flash-console
+# → http://127.0.0.1:3456
+```
+
+Or programmatically:
+
 ```javascript
 import { FlashClient } from "@moaaz-yahia-zakaria/flash-db";
 

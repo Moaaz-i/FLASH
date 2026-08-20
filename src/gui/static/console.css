@@ -654,6 +654,56 @@ textarea.mono {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── Welcome / Home ── */
+.welcome-hero h1 {
+  font-size: 28px;
+  max-width: 640px;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.welcome-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.welcome-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition), transform var(--transition);
+}
+
+.welcome-card:hover {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  transform: translateY(-2px);
+}
+
+.welcome-icon { font-size: 24px; margin-bottom: 10px; }
+.welcome-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.welcome-card p { color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+.welcome-cta { display: inline-block; margin-top: 12px; font-size: 12px; color: var(--brand); font-weight: 500; }
+
+.welcome-principles .principle-row {
+  display: flex;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.welcome-principles .principle-row:last-child { border-bottom: none; }
+.welcome-principles strong { min-width: 140px; color: var(--text); }
+.welcome-principles span { color: var(--text-secondary); }
+
+@media (max-width: 900px) {
+  .welcome-grid { grid-template-columns: 1fr; }
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .workspace { grid-template-columns: 1fr; }
