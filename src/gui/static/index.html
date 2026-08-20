@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FLASH Intelligence Console</title>
+  <link rel="stylesheet" href="/console.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+          </svg>
+        </div>
+        <div class="topbar-title">FLASH <span>Intelligence</span></div>
+      </div>
+      <div class="topbar-right">
+        <div class="status-pill"><span class="dot"></span> Local</div>
+        <input type="password" class="input-sm" id="tokenInput" placeholder="Access token" onchange="saveToken()">
+        <button class="icon-btn" id="themeToggle" title="Toggle theme" aria-label="Toggle theme">
+          <svg id="themeIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <aside class="sidebar">
+        <div>
+          <div class="nav-group-label">Intelligence</div>
+          <nav style="display:flex;flex-direction:column;gap:2px;">
+            <button class="nav-item active" data-panel="rag">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 017 7c0 2.5-1.5 4.5-3 6l-4 7-4-7c-1.5-1.5-3-3.5-3-6a7 7 0 017-7z"/><circle cx="12" cy="9" r="2"/></svg>
+              Private RAG
+            </button>
+            <button class="nav-item" data-panel="memory">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="4"/></svg>
+              Agent Memory
+            </button>
+            <button class="nav-item" data-panel="vault">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+              Sealed Vault
+            </button>
+            <button class="nav-item" data-panel="trust">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              Trust &amp; Safety
+            </button>
+          </nav>
+        </div>
+        <div>
+          <div class="nav-group-label">Data</div>
+          <nav>
+            <button class="nav-item" data-panel="data">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+              Explorer
+            </button>
+          </nav>
+        </div>
+        <div class="sidebar-footer">
+          <p><strong>Server-blind</strong> — plaintext never leaves the client. Semantic ask is retrieval, not a chatbot.</p>
+        </div>
+      </aside>
+
+      <main class="content">
+        <!-- Private RAG -->
+        <section class="panel active" id="panel-rag">
+          <header class="page-header">
+            <div class="page-eyebrow">Intelligence</div>
+            <h1>Private RAG</h1>
+            <p>Ingest knowledge with client-side encryption, then retrieve by semantic similarity.</p>
+          </header>
+
+          <div class="card">
+            <div class="card-head">
+              <div><h2>Collection</h2><p>Target knowledge base name</p></div>
+            </div>
+            <div class="card-body">
+              <div class="field" style="margin:0;max-width:320px;">
+                <label for="ragCollection">Name</label>
+                <input id="ragCollection" value="knowledge" placeholder="knowledge">
+              </div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-head"><div><h2>Ingest</h2><p>Encrypt &amp; index new knowledge</p></div></div>
+              <div class="card-body">
+                <div class="field">
+                  <label for="ragTitle">Title</label>
+                  <input id="ragTitle" placeholder="Security Model">
+                </div>
+                <div class="field">
+                  <label for="ragText">Content</label>
+                  <textarea id="ragText" placeholder="Paste document text…"></textarea>
+                </div>
+                <div class="actions" style="margin-top:0;">
+                  <button class="btn btn-primary" id="ragIngestBtn">Ingest &amp; Index</button>
+                </div>
+                <div class="code-block">
+                  <div class="code-block-head">Response</div>
+                  <pre class="result-box empty-state" id="ragIngestResult">Waiting for ingest…</pre>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><div><h2>Semantic Search</h2><p>Retrieve context for LLM pipelines</p></div></div>
+              <div class="card-body">
+                <div class="field">
+                  <label for="ragQuestion">Question</label>
+                  <input id="ragQuestion" placeholder="Does the server see plaintext?">
+                </div>
+                <div class="actions" style="margin-top:0;">
+                  <button class="btn btn-primary" id="ragAskBtn">Search</button>
+                </div>
+                <div class="code-block">
+                  <div class="code-block-head">Context pack</div>
+                  <pre class="result-box empty-state" id="ragAskResult">Results appear here…</pre>
+                </div>
+                <div class="item-list" id="ragSources"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Agent Memory -->
+        <section class="panel" id="panel-memory">
+          <header class="page-header">
+            <div class="page-eyebrow">Intelligence</div>
+            <h1>Agent Memory</h1>
+            <p>Encrypted episodic memory with semantic recall and importance weighting.</p>
+          </header>
+
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-head"><div><h2>Remember</h2><p>Store a new memory</p></div></div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="field">
+                    <label for="memNamespace">Namespace</label>
+                    <input id="memNamespace" value="default">
+                  </div>
+                  <div class="field">
+                    <label for="memImportance">Importance</label>
+                    <input id="memImportance" type="number" value="2" min="1" max="5">
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="memContent">Content</label>
+                  <textarea id="memContent" placeholder="User prefers Arabic UI…"></textarea>
+                </div>
+                <div class="actions" style="margin-top:0;">
+                  <button class="btn btn-primary" id="memRememberBtn">Save memory</button>
+                </div>
+                <div class="code-block">
+                  <div class="code-block-head">Last action</div>
+                  <pre class="result-box empty-state" id="memResult">—</pre>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><div><h2>Recall</h2><p>Search by meaning</p></div></div>
+              <div class="card-body">
+                <div class="field">
+                  <label for="memQuery">Query</label>
+                  <input id="memQuery" placeholder="What language does the user prefer?">
+                </div>
+                <div class="actions" style="margin-top:0;">
+                  <button class="btn btn-primary" id="memRecallBtn">Recall</button>
+                </div>
+                <div id="memRecallList"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Sealed Vault -->
+        <section class="panel" id="panel-vault">
+          <header class="page-header">
+            <div class="page-eyebrow">Security</div>
+            <h1>Sealed Vault</h1>
+            <p>Passphrase-sealed credentials with isolated key domain and auto-lock.</p>
+          </header>
+
+          <div class="card">
+            <div class="card-head">
+              <div><h2>Access</h2><p>Unlock to manage records</p></div>
+              <span id="vaultStatusBadge" class="badge badge-muted">Locked</span>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="field">
+                  <label for="vaultName">Vault name</label>
+                  <input id="vaultName" value="default">
+                </div>
+                <div class="field">
+                  <label for="vaultPassphrase">Passphrase</label>
+                  <input id="vaultPassphrase" type="password" placeholder="••••••••">
+                </div>
+              </div>
+              <div class="actions" style="margin-top:0;">
+                <button class="btn btn-primary" id="vaultUnlockBtn">Unlock</button>
+                <button class="btn btn-secondary" id="vaultLockBtn">Lock</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" id="vaultRecordsPanel" style="display:none;">
+            <div class="card-head"><div><h2>Records</h2><p>Encrypted at rest in isolated domain</p></div></div>
+            <div class="card-body">
+              <div class="row">
+                <div class="field">
+                  <label for="vaultRecordId">Record ID</label>
+                  <input id="vaultRecordId" placeholder="openai_key">
+                </div>
+              </div>
+              <div class="field">
+                <label for="vaultPayload">Payload (JSON)</label>
+                <textarea id="vaultPayload" class="mono">{"service":"openai","value":"sk-..."}</textarea>
+              </div>
+              <div class="actions" style="margin-top:0;">
+                <button class="btn btn-primary" id="vaultPutBtn">Store encrypted</button>
+              </div>
+              <div class="item-list" id="vaultRecordList"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Trust -->
+        <section class="panel" id="panel-trust">
+          <header class="page-header">
+            <div class="page-eyebrow">Compliance</div>
+            <h1>Trust &amp; Safety</h1>
+            <p>Audit proofs and pre-LLM egress scanning.</p>
+          </header>
+
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-head"><div><h2>Integrity Proof</h2><p>Signed Merkle manifest</p></div></div>
+              <div class="card-body">
+                <div class="field">
+                  <label for="proofCollection">Collection</label>
+                  <input id="proofCollection" placeholder="users">
+                </div>
+                <div class="actions" style="margin-top:0;">
+                  <button class="btn btn-primary" id="proofBtn">Generate proof</button>
+                </div>
+                <div class="code-block">
+                  <div class="code-block-head">Manifest</div>
+                  <pre class="result-box empty-state" id="proofResult">—</pre>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><div><h2>Prompt Firewall</h2><p>PII &amp; secret detection</p></div></div>
+              <div class="card-body">
+                <div class="field">
+                  <label for="firewallText">Text to scan</label>
+                  <textarea id="firewallText" placeholder="Paste prompt before external LLM call…"></textarea>
+                </div>
+                <div class="actions" style="margin-top:0;">
+                  <button class="btn btn-primary" id="firewallBtn">Scan</button>
+                </div>
+                <div class="code-block">
+                  <div class="code-block-head">Result</div>
+                  <pre class="result-box empty-state" id="firewallResult">—</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Data Explorer -->
+        <section class="panel" id="panel-data">
+          <header class="page-header">
+            <div class="page-eyebrow">Debug</div>
+            <h1>Data Explorer</h1>
+            <p>Inspect encrypted collections during development.</p>
+          </header>
+
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-head"><div><h2>Collections</h2></div></div>
+              <div class="card-body">
+                <div class="col-list" id="dataColList"></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h2>Quick insert</h2></div></div>
+              <div class="card-body">
+                <textarea id="dataInsertJson" class="mono" placeholder='{"name":"Ada","role":"engineer"}'></textarea>
+                <div class="actions" style="margin-top:0;">
+                  <button class="btn btn-secondary" id="dataInsertBtn">Insert</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><div><h2>Documents</h2><p id="dataColLabel">Select a collection</p></div></div>
+            <div class="card-body">
+              <div class="item-list" id="dataDocs"></div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="toast-host" id="toastHost"></div>
+  <script src="/console.js"></script>
+</body>
+</html>

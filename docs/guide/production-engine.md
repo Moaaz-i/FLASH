@@ -83,4 +83,4 @@ Production features are covered by:
 - `flash_superpowers.test.mjs`
 - `flash_identity.test.mjs`
 
-Run: `npm test` (122 tests).
+Run: `npm test` (125 tests).

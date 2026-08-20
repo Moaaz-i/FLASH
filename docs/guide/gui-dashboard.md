@@ -1,10 +1,12 @@
-# Built-In Web GUI & Interactive Studio
+# Built-In Intelligence Console
 
-FLASH DB includes **FLASH Web Studio** — an interactive local management UI launched in a single line of code, with optional **token / password protection**.
+FLASH DB ships **FLASH Intelligence Console** — a local web UI for encrypted intelligence workflows (Private RAG, agent memory, sealed vault, trust tools), plus a minimal Data Explorer.
+
+> Full reference: [Intelligence Console](/guide/intelligence-console)
 
 ---
 
-## 1. Launching the Studio Dashboard
+## Launch
 
 ```javascript
 import { FlashClient } from "@moaaz-yahia-zakaria/flash-db";
@@ -14,38 +16,45 @@ const client = new FlashClient({
   storagePath: "./flash_data",
 });
 
-// Launch Interactive Studio with optional security token
 client.openDashboard({
   port: 3456,
-  token: "my_admin_passcode_2026", // Optional security token protection
+  token: "my_admin_passcode_2026", // optional
 });
 
-console.log("⚡ Studio running at: http://localhost:3456");
+console.log("⚡ Console: http://localhost:3456");
 ```
 
 ---
 
-## 2. Interactive Studio Capabilities
+## Intelligence Panels
 
-### 🔒 1. Token-Protected Access
+### Private RAG
 
-- Protect read and write operations via a dashboard access token (`token`).
-- Enter the token in the top bar of the Studio interface to authenticate all API mutations.
+- Ingest text (client-side encrypt + embed + index)
+- Semantic ask — returns context pack + sources (not a chatbot)
 
-### ➕ 2. Live Document Creation (Insert Modal)
+### Agent Memory
 
-- Click **"➕ Insert Document"** to open the interactive JSON editor.
-- The document is validated against schema, encrypted with AES-256-GCM, and inserted into the collection in real-time.
+- Remember facts with importance weighting
+- Semantic recall and forget
 
-### 🗑️ 3. Direct Deletion
+### Sealed Vault
 
-- Delete any document with a single click from the visual interface.
-- Appends a deletion tombstone to `commit.farc` and recalculates the Merkle Tree root.
+- Passphrase unlock, isolated key domain
+- Store credentials; auto-lock after inactivity
 
-### 🔍 4. Instant Fuzzy Search Bar
+### Trust & Safety
 
-- Search records live by ID, name, or keywords using client-side decrypted `$fuzzy` search.
+- Export signed integrity proof (Merkle + invariants)
+- Prompt firewall — scan for PII/secrets before LLM egress
 
-### ⚡ 5. Manual SSTable Flush
+### Data Explorer
 
-- Click **"⚡ Flush SSTable"** to trigger a checkpoint, compressing the active MemTable into an immutable `.sst` segment.
+- Browse collections and documents
+- Quick JSON insert for debugging
+
+---
+
+## Token Protection
+
+When `token` is set, all `/api/*` routes require the `x-flash-token` header or `?token=` query param.

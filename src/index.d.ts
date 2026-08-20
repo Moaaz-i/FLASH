@@ -730,6 +730,184 @@ export class FlashClientCollection<T extends Record<string, unknown> = Record<st
 }
 
 // ============================================================================
+// Intelligence Stack (FLASH-exclusive)
+// ============================================================================
+
+export interface FlashDashboardOptions {
+  port?: number;
+  host?: string;
+  token?: string;
+}
+
+export interface PrivateRAGIngestInput {
+  text: string;
+  title?: string;
+  metadata?: Record<string, unknown>;
+  sourceId?: string;
+}
+
+export interface PrivateRAGIngestResult {
+  parentId: string;
+  chunks: number;
+  chunkIds: string[];
+}
+
+export interface PrivateRAGAskResult {
+  question: string;
+  contextPack: string;
+  sources: Array<{ id: string; text: string; metadata: Record<string, unknown>; score: number }>;
+  tokens: { used: number; savedEstimate: number };
+  serverSawPlaintext: false;
+}
+
+export interface AgentMemoryEntry {
+  memoryId: string;
+  content: string;
+  tags: string[];
+  score: number;
+  semantic: number;
+  importance: number;
+  recency: number;
+}
+
+export class FlashPrivateRAG {
+  constructor(client: FlashClient, collectionName?: string, options?: { chunkSize?: number; chunkOverlap?: number; dimensions?: number });
+  ingest(input: PrivateRAGIngestInput): Promise<PrivateRAGIngestResult>;
+  ask(question: string, options?: { topK?: number; maxTokens?: number }): Promise<PrivateRAGAskResult>;
+  exportBundle(question: string, options?: Record<string, unknown>): Promise<Record<string, unknown>>;
+}
+
+export class FlashAgentMemory {
+  constructor(client: FlashClient, namespace?: string, options?: { defaultTtlMs?: number; dimensions?: number });
+  remember(content: string, options?: { tags?: string[]; importance?: number; ttlMs?: number }): Promise<{ memoryId: string; expiresAt: number }>;
+  recall(query: string, options?: { topK?: number }): Promise<AgentMemoryEntry[]>;
+  forget(memoryId: string): Promise<DeleteResult>;
+  pruneExpired(): Promise<number>;
+}
+
+export class FlashSealedVault {
+  readonly isLocked: boolean;
+  unlock(passphrase: string): void;
+  lock(): void;
+  put(recordId: string, payload: Record<string, unknown>): Promise<InsertResult>;
+  get(recordId: string): Promise<Record<string, unknown> | null>;
+  list(): Promise<Record<string, unknown>[]>;
+  remove(recordId: string): Promise<DeleteResult>;
+  close(): Promise<void>;
+}
+
+export class FlashEmbeddingVault {
+  ingest(text: string, metadata?: Record<string, unknown>): Promise<Record<string, unknown>>;
+  ask(question: string, options?: Record<string, unknown>): Promise<PrivateRAGAskResult>;
+  exportTextCache(): Record<string, string>;
+}
+
+export class FlashPortableBundle {
+  exportToFile(collections: string[], filePath: string, options?: Record<string, unknown>): Promise<Record<string, unknown>>;
+  static importFromFile(filePath: string, client: FlashClient): Promise<Record<string, unknown>>;
+}
+
+export class FlashLangChainAdapter {
+  asVectorStore(): { addDocuments(docs: Array<{ pageContent: string; metadata?: Record<string, unknown> }>): Promise<void>; similaritySearch(query: string, k?: number): Promise<Array<{ pageContent: string; metadata: Record<string, unknown> }>> };
+  asMemory(): { saveContext(input: string, output: string): Promise<void>; loadMemoryVariables(vars: Record<string, unknown>): Promise<Record<string, unknown>> };
+}
+
+export class FlashFederatedQuery {
+  addPeer(name: string, client: FlashClient): this;
+  find(collection: string, filter: Record<string, unknown>, options?: QueryOptions): Promise<Record<string, unknown>[]>;
+  count(collection: string, filter: Record<string, unknown>): Promise<number>;
+}
+
+export class FlashMultiAgentSync {
+  registerAgent(agentId: string): void;
+  share(agentId: string, content: string): Promise<Record<string, unknown>>;
+  getSharedContext(query: string, options?: { topK?: number }): Promise<Record<string, unknown>>;
+}
+
+export class FlashComplianceExport {
+  exportSubjectData(collection: string, filter: Record<string, unknown>): Promise<Record<string, unknown>>;
+  eraseSubjectData(collection: string, filter: Record<string, unknown>, actor: string): Promise<Record<string, unknown>>;
+}
+
+export class FlashPromptFirewall {
+  static scan(text: string, options?: { redact?: boolean }): { safe: boolean; violations: string[]; redacted: string; originalLength: number };
+  static assertSafe(text: string): void;
+}
+
+export class FlashDifferentialPrivacy {
+  static noisyCount(count: number, epsilon?: number): number;
+  static noisySum(sum: number, sensitivity?: number, epsilon?: number): number;
+}
+
+export class FlashKeyCeremony {
+  constructor(shardCount?: number);
+  split(masterKey: string | Buffer): string[];
+  combine(shards: string[]): string;
+}
+
+export class FlashIntegrityProof {
+  static export(client: FlashClient, collectionName: string, options?: { actor?: string }): Promise<Record<string, unknown>>;
+  static verify(proof: Record<string, unknown>, secretKey: string | Buffer): boolean;
+}
+
+export class FlashTimeSeal {
+  seal(event: string, metadata?: Record<string, unknown>): Record<string, unknown>;
+  verify(): { valid: boolean; entries: number };
+}
+
+export class FlashCloudSync {
+  push(collections: string[], label?: string): Promise<Record<string, unknown>>;
+  pull(bundleName?: string): Promise<Record<string, unknown>>;
+  listBundles(): Promise<string[]>;
+}
+
+export class FlashEncryptedCRDT {
+  localWrite(doc: Record<string, unknown>): Promise<Record<string, unknown>>;
+  applyRemoteDelta(delta: Record<string, unknown>): Promise<void>;
+  exportDelta(): Record<string, unknown>;
+}
+
+export class FlashBrowserVault {
+  constructor(secretKey: string | Buffer, vaultName?: string);
+  put(key: string, value: Record<string, unknown>): Promise<void>;
+  get(key: string): Promise<Record<string, unknown> | null>;
+  remove(key: string): Promise<void>;
+  list(): Promise<string[]>;
+}
+
+export class FlashAuditStream {
+  watch(actor?: string): FlashChangeStream;
+  verify(): { valid: boolean };
+  getAuditTrail(): Record<string, unknown>[];
+}
+
+export class FlashWireServer {
+  constructor(db: FlashDatabase, options?: { port?: number; host?: string; replicaSet?: string });
+  start(): Promise<unknown>;
+  stop(): Promise<void>;
+}
+
+export class FlashWireClient {
+  constructor(host?: string, port?: number);
+  command(cmd: Record<string, unknown>): Promise<Record<string, unknown>>;
+}
+
+export class FlashEdgeNode {
+  constructor(options?: Record<string, unknown>);
+  start(): Promise<void>;
+  stop(): Promise<void>;
+}
+
+export class FlashReplicaSet {
+  constructor(options?: Record<string, unknown>);
+  addNode(nodeId: string, peers: string[], options?: Record<string, unknown>): void;
+  startNetworkNodes(): Promise<void>;
+  electLeader(nodeId: string): void;
+  replicateInsert(collection: string, doc: Record<string, unknown>): Promise<void>;
+  failover(newLeaderId: string): Promise<void>;
+}
+
+// ============================================================================
 // Client: FlashClient
 // ============================================================================
 
@@ -742,7 +920,22 @@ export class FlashClient {
   startSession(): FlashSession;
   backup(destinationPath: string): Promise<BackupResult>;
   restore(backupPath: string): Promise<RestoreResult>;
-  openDashboard(options?: { port?: number }): unknown;
+  openDashboard(options?: FlashDashboardOptions): import("node:http").Server;
+  privateRAG(collectionName?: string, options?: { chunkSize?: number; chunkOverlap?: number; dimensions?: number }): FlashPrivateRAG;
+  agentMemory(namespace?: string, options?: { defaultTtlMs?: number; dimensions?: number }): FlashAgentMemory;
+  sealedVault(vaultName: string, options?: { autoLockMs?: number }): FlashSealedVault;
+  integrityProof(collectionName: string, options?: { actor?: string }): Promise<Record<string, unknown>>;
+  embeddingVault(collectionName?: string, options?: Record<string, unknown>): FlashEmbeddingVault;
+  portableBundle(): FlashPortableBundle;
+  langChainAdapter(options?: Record<string, unknown>): FlashLangChainAdapter;
+  federatedQuery(): FlashFederatedQuery;
+  multiAgentSync(namespace?: string): FlashMultiAgentSync;
+  complianceExport(): FlashComplianceExport;
+  timeSeal(sealPath?: string): FlashTimeSeal;
+  cloudSync(syncDir: string): FlashCloudSync;
+  encryptedCRDT(collectionName: string, nodeId?: string | null): FlashEncryptedCRDT;
+  browserVault(vaultName?: string): FlashBrowserVault;
+  auditStream(collectionName: string, options?: Record<string, unknown>): FlashAuditStream;
   listCollections(): Promise<string[]>;
   encryptDocument(doc: Record<string, unknown>): EncryptedDocument;
   decryptDocument(encryptedRecord: EncryptedDocument): Record<string, unknown>;
