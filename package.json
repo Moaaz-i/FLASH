@@ -1,5 +1,5 @@
 {
-  "name": "flash-db",
+  "name": "@moaaz-i/flash-db",
   "version": "1.0.0",
   "description": "Zero-knowledge encrypted intelligence database — local-first, AI-native, server-blind document engine",
   "type": "module",
@@ -18,9 +18,9 @@
     "./server/*": "./src/server/*.mjs"
   },
   "bin": {
-    "flashsh": "./bin/flashsh.mjs",
-    "flash-server": "./bin/flash-server.mjs",
-    "flash-console": "./bin/flash-console.mjs"
+    "flashsh": "bin/flashsh.mjs",
+    "flash-server": "bin/flash-server.mjs",
+    "flash-console": "bin/flash-console.mjs"
   },
   "files": [
     "src/",
@@ -80,7 +80,7 @@
   "homepage": "https://moaaz-i.github.io/FLASH/",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Moaaz-i/FLASH"
+    "url": "git+https://github.com/Moaaz-i/FLASH.git"
   },
   "bugs": {
     "url": "https://github.com/Moaaz-i/FLASH/issues"

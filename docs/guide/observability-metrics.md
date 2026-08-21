@@ -65,7 +65,7 @@ flash_db_collection_size_bytes{name="users"} 1048576
 Every operation type gets its own latency histogram with configurable buckets (default: 0.5, 1, 5, 10, 25, 50, 100, 250, 500, 1000 ms):
 
 ```js
-import { FlashMetrics } from 'flash-db';
+import { FlashMetrics } from '@moaaz-i/flash-db';
 
 const metrics = new FlashMetrics({
   latencyBuckets: [0.5, 1, 5, 10, 25, 50, 100, 250, 500, 1000]
@@ -92,7 +92,7 @@ const prometheusOutput = metrics.toPrometheus();
 You can also integrate `FlashMetrics` into custom Express, Fastify, or Velociradix servers:
 
 ```javascript
-import { FlashMetrics } from 'flash-db';
+import { FlashMetrics } from '@moaaz-i/flash-db';
 
 const metrics = new FlashMetrics();
 
@@ -115,7 +115,7 @@ app.get('/metrics', (req, res) => {
 FLASH DB includes a structured JSON logger for production observability:
 
 ```js
-import { logger } from 'flash-db';
+import { logger } from '@moaaz-i/flash-db';
 
 // Info: general events
 logger.info('server', 'Flash DB started', { port: 3000, version: '2.1.0' });

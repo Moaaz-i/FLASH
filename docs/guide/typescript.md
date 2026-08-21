@@ -9,7 +9,7 @@
 You can provide a TypeScript interface to `client.collection<T>()` for type-safe document queries and mutations:
 
 ```typescript
-import { FlashClient, InsertResult } from "flash-db";
+import { FlashClient, InsertResult } from "@moaaz-i/flash-db";
 
 interface UserProfile {
   _id?: string;
@@ -45,7 +45,7 @@ console.log(admins[0].name); // Type inferred as string!
 
 ## Supported Interfaces and Exports
 
-The `flash-db` package exports all core interfaces directly:
+The `@moaaz-i/flash-db` package exports all core interfaces directly:
 
 ```typescript
 import type {
@@ -61,7 +61,7 @@ import type {
   DeleteResult,
   UpdateResult,
   VectorSearchResult,
-} from "flash-db";
+} from "@moaaz-i/flash-db";
 ```
 
 ---
@@ -74,7 +74,7 @@ import {
   FlashRecordCodec,
   FlashBinary,
   FlashCollection,
-} from "flash-db";
+} from "@moaaz-i/flash-db";
 
 const client = new FlashClient({ secretKey: "key", storagePath: "./data" });
 
@@ -103,7 +103,7 @@ await users.find({}).where("age").gte(18).exec();
 import type {
   FlashPlugin,
   FlashClientCollection,
-} from "flash-db";
+} from "@moaaz-i/flash-db";
 
 const timestamps: FlashPlugin = {
   name: "timestamps",

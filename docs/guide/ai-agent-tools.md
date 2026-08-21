@@ -11,7 +11,7 @@ This allows LLMs (OpenAI, DeepSeek, Groq, Ollama, Gemini, Claude) to automatical
 You can turn any FLASH collection into a callable AI Tool with a single method call:
 
 ```javascript
-import { FlashAIDatabase } from 'flash-db';
+import { FlashAIDatabase } from '@moaaz-i/flash-db';
 
 const aiDb = new FlashAIDatabase({ name: 'store_ai_vault' });
 
@@ -35,7 +35,7 @@ aiDb.registerCollectionAsTool('products', {
 You can register custom async developer functions and external APIs:
 
 ```javascript
-import { FlashLLMAdapter } from 'flash-db';
+import { FlashLLMAdapter } from '@moaaz-i/flash-db';
 
 const llm = new FlashLLMAdapter({
   provider: 'openai',

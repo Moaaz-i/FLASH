@@ -7,7 +7,7 @@ Scale FLASH DB horizontally across multiple physical or logical nodes using a **
 ## 1. Setting Up a Cluster Ring
 
 ```javascript
-import { FlashCluster, FlashDatabase } from 'flash-db';
+import { FlashCluster, FlashDatabase } from '@moaaz-i/flash-db';
 
 // Initialize Cluster with 64 Virtual Nodes per Shard
 const cluster = new FlashCluster({ virtualNodes: 64 });

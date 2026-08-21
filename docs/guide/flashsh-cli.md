@@ -7,7 +7,7 @@ The `flashsh` command is FLASH's **sovereign zero-knowledge shell** — optimize
 ## Installation
 
 ```bash
-npm install -g flash-db
+npm install -g @moaaz-i/flash-db
 ```
 
 Or via npx:

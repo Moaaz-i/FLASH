@@ -10,7 +10,7 @@
     "verbatimModuleSyntax": true,
     "types": ["node"],
     "paths": {
-      "flash-db": ["./src/index.d.ts"]
+      "@moaaz-i/flash-db": ["./src/index.d.ts"]
     }
   },
   "include": ["tests/types/**/*.ts"]

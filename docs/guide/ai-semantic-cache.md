@@ -31,7 +31,7 @@ Incoming Prompt ──► [L1 In-Memory HNSW] ──(Hit <0.05ms)──► Insta
 ## 🚀 Quick Example
 
 ```javascript
-import { FlashSemanticCache, FlashDatabase } from 'flash-db';
+import { FlashSemanticCache, FlashDatabase } from '@moaaz-i/flash-db';
 
 const db = new FlashDatabase('ai_cache_db');
 const cacheCollection = db.collection('semantic_cache_l2');

@@ -9,7 +9,7 @@ In traditional databases, fuzzy search on encrypted data was considered impossib
 Search records even when user queries have spelling mistakes or typos:
 
 ```javascript
-import { FlashClient } from 'flash-db';
+import { FlashClient } from '@moaaz-i/flash-db';
 
 const client = new FlashClient({ secretKey: 'master_key' });
 const users = client.collection('users');

@@ -14,7 +14,7 @@ npx flash-console
 Or programmatically:
 
 ```javascript
-import { FlashClient } from "flash-db";
+import { FlashClient } from "@moaaz-i/flash-db";
 
 const client = new FlashClient({
   secretKey: "master-key",

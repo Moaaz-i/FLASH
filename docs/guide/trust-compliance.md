@@ -9,7 +9,7 @@ Export signed Merkle root + invariant report for audit.
 ```javascript
 const proof = await client.integrityProof('notes', { actor: 'auditor' });
 
-import { FlashIntegrityProof } from 'flash-db';
+import { FlashIntegrityProof } from '@moaaz-i/flash-db';
 FlashIntegrityProof.verify(proof, client.secretKey); // true
 ```
 
@@ -39,7 +39,7 @@ const attestation = await compliance.eraseSubjectData(
 Scan prompts/responses for PII and secrets before sending to external LLMs.
 
 ```javascript
-import { FlashPromptFirewall } from 'flash-db';
+import { FlashPromptFirewall } from '@moaaz-i/flash-db';
 
 const scan = FlashPromptFirewall.scan(userPrompt);
 if (!scan.safe) {
@@ -59,7 +59,7 @@ Detected patterns: email, phone, SSN, API keys, credit cards.
 Noisy aggregates for privacy-preserving analytics.
 
 ```javascript
-import { FlashDifferentialPrivacy } from 'flash-db';
+import { FlashDifferentialPrivacy } from '@moaaz-i/flash-db';
 
 const noisyCount = FlashDifferentialPrivacy.noisyCount(1000, 1.0);
 const noisySum = FlashDifferentialPrivacy.noisySum(50000, 100, 0.5);
@@ -72,7 +72,7 @@ const noisySum = FlashDifferentialPrivacy.noisySum(50000, 100, 0.5);
 Split master key into XOR shards (all shards required to reconstruct).
 
 ```javascript
-import { FlashKeyCeremony } from 'flash-db';
+import { FlashKeyCeremony } from '@moaaz-i/flash-db';
 
 const ceremony = new FlashKeyCeremony(3);
 const shards = ceremony.split(masterKeyHex);
