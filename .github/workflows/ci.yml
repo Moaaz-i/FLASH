@@ -146,7 +146,7 @@ jobs:
           node-version: 22.x
           registry-url: https://registry.npmjs.org
 
-      - name: Soft-deprecate releases ≤1.3.0 on npm
+      - name: Analyze and soft-deprecate problematic npm releases
         run: node scripts/deprecate-problematic-versions.mjs
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

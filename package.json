@@ -38,7 +38,8 @@
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
-    "deprecate:problematic-versions": "node scripts/deprecate-problematic-versions.mjs"
+    "deprecate:problematic-versions": "node scripts/deprecate-problematic-versions.mjs",
+    "deprecate:analyze": "ANALYZE=1 node scripts/deprecate-problematic-versions.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",

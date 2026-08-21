@@ -19,24 +19,24 @@ WAL / SSTable → Buffer → decryptFromBuffer() → Your app (object)
 
 ### New APIs
 
-| API | Where | Purpose |
-|-----|-------|---------|
-| `client.encryptToBuffer(doc)` | `FlashClient` | Plain doc → encrypted `Buffer` (one serialize) |
-| `client.decryptFromBuffer(buf)` | `FlashClient` | Encrypted `Buffer` → plain doc (partial field read) |
-| `FlashRecordCodec` | export | Low-level encode/decode helpers |
-| `FlashBinary.decodeRecord(buf)` | export | Engine buffer → object (for SQL/Wire/etc.) |
-| `FlashBinary.decodeRecords(bufs)` | export | Batch decode |
+| API                               | Where         | Purpose                                             |
+| --------------------------------- | ------------- | --------------------------------------------------- |
+| `client.encryptToBuffer(doc)`     | `FlashClient` | Plain doc → encrypted `Buffer` (one serialize)      |
+| `client.decryptFromBuffer(buf)`   | `FlashClient` | Encrypted `Buffer` → plain doc (partial field read) |
+| `FlashRecordCodec`                | export        | Low-level encode/decode helpers                     |
+| `FlashBinary.decodeRecord(buf)`   | export        | Engine buffer → object (for SQL/Wire/etc.)          |
+| `FlashBinary.decodeRecords(bufs)` | export        | Batch decode                                        |
 
 ### Behavior changes (low-level)
 
 If you use **`FlashCollection` directly** (not `FlashClient.collection()`):
 
-| Method | Before | Now |
-|--------|--------|-----|
-| `find()` | `object[]` | `Buffer[]` |
-| `findOne()` | `object \| null` | `Buffer \| null` |
-| `insertOne()` | object only | `object \| Buffer` |
-| `insertMany()` | object[] only | `(object \| Buffer)[]` |
+| Method         | Before           | Now                    |
+| -------------- | ---------------- | ---------------------- |
+| `find()`       | `object[]`       | `Buffer[]`             |
+| `findOne()`    | `object \| null` | `Buffer \| null`       |
+| `insertOne()`  | object only      | `object \| Buffer`     |
+| `insertMany()` | object[] only    | `(object \| Buffer)[]` |
 
 Use `FlashBinary.decodeRecord()` when you need plain objects from engine buffers.
 
@@ -54,13 +54,13 @@ The remote client decodes automatically. **No app changes** if you use `FlashCli
 
 ### Performance (v1.3.2)
 
-| Feature | API |
-|---------|-----|
-| Turbo profile | `engineOptions: { performanceProfile: 'turbo' }` |
-| In-memory engine | `inMemory: true` or `storagePath: ':memory:'` |
-| Lazy field decrypt | `.select('field1 field2')` |
+| Feature                | API                                                              |
+| ---------------------- | ---------------------------------------------------------------- |
+| Turbo profile          | `engineOptions: { performanceProfile: 'turbo' }`                 |
+| In-memory engine       | `inMemory: true` or `storagePath: ':memory:'`                    |
+| Lazy field decrypt     | `.select('field1 field2')`                                       |
 | Partial buffer decrypt | `FlashRecordCodec.decryptFields()` / `decryptFieldsFromBuffer()` |
-| Skip Merkle (turbo) | `disableMerkle: true` (turbo default) |
+| Skip Merkle (turbo)    | `disableMerkle: true` (turbo default)                            |
 
 See [Foundations §15](/guide/foundations#_15-performance-profiles-in-memory-mode).
 
@@ -73,20 +73,20 @@ const client = new FlashClient({
   secretKey: "key",
   storageProfile: "compact",
   fieldPolicy: {
-    title: "exact",      // equality search only
-    body: "encrypted",   // encrypt only — smallest
-    tags: "plaintext",   // compressible metadata
+    title: "exact", // equality search only
+    body: "encrypted", // encrypt only — smallest
+    tags: "plaintext", // compressible metadata
   },
   engineOptions: { compressionLevel: 6 },
 });
 ```
 
-| Policy | Blind index | Typical size vs `searchable` |
-|--------|-------------|------------------------------|
-| `encrypted` / `zk-secret` | none | **~5–15× smaller** (strings) |
-| `exact` | exact trapdoor only | **~3–8× smaller** |
-| `searchable` | exact + ngrams + range | baseline |
-| `plaintext` | none | smallest + SSTable compresses |
+| Policy                    | Blind index            | Typical size vs `searchable`  |
+| ------------------------- | ---------------------- | ----------------------------- |
+| `encrypted` / `zk-secret` | none                   | **~5–15× smaller** (strings)  |
+| `exact`                   | exact trapdoor only    | **~3–8× smaller**             |
+| `searchable`              | exact + ngrams + range | baseline                      |
+| `plaintext`               | none                   | smallest + SSTable compresses |
 
 ### Plugin hooks
 
@@ -121,24 +121,24 @@ See [Buffer Pipeline](/guide/buffer-pipeline) and [TypeScript Support](/guide/ty
 
 ### Bug fixes
 
-| Issue | Fix |
-|-------|-----|
-| TTL only scanned memtable | TTL sweeps **memtable + SSTables** |
+| Issue                        | Fix                                                       |
+| ---------------------------- | --------------------------------------------------------- |
+| TTL only scanned memtable    | TTL sweeps **memtable + SSTables**                        |
 | `getMerkleProof()` async bug | Sync returns `null` if dirty; use `getMerkleProofAsync()` |
-| `count()` loaded all docs | Uses engine `count()` when no filter |
-| Missing `beforeUpdate` hook | Added on `updateOne` |
-| Schema `expireAfterSeconds` | Also registers `lifecycle()` |
+| `count()` loaded all docs    | Uses engine `count()` when no filter                      |
+| Missing `beforeUpdate` hook  | Added on `updateOne`                                      |
+| Schema `expireAfterSeconds`  | Also registers `lifecycle()`                              |
 
 ### New client foundations
 
-| API | Use case |
-|-----|----------|
-| `client.eventLog(name)` | Append-only time-ordered stream |
-| `client.counter(name)` | Atomic counters |
-| `client.queue(name)` | FIFO jobs with ack/fail |
-| `client.health()` | Engine capacity report |
-| `client.snapshot()` | `.flashpack` export/import |
-| `autoTimestamps: true` (default) | Auto `createdAt` / `updatedAt` |
+| API                              | Use case                        |
+| -------------------------------- | ------------------------------- |
+| `client.eventLog(name)`          | Append-only time-ordered stream |
+| `client.counter(name)`           | Atomic counters                 |
+| `client.queue(name)`             | FIFO jobs with ack/fail         |
+| `client.health()`                | Engine capacity report          |
+| `client.snapshot()`              | `.flashpack` export/import      |
+| `autoTimestamps: true` (default) | Auto `createdAt` / `updatedAt`  |
 
 See [Universal Foundations](/guide/foundations).
 

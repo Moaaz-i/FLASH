@@ -1,44 +1,24 @@
 #!/usr/bin/env node
 /**
- * Soft-deprecate npm releases with known engine bugs (≤1.3.0).
- * Uses npm deprecate — versions stay installable; npm shows a warning only.
+ * Soft-deprecate only npm releases explicitly marked as affected in release-notes.
  *
- * Usage: NODE_AUTH_TOKEN=<npm_token> node scripts/deprecate-problematic-versions.mjs
- * Dry run: DRY_RUN=1 node scripts/deprecate-problematic-versions.mjs
- * Verify:  VERIFY=1 node scripts/deprecate-problematic-versions.mjs
+ * Usage:
+ *   NODE_AUTH_TOKEN=<token> node scripts/deprecate-problematic-versions.mjs
+ *   DRY_RUN=1 node scripts/deprecate-problematic-versions.mjs
+ *   ANALYZE=1 node scripts/deprecate-problematic-versions.mjs
+ *   VERIFY=1 node scripts/deprecate-problematic-versions.mjs
  */
 
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { analyzeDeprecations } from "./lib/analyze-deprecations.mjs";
 
-const PKG = JSON.parse(
-  readFileSync(
-    join(dirname(fileURLToPath(import.meta.url)), "..", "package.json"),
-    "utf8",
-  ),
-).name;
-
-const RECOMMENDED = "1.3.2";
-
-/** Versions with documented engine bugs (fixed in 1.3.1). */
-const PROBLEMATIC = [
-  "1.0.0",
-  "1.0.1",
-  "1.1.0",
-  "1.1.1",
-  "1.1.2",
-  "1.2.0",
-  "1.2.4",
-  "1.2.5",
-  "1.2.6",
-  "1.3.0",
-];
-
-const MESSAGE =
-  `Known engine issues in this release (TTL not applied to SSTables, count() full scan, Merkle proof async bug, missing beforeUpdate hooks). ` +
-  `Upgrade to ${RECOMMENDED} when convenient — this version remains installable and is not removed.`;
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const pkgJson = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
+const PKG = pkgJson.name;
+const RECOMMENDED = pkgJson.version;
 
 function npm(args) {
   return execFileSync("npm", args, {
@@ -66,53 +46,110 @@ function currentDeprecation(version) {
   }
 }
 
-function deprecate(version) {
+function deprecate(version, message) {
   if (process.env.DRY_RUN === "1") {
     console.log(`[dry-run] would deprecate ${PKG}@${version}`);
+    console.log(`          ${message}`);
     return;
   }
   try {
-    npm(["deprecate", `${PKG}@${version}`, MESSAGE]);
+    npm(["deprecate", `${PKG}@${version}`, message]);
   } catch (err) {
     const msg = err.stderr?.toString?.() || err.message || String(err);
     console.error(`failed to deprecate ${PKG}@${version}: ${msg}`);
     process.exit(1);
   }
-  const check = currentDeprecation(version);
-  if (!check) {
-    console.error(`deprecate call succeeded but ${PKG}@${version} is still active on npm`);
+  if (!currentDeprecation(version)) {
+    console.error(
+      `deprecate succeeded but ${PKG}@${version} still active on npm`,
+    );
     process.exit(1);
   }
   console.log(`deprecated ${PKG}@${version}`);
 }
 
-function verifyAllDeprecated() {
-  const missing = [];
-  for (const version of PROBLEMATIC) {
-    if (!isPublished(version)) continue;
-    if (!currentDeprecation(version)) missing.push(version);
+function undeprecate(version) {
+  if (process.env.DRY_RUN === "1") {
+    console.log(`[dry-run] would undeprecate ${PKG}@${version}`);
+    return;
   }
-  if (missing.length) {
-    console.error(`VERIFY FAILED — still active on npm: ${missing.join(", ")}`);
+  try {
+    npm(["undeprecate", `${PKG}@${version}`]);
+  } catch (err) {
+    const msg = err.stderr?.toString?.() || err.message || String(err);
+    console.error(`failed to undeprecate ${PKG}@${version}: ${msg}`);
     process.exit(1);
   }
-  console.log(`VERIFY OK — ${PROBLEMATIC.length} legacy versions marked deprecated on npm.`);
+  if (currentDeprecation(version)) {
+    console.error(`undeprecate failed — ${PKG}@${version} still deprecated`);
+    process.exit(1);
+  }
+  console.log(`undeprecated ${PKG}@${version}`);
+}
+
+const analysis = analyzeDeprecations({
+  pkgName: PKG,
+  recommended: RECOMMENDED,
+});
+
+console.log(analysis.report);
+console.log("");
+
+if (process.env.ANALYZE === "1") {
+  process.exit(0);
+}
+
+const deprecateSet = new Set(analysis.toDeprecate.map((d) => d.version));
+
+function verifyAnalysis() {
+  const missing = analysis.toDeprecate
+    .filter(
+      ({ version }) => isPublished(version) && !currentDeprecation(version),
+    )
+    .map(({ version }) => version);
+
+  const wronglyDeprecated = analysis.published.filter(
+    (v) =>
+      !deprecateSet.has(v) &&
+      v !== analysis.latest &&
+      isPublished(v) &&
+      currentDeprecation(v),
+  );
+
+  if (missing.length) {
+    console.error(
+      `VERIFY FAILED — should be deprecated: ${missing.join(", ")}`,
+    );
+    process.exit(1);
+  }
+  if (wronglyDeprecated.length) {
+    console.error(
+      `VERIFY FAILED — should NOT be deprecated: ${wronglyDeprecated.join(", ")}`,
+    );
+    process.exit(1);
+  }
+  console.log(
+    `VERIFY OK — ${analysis.toDeprecate.length} affected version(s) deprecated; keeping ${analysis.toKeep.join(", ")}.`,
+  );
 }
 
 if (process.env.VERIFY === "1") {
-  verifyAllDeprecated();
+  verifyAnalysis();
   process.exit(0);
 }
 
 if (process.env.DRY_RUN !== "1" && !process.env.NODE_AUTH_TOKEN) {
-  console.error("NODE_AUTH_TOKEN is required (set NPM_TOKEN in GitHub Actions secrets).");
+  console.error(
+    "NODE_AUTH_TOKEN is required (map NPM_TOKEN in GitHub Actions).",
+  );
   process.exit(1);
 }
 
-let skipped = 0;
 let applied = 0;
+let skipped = 0;
+let restored = 0;
 
-for (const version of PROBLEMATIC) {
+for (const { version, message } of analysis.toDeprecate) {
   if (!isPublished(version)) {
     console.log(`skip ${version} (not on npm)`);
     skipped += 1;
@@ -120,24 +157,36 @@ for (const version of PROBLEMATIC) {
   }
 
   const existing = currentDeprecation(version);
-  if (existing === MESSAGE) {
+  if (existing === message) {
     console.log(`skip ${version} (already deprecated)`);
     skipped += 1;
     continue;
   }
 
   if (existing) {
-    console.log(`update ${version} (refresh deprecation message)`);
+    console.log(`update ${version} (refresh message)`);
   }
 
-  deprecate(version);
+  deprecate(version, message);
   applied += 1;
 }
 
-console.log(
-  `\nDone: ${applied} deprecated, ${skipped} skipped. Active releases: ${RECOMMENDED}, 1.3.1.`,
-);
+for (const version of analysis.published) {
+  if (deprecateSet.has(version) || version === analysis.latest) continue;
+  if (!currentDeprecation(version)) continue;
+  console.log(`restore ${version} (no longer affected)`);
+  undeprecate(version);
+  restored += 1;
+}
+
+if (!applied && !restored) {
+  console.log("No registry changes needed.");
+} else {
+  console.log(
+    `\nDone: ${applied} deprecated, ${restored} restored, ${skipped} skipped. Recommended: v${analysis.recommended}.`,
+  );
+}
 
 if (process.env.DRY_RUN !== "1") {
-  verifyAllDeprecated();
+  verifyAnalysis();
 }
