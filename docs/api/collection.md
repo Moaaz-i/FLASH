@@ -53,6 +53,21 @@ const users = client.collection('users', {
 | `ask(prompt, options?)` | `Promise<(T & { _interpretedQuery? })[]>` | Natural language query. |
 | `timeSeriesBucket(...)` | `Promise<object[]>` | Time-series bucketing. |
 | `spatialNear(field, nearSpec)` | `Promise<object[]>` | Geospatial nearest-neighbor query. |
+| `paginate(filter?, opts?)` | `Promise<FlashPaginationResult<T>>` | Cursor-based pagination. |
+
+### Low-level engine access (`collection.raw`)
+
+`FlashClientCollection.raw` is a **`FlashCollection`**. Since v1.3.2 it stores and returns **buffers**:
+
+```javascript
+const raw = collection.raw;
+await raw.insertOne(client.encryptToBuffer({ _id: '1', name: 'Ada' }));
+
+const buffers = await raw.find({});
+const doc = client.decryptFromBuffer(buffers[0]);
+```
+
+See [Buffer Pipeline](/guide/buffer-pipeline).
 
 ---
 

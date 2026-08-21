@@ -85,6 +85,7 @@ export class FlashWorkerPool {
         this.shutdown().catch(() => {});
       }
     }, 250);
+    if (this._idleTimer.unref) this._idleTimer.unref();
   }
 
   _onWorkerError(worker, err) {

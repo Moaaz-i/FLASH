@@ -35,14 +35,15 @@ export class FlashTTLManager {
     }
   }
 
-  _extractTimestamp(rawBuf, docId) {
+  _extractTimestamp(rawBuf) {
     try {
-      const doc = FlashBinary.deserialize(rawBuf);
-      if (doc._plain?.[this.field] != null) {
-        return new Date(doc._plain[this.field]).getTime();
+      const plain = FlashBinary.getField(rawBuf, "_plain");
+      if (plain?.[this.field] != null) {
+        return new Date(plain[this.field]).getTime();
       }
-      if (doc[this.field] != null) {
-        return new Date(doc[this.field]).getTime();
+      const direct = FlashBinary.getField(rawBuf, this.field);
+      if (direct != null) {
+        return new Date(direct).getTime();
       }
     } catch {
       /* fall through */

@@ -22,6 +22,8 @@ const client = new FlashClient(options);
 | `uri` | `string` | No | — | Flash Server URI (e.g., `flash://localhost:6742`). |
 | `authKey` | `string` | No | — | Authentication key for Flash Server connections. |
 | `pqcHardened` | `boolean` | No | `false` | Enable post-quantum hardened key derivation. |
+| `autoTimestamps` | `boolean` | No | `true` | Auto-set `createdAt` / `updatedAt` on insert/update. |
+| `engineOptions` | `FlashEngineOptions` | No | `{ durability: 'balanced' }` | Memtable, WAL sync, worker flush tuning. |
 | `fieldPolicy` | `Record<string, FieldPolicyType>` | No | `{}` | Custom per-field encryption policy mappings. |
 
 ---
@@ -162,14 +164,30 @@ const encrypted = client.encryptDocument({ _id: 'doc-1', name: 'Alice', email: '
 
 ### `decryptDocument(encryptedRecord)`
 
-Decrypt an `EncryptedDocument` back to plaintext. Verifies AAD (record `_id`) — fails if tampered.
+Decrypt an `EncryptedDocument` or **FlashBinary `Buffer`** back to plaintext.
 
+- **Parameters:** `EncryptedDocument | Buffer`
 - **Returns:** `Record<string, unknown>`
 
 ```javascript
 const doc = client.decryptDocument(encrypted);
-// { _id: 'doc-1', name: 'Alice', email: 'alice@example.com' }
+// or
+const doc = client.decryptDocument(bufferFromEngine);
 ```
+
+### `encryptToBuffer(doc)` · `decryptFromBuffer(buf)` *(v1.3.2+)*
+
+Default performance path — encrypt/serialize once on write, partial decode on read.
+
+```javascript
+const buf = client.encryptToBuffer({ name: 'Alice', email: 'a@b.com' });
+await col.raw.insertOne(buf);
+
+const raw = await col.raw.findOne({ _id: '...' });
+const plain = client.decryptFromBuffer(raw);
+```
+
+See [Buffer Pipeline](/guide/buffer-pipeline).
 
 ### `buildQueryEnvelope(query?)`
 
@@ -204,6 +222,25 @@ Gracefully closes WAL file handles and flushes open collections.
 ```javascript
 await client.close();
 ```
+
+---
+
+## Universal Foundations *(v1.3.0+)*
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `lifecycle(name, opts?)` | `FlashLifecycle` | TTL, max docs, archive |
+| `maintenance(opts?)` | `FlashMaintenance` | Background flush/compact/sweep |
+| `pipeline()` | `FlashPipeline` | NDJSON / collection ETL |
+| `events()` | `FlashEventHub` | Pub/sub on mutations |
+| `use(plugin)` | `FlashPluginHost` | `beforeInsert`, `beforeUpdate`, `afterInsert`, `afterUpdate` |
+| `eventLog(name, opts?)` | `FlashEventLog` | Append-only stream |
+| `counter(name, opts?)` | `FlashCounter` | Atomic counter |
+| `queue(name, opts?)` | `FlashQueue` | FIFO job queue |
+| `health()` | `Promise<object>` | Engine stats |
+| `snapshot()` | `FlashSnapshot` | `.flashpack` backup |
+
+Full guide: [Universal Foundations](/guide/foundations) · [Release Notes](/guide/release-notes)
 
 ---
 

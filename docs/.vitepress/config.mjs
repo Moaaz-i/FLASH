@@ -2,7 +2,8 @@ import { defineConfig } from "vitepress";
 
 export default defineConfig({
   title: "FLASH DB",
-  description: "Zero-knowledge encrypted intelligence database — local-first, AI-native, server-blind",
+  description:
+    "Zero-knowledge encrypted intelligence database — local-first, AI-native, server-blind",
   base: "/FLASH/",
   themeConfig: {
     logo: "/logo.svg",
@@ -14,7 +15,9 @@ export default defineConfig({
           { text: "Positioning & Identity", link: "/guide/positioning" },
           { text: "Why Server-Blind AI", link: "/guide/why-server-blind-ai" },
           { text: "Getting Started", link: "/guide/getting-started" },
+          { text: "Release Notes", link: "/guide/release-notes" },
           { text: "Universal Foundations", link: "/guide/foundations" },
+          { text: "Buffer Pipeline", link: "/guide/buffer-pipeline" },
           { text: "Architecture & Zero-Copy", link: "/guide/architecture" },
           { text: "TypeScript Support", link: "/guide/typescript" },
           { text: "Client-Server Daemon", link: "/guide/client-server" },
@@ -41,7 +44,10 @@ export default defineConfig({
         items: [
           { text: "Exclusive Stack Overview", link: "/guide/flash-exclusive" },
           { text: "Private RAG & Agent Memory", link: "/guide/private-rag" },
-          { text: "LangChain Integration", link: "/guide/langchain-integration" },
+          {
+            text: "LangChain Integration",
+            link: "/guide/langchain-integration",
+          },
           { text: "Trust & Compliance Tools", link: "/guide/trust-compliance" },
           { text: "Portable Bundles & Sync", link: "/guide/portable-sync" },
           { text: "FLASH Wire Protocol", link: "/guide/flash-wire" },
@@ -143,7 +149,9 @@ export default defineConfig({
             { text: "Positioning & Identity", link: "/guide/positioning" },
             { text: "Why Server-Blind AI", link: "/guide/why-server-blind-ai" },
             { text: "Getting Started", link: "/guide/getting-started" },
-          { text: "Universal Foundations", link: "/guide/foundations" },
+            { text: "Release Notes", link: "/guide/release-notes" },
+            { text: "Universal Foundations", link: "/guide/foundations" },
+            { text: "Buffer Pipeline", link: "/guide/buffer-pipeline" },
             { text: "TypeScript Support", link: "/guide/typescript" },
             { text: "Architecture & Zero-Copy", link: "/guide/architecture" },
             { text: "Client-Server & Daemon", link: "/guide/client-server" },

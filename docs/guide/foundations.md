@@ -193,6 +193,76 @@ const client = new FlashClient({ secretKey: "key", autoTimestamps: false });
 
 ---
 
+## 14. Buffer pipeline (default since v1.3.2)
+
+All CRUD goes through **FlashBinary buffers** inside the engine. Your app still uses objects:
+
+```javascript
+// Automatic — no code changes
+await col.insertOne({ name: "Ada" });
+const docs = await col.find({ name: "Ada" }).exec();
+
+// Advanced
+const buf = client.encryptToBuffer({ name: "Ada" });
+const back = client.decryptFromBuffer(buf);
+```
+
+See [Buffer Pipeline](/guide/buffer-pipeline) and [Release Notes](/guide/release-notes).
+
+---
+
+## 15. Performance profiles & in-memory mode
+
+For benchmarks, tests, or ephemeral workloads:
+
+```javascript
+const client = new FlashClient({
+  secretKey: "key",
+  inMemory: true, // or storagePath: ':memory:'
+  engineOptions: {
+    performanceProfile: "turbo", // throughput + large memtable + no Merkle
+  },
+});
+```
+
+| Profile   | Durability   | Merkle | Memtable |
+| --------- | ------------ | ------ | -------- |
+| `strict`  | fsync each   | on     | 4 MB     |
+| `balanced`| batched sync | on     | 4 MB     |
+| `turbo`   | no fsync     | off    | 64 MB    |
+
+**Lazy field decrypt** — `.select('name email')` decrypts only those columns (AES skipped for the rest):
+
+```javascript
+const names = await col.find({}).select("name").exec();
+```
+
+Remote server batch insert: `POST /api/v1/insertMany/:collection` with `{ encryptedRecords: [...] }` — used automatically by `insertMany()` over `uri`.
+
+---
+
+## 16. Compact storage (minimal disk)
+
+```javascript
+const client = new FlashClient({
+  secretKey: "key",
+  storageProfile: "compact",
+  fieldPolicy: {
+    email: "exact",
+    body: "encrypted",
+    tags: "plaintext",
+  },
+});
+```
+
+| Policy | Search | Size |
+|--------|--------|------|
+| `encrypted` | decrypt client-side only | smallest |
+| `exact` | `find({ field: value })` | small |
+| `searchable` | fuzzy / regex / range | largest |
+
+---
+
 ## Pattern matrix
 
 | Need                | API                                     |
@@ -211,12 +281,17 @@ const client = new FlashClient({ secretKey: "key", autoTimestamps: false });
 | Background jobs     | `queue()`                               |
 | Ops visibility      | `health()`                              |
 | Backup / migrate    | `snapshot()`                            |
+| High-perf bytes     | `encryptToBuffer()` / `decryptFromBuffer()` |
+| Max throughput      | `engineOptions: { performanceProfile: 'turbo' }` |
+| Ephemeral / RAM     | `inMemory: true`                            |
 | Realtime wire       | WebSocket / PubSub (see Real-Time docs) |
 
 ---
 
 ## Related
 
+- [Release Notes](/guide/release-notes)
+- [Buffer Pipeline](/guide/buffer-pipeline)
 - [Engine Options](/guide/engine-options)
 - [Durability](/guide/durability)
 - [Real-Time Infrastructure](/guide/realtime-infrastructure)

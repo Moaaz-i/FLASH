@@ -1,4 +1,5 @@
 import net from 'node:net';
+import { FlashBinary } from '../binary/flash_binary.mjs';
 
 /**
  * FLASH High-Performance gRPC & Binary Protocol Server (FlashGRPCServer)
@@ -69,13 +70,17 @@ export class FlashGRPCServer {
       const result = await col.insertOne(payload.doc);
       return { success: true, result };
     } else if (action === 'find') {
-      const records = await col.find(payload.query || {}, payload.options || {});
+      const records = FlashBinary.decodeRecords(
+        await col.find(payload.query || {}, payload.options || {}),
+      );
       return { success: true, records };
     } else if (action === 'count') {
       const count = await col.count();
       return { success: true, count };
     } else if (action === 'updateOne') {
-      const existing = await col.findOne(payload.filter || {});
+      const existing = FlashBinary.decodeRecord(
+        await col.findOne(payload.filter || {}),
+      );
       if (!existing) return { success: true, matchedCount: 0, modifiedCount: 0 };
       const merged = { ...existing, ...(payload.update?.$set || payload.update || {}) };
       await col.deleteOne({ _id: existing._id });
@@ -97,7 +102,9 @@ export class FlashGRPCServer {
       return { success: true, applied: true };
     } else if (action === 'explain') {
       const stats = {};
-      const records = await col.find(payload.query || {}, { ...payload.options, stats });
+      const records = FlashBinary.decodeRecords(
+        await col.find(payload.query || {}, { ...payload.options, stats }),
+      );
       return { success: true, records, stats };
     }
 

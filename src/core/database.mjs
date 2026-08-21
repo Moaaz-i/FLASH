@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import { FlashCollection } from './collection.mjs';
 import { FlashMVCC } from '../transactions/mvcc.mjs';
 import { FlashTxLog } from '../transactions/tx_log.mjs';
+import { FlashWorkerPool } from '../engine/worker_pool.mjs';
 
 /**
  * FLASH Database Engine (FlashDatabase)
@@ -10,11 +11,17 @@ import { FlashTxLog } from '../transactions/tx_log.mjs';
 export class FlashDatabase {
   constructor(dbName = 'flash_db', options = {}) {
     this.dbName = dbName;
-    this.storagePath = path.resolve(options.storagePath || './data', dbName);
+    this.inMemory =
+      options.inMemory === true || options.storagePath === ':memory:';
+    this.storagePath = this.inMemory
+      ? ':memory:'
+      : path.resolve(options.storagePath || './data', dbName);
     this.collections = new Map();
     this.mvcc = new FlashMVCC();
     this.engineOptions = options.engineOptions || {};
-    this._ensureDir();
+    if (!this.inMemory) {
+      this._ensureDir();
+    }
   }
 
   _ensureDir() {
@@ -35,6 +42,7 @@ export class FlashDatabase {
 
     const col = new FlashCollection(name, this.storagePath, {
       mvcc: this.mvcc,
+      inMemory: this.inMemory,
       ...this.engineOptions,
     });
     this.collections.set(name, col);
@@ -46,6 +54,9 @@ export class FlashDatabase {
    * @returns {string[]}
    */
   listCollections() {
+    if (this.inMemory) {
+      return [...this.collections.keys()];
+    }
     if (!fs.existsSync(this.storagePath)) return [];
     return fs.readdirSync(this.storagePath, { withFileTypes: true })
       .filter(d => d.isDirectory())
@@ -62,6 +73,7 @@ export class FlashDatabase {
       await col.wal.close();
       this.collections.delete(name);
     }
+    if (this.inMemory) return;
     const colDir = path.join(this.storagePath, name);
     if (fs.existsSync(colDir)) {
       await fs.promises.rm(colDir, { recursive: true, force: true });
@@ -76,6 +88,9 @@ export class FlashDatabase {
       await col.close();
     }
     this.collections.clear();
+    if (FlashWorkerPool._defaultInstance) {
+      await FlashWorkerPool._defaultInstance.shutdown();
+    }
   }
 
   /**

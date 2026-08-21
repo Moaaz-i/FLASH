@@ -173,10 +173,27 @@ export class FlashQuery {
   async exec() {
     const start = performance.now();
     const executionStats = {};
+
+    let effectiveProjection = this._projection;
+    if (this._projection && this._sortSpec) {
+      const isInclusive = Object.values(this._projection).some(
+        (v) => v === 1 || v === true,
+      );
+      if (isInclusive) {
+        effectiveProjection = { ...this._projection };
+        for (const key of Object.keys(this._sortSpec)) {
+          if (effectiveProjection[key] == null) {
+            effectiveProjection[key] = 1;
+          }
+        }
+      }
+    }
+
     const rawResults = await this.collection._executeRawQuery(this.filterCriteria, {
       ...this.options,
       limit: 100000,
       executionStats,
+      projection: effectiveProjection,
     });
 
     let docs = rawResults;

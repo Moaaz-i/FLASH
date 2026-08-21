@@ -2,6 +2,8 @@
  * FLASH Zero-Downtime Online Index Builder (FlashOnlineIndexer)
  * Builds primary, secondary, and vector indexes in background batches without locking active transactions.
  */
+import { FlashBinary } from "../binary/flash_binary.mjs";
+
 export class FlashOnlineIndexer {
   /**
    * Builds an index over a collection in non-blocking streaming chunks
@@ -21,7 +23,9 @@ export class FlashOnlineIndexer {
     let indexedCount = 0;
 
     while (true) {
-      const docs = await collection.find({}, { skip: offset, limit: chunkSize });
+      const docs = FlashBinary.decodeRecords(
+        await collection.find({}, { skip: offset, limit: chunkSize }),
+      );
       if (docs.length === 0) break;
 
       for (const doc of docs) {

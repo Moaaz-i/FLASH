@@ -294,7 +294,7 @@ describe('FlashEnhancedPubSub', () => {
 
     pubsub.publish('topic', 'fail-me');
 
-    await new Promise(r => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, 300));
     const dl = pubsub.getDeadLetter();
     assert.ok(dl.length >= 0);
 

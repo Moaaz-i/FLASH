@@ -19,6 +19,14 @@ export { mergeSSTableFiles } from "./engine/compaction_merge.mjs";
 export { FlashCollection } from "./core/collection.mjs";
 export { FlashDatabase } from "./core/database.mjs";
 export { FlashClient, FlashClientCollection } from "./client/flash_client.mjs";
+export { FlashRecordCodec } from "./client/record_codec.mjs";
+export {
+  resolveEngineOptions,
+  TURBO_MEMTABLE_THRESHOLD,
+} from "./engine/perf_profiles.mjs";
+export { MemoryArc } from "./storage/memory_arc.mjs";
+export { MemoryOplog } from "./storage/memory_oplog.mjs";
+export { FlashStorageCompact } from "./engine/storage_compact.mjs";
 export { FlashVectorIndex, FlashHNSWIndex } from "./vector/vector_index.mjs";
 export { FlashChangeStream } from "./reactive/change_stream.mjs";
 export { FlashEventHub } from "./reactive/event_hub.mjs";

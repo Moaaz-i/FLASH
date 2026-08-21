@@ -19,6 +19,7 @@ import { FlashQuantizer } from '../vector/quantizer.mjs';
 import { FlashSearchEngine } from '../plugins/search_engine.mjs';
 import { FlashCipher } from '../crypto/cipher.mjs';
 import { FlashDatabase } from '../core/database.mjs';
+import { FlashBinary } from '../binary/flash_binary.mjs';
 
 export class FlashAIDatabase {
   /**
@@ -202,7 +203,8 @@ export class FlashAIDatabase {
     const vectorMatches = this.hnswIndex.search(queryVec, limit * 2);
     const vectorDocs = [];
     for (const vm of vectorMatches) {
-      const doc = await this.memoryCollection.findOne({ _id: vm.docId });
+      const raw = await this.memoryCollection.findOne({ _id: vm.docId });
+      const doc = raw ? FlashBinary.decodeRecord(raw) : null;
       if (doc) {
         vectorDocs.push({
           id: vm.docId,
@@ -217,7 +219,8 @@ export class FlashAIDatabase {
     const bm25Matches = this.bm25Engine.search(query, limit * 2);
     const bm25Docs = [];
     for (const bm of bm25Matches) {
-      const doc = await this.memoryCollection.findOne({ _id: bm.docId });
+      const raw = await this.memoryCollection.findOne({ _id: bm.docId });
+      const doc = raw ? FlashBinary.decodeRecord(raw) : null;
       if (doc) {
         bm25Docs.push({
           id: bm.docId,
@@ -330,7 +333,7 @@ export class FlashAIDatabase {
       handler: async (args = {}) => {
         const filter = args.filter || {};
         const limit = args.limit || 5;
-        const all = await col.find({}, { limit: 1000 });
+        const all = FlashBinary.decodeRecords(await col.find({}, { limit: 1000 }));
         const results = all.filter((doc) => {
           for (const [k, v] of Object.entries(filter)) {
             if (typeof v === 'object' && v !== null) {
@@ -469,7 +472,9 @@ export class FlashAIDatabase {
    * @param {string} sessionId
    */
   async getChatHistory(sessionId) {
-    const record = await this.sessionCollection.findOne({ _id: sessionId });
+    const record = FlashBinary.decodeRecord(
+      await this.sessionCollection.findOne({ _id: sessionId }),
+    );
     if (!record || !record.encryptedPayload) return [];
     try {
       const decryptedJson = this.cipher.decrypt(record.encryptedPayload);

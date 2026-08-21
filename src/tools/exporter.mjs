@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import readline from 'node:readline';
+import { FlashBinary } from '../binary/flash_binary.mjs';
 
 /**
  * FLASH ETL & Bulk Data Exporter/Importer (FlashETL)
@@ -15,7 +16,7 @@ export class FlashETL {
    */
   static async exportToNDJSON(collection, destFilePath) {
     await collection.init();
-    const docs = await collection.find({});
+    const docs = FlashBinary.decodeRecords(await collection.find({}));
     const writeStream = fs.createWriteStream(destFilePath, { encoding: 'utf8' });
 
     let count = 0;
@@ -76,7 +77,7 @@ export class FlashETL {
    */
   static async exportToCSV(collection, destFilePath, fields = null) {
     await collection.init();
-    const docs = await collection.find({});
+    const docs = FlashBinary.decodeRecords(await collection.find({}));
     if (docs.length === 0) {
       await fs.promises.writeFile(destFilePath, '');
       return { exportedCount: 0 };

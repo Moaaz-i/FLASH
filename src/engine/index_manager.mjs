@@ -3,6 +3,8 @@
  * High-performance In-Memory & Persistent Index Store for Blind Trapdoors and Range Buckets
  */
 
+import { FlashBlindIndex } from '../crypto/blind_index.mjs';
+
 export class FlashIndexManager {
   constructor() {
     // exactFieldName -> Map<trapdoorHash, Set<docId>>
@@ -28,10 +30,11 @@ export class FlashIndexManager {
           this.exactIndexes.set(field, new Map());
         }
         const fieldMap = this.exactIndexes.get(field);
-        if (!fieldMap.has(trapdoor)) {
-          fieldMap.set(trapdoor, new Set());
+        const trapKey = FlashBlindIndex.trapdoorKey(trapdoor);
+        if (!fieldMap.has(trapKey)) {
+          fieldMap.set(trapKey, new Set());
         }
-        fieldMap.get(trapdoor).add(docId);
+        fieldMap.get(trapKey).add(docId);
       }
     }
 
@@ -43,10 +46,11 @@ export class FlashIndexManager {
         }
         const fieldMap = this.ngramIndexes.get(field);
         for (const token of tokenList) {
-          if (!fieldMap.has(token)) {
-            fieldMap.set(token, new Set());
+          const trapKey = FlashBlindIndex.trapdoorKey(token);
+          if (!fieldMap.has(trapKey)) {
+            fieldMap.set(trapKey, new Set());
           }
-          fieldMap.get(token).add(docId);
+          fieldMap.get(trapKey).add(docId);
         }
       }
     }
@@ -58,10 +62,11 @@ export class FlashIndexManager {
           this.rangeIndexes.set(field, new Map());
         }
         const fieldMap = this.rangeIndexes.get(field);
-        if (!fieldMap.has(rangeMeta.token)) {
-          fieldMap.set(rangeMeta.token, new Set());
+        const trapKey = FlashBlindIndex.trapdoorKey(rangeMeta.token);
+        if (!fieldMap.has(trapKey)) {
+          fieldMap.set(trapKey, new Set());
         }
-        fieldMap.get(rangeMeta.token).add(docId);
+        fieldMap.get(trapKey).add(docId);
       }
     }
   }
@@ -96,8 +101,9 @@ export class FlashIndexManager {
    */
   findExact(field, trapdoor) {
     const fieldMap = this.exactIndexes.get(field);
-    if (!fieldMap || !fieldMap.has(trapdoor)) return new Set();
-    return fieldMap.get(trapdoor);
+    const trapKey = FlashBlindIndex.trapdoorKey(trapdoor);
+    if (!fieldMap || !trapKey || !fieldMap.has(trapKey)) return new Set();
+    return fieldMap.get(trapKey);
   }
 
   /**
@@ -113,7 +119,8 @@ export class FlashIndexManager {
     let candidateSet = null;
 
     for (const token of queryTokens) {
-      const matchSet = fieldMap.get(token);
+      const trapKey = FlashBlindIndex.trapdoorKey(token);
+      const matchSet = fieldMap.get(trapKey);
       if (!matchSet || matchSet.size === 0) {
         return new Set(); // If any query ngram doesn't match, entire string won't match
       }
@@ -146,7 +153,8 @@ export class FlashIndexManager {
 
     const resultSet = new Set();
     for (const token of rangeTokens) {
-      const bucketMatches = fieldMap.get(token);
+      const trapKey = FlashBlindIndex.trapdoorKey(token);
+      const bucketMatches = fieldMap.get(trapKey);
       if (bucketMatches) {
         for (const docId of bucketMatches) {
           resultSet.add(docId);

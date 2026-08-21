@@ -58,6 +58,8 @@ import { FlashCounter } from "../engine/counter.mjs";
 import { FlashQueue } from "../engine/queue.mjs";
 import { FlashHealth } from "../core/health.mjs";
 import { FlashSnapshot } from "../tools/snapshot.mjs";
+import { FlashRecordCodec } from "./record_codec.mjs";
+import { resolveEngineOptions } from "../engine/perf_profiles.mjs";
 
 /**
  * FLASH Zero-Knowledge Client SDK (FlashClient)
@@ -75,6 +77,7 @@ export class FlashClient {
    * @param {object} [config.engineOptions] - Engine tuning: durability, memtableThreshold, useWorkerFlush
    * @param {boolean} [config.autoTimestamps=true] - Auto createdAt/updatedAt via built-in plugin
    * @param {object} [config.fieldPolicy] - Custom encryption levels per field
+   * @param {'standard'|'compact'} [config.storageProfile='standard'] - compact = minimal on-disk footprint
    */
   constructor(config = {}) {
     if (!config.secretKey) {
@@ -89,6 +92,9 @@ export class FlashClient {
     this.blindIndex = new FlashBlindIndex(this.secretKey);
     this.homomorphic = new FlashHomomorphic(this.secretKey);
     this.fieldPolicy = config.fieldPolicy || {};
+    this.storageProfile =
+      config.storageProfile === "compact" ? "compact" : "standard";
+    this._useBinaryCiphertext = this.storageProfile === "compact";
     this.uri = config.uri || config.url || null;
     this.authKey = config.authKey || null;
     this.config = config;
@@ -134,9 +140,17 @@ export class FlashClient {
       };
     } else {
       // Embedded In-Process Mode
+      const inMemory =
+        config.inMemory === true || config.storagePath === ":memory:";
+      const engineOptions = resolveEngineOptions({
+        ...(config.engineOptions || {}),
+        storageProfile: this.storageProfile,
+      });
+
       this.db = new FlashDatabase(config.dbName || "flash_db", {
-        storagePath: config.storagePath || "./data",
-        engineOptions: config.engineOptions,
+        storagePath: inMemory ? ":memory:" : config.storagePath || "./data",
+        inMemory,
+        engineOptions,
       });
     }
 
@@ -395,59 +409,123 @@ export class FlashClient {
     return `flash-aad:${recordId}:${fieldKey}`;
   }
 
+  encryptToBuffer(doc) {
+    return FlashRecordCodec.toBuffer(this, doc);
+  }
+
+  decryptFromBuffer(buf) {
+    return FlashRecordCodec.decrypt(this, buf);
+  }
+
+  decryptFieldsFromBuffer(buf, fields = []) {
+    return FlashRecordCodec.decryptFields(this, buf, fields);
+  }
+
+  decryptFieldsFromBuffer(buf, fields = []) {
+    return FlashRecordCodec.decryptFields(this, buf, fields);
+  }
+
+  _resolveFieldPolicy(fieldName) {
+    if (this.fieldPolicy[fieldName]) return this.fieldPolicy[fieldName];
+    return this.storageProfile === "compact" ? "encrypted" : "searchable";
+  }
+
+  _encryptFieldValue(value, recordId, fieldName) {
+    return this.cipher.encrypt(value, {
+      aad: this._buildAAD(recordId, fieldName),
+      binary: this._useBinaryCiphertext,
+    });
+  }
+
+  _attachBlindIndexes(blind, fieldName, value, policy) {
+    if (policy === "encrypted" || policy === "zk-secret") return;
+    if (value === null || value === undefined) return;
+
+    const compact = this.storageProfile === "compact";
+
+    if (policy === "exact" || policy === "searchable") {
+      blind.exact[fieldName] = this.blindIndex.generateTrapdoor(
+        fieldName,
+        value,
+      );
+    }
+
+    if (policy !== "searchable") return;
+
+    if (typeof value === "string" && value.length >= 2) {
+      blind.ngrams[fieldName] = compact
+        ? this.blindIndex.generateNGramTrapdoors(fieldName, value, false)
+        : this.blindIndex.generateNGramTrapdoors(fieldName, value, true);
+    }
+    if (typeof value === "number") {
+      blind.range[fieldName] = this.blindIndex.generateRangeBuckets(
+        fieldName,
+        value,
+      );
+    }
+  }
+
+  _trapdoorForQuery(fieldName, value) {
+    return this.blindIndex.generateTrapdoor(fieldName, value);
+  }
+
+  _ngramsForQuery(fieldName, text) {
+    const compact = this.storageProfile === "compact";
+    return this.blindIndex.generateNGramTrapdoors(
+      fieldName,
+      text,
+      compact ? false : false,
+    );
+  }
+
   encryptDocument(doc) {
     const recordId = doc._id ? String(doc._id) : crypto.randomUUID();
     const encryptedRecord = {
       _id: recordId,
       _enc: {},
-      _blind: {
-        exact: {},
-        ngrams: {},
-        range: {},
-      },
-      _homo: {},
       _plain: {},
+      _homo: {},
     };
+    const blind = { exact: {}, ngrams: {}, range: {} };
 
     for (const [key, value] of Object.entries(doc)) {
       if (key === "_id") continue;
 
-      const policy = this.fieldPolicy[key] || "searchable";
+      const policy = this._resolveFieldPolicy(key);
 
       if (policy === "plaintext") {
         encryptedRecord._plain[key] = value;
       } else if (policy === "counter" && typeof value === "number") {
         const h = this.homomorphic.encryptAdd(value, recordId, key);
         encryptedRecord._homo[key] = h.ciphertext;
-        encryptedRecord._enc[key] = this.cipher.encrypt(value, {
-          aad: this._buildAAD(recordId, key),
-        });
+        encryptedRecord._enc[key] = this._encryptFieldValue(
+          value,
+          recordId,
+          key,
+        );
       } else {
-        encryptedRecord._enc[key] = this.cipher.encrypt(value, {
-          aad: this._buildAAD(recordId, key),
-        });
-
-        if (value !== null && value !== undefined) {
-          encryptedRecord._blind.exact[key] = this.blindIndex.generateTrapdoor(
-            key,
-            value,
-          );
-          if (typeof value === "string" && value.length >= 2) {
-            encryptedRecord._blind.ngrams[key] =
-              this.blindIndex.generateNGramTrapdoors(key, value);
-          }
-          if (typeof value === "number") {
-            encryptedRecord._blind.range[key] =
-              this.blindIndex.generateRangeBuckets(key, value);
-          }
-        }
+        encryptedRecord._enc[key] = this._encryptFieldValue(
+          value,
+          recordId,
+          key,
+        );
+        this._attachBlindIndexes(blind, key, value, policy);
       }
     }
+
+    const hasBlind =
+      Object.keys(blind.exact).length > 0 ||
+      Object.keys(blind.ngrams).length > 0 ||
+      Object.keys(blind.range).length > 0;
+    if (hasBlind) encryptedRecord._blind = blind;
 
     return encryptedRecord;
   }
 
   decryptDocument(encryptedRecord) {
+    if (Buffer.isBuffer(encryptedRecord)) {
+      return FlashRecordCodec.decrypt(this, encryptedRecord);
+    }
     if (!encryptedRecord || !encryptedRecord._enc) return encryptedRecord;
 
     const doc = { _id: encryptedRecord._id };
@@ -498,19 +576,12 @@ export class FlashClient {
       ) {
         if (condition.$eq !== undefined) {
           envelope.$exact = envelope.$exact || {};
-          envelope.$exact[key] = this.blindIndex.generateTrapdoor(
-            key,
-            condition.$eq,
-          );
+          envelope.$exact[key] = this._trapdoorForQuery(key, condition.$eq);
         }
         if (condition.$regex !== undefined || condition.$substr !== undefined) {
           const searchStr = condition.$regex || condition.$substr;
           envelope.$ngrams = envelope.$ngrams || {};
-          envelope.$ngrams[key] = this.blindIndex.generateNGramTrapdoors(
-            key,
-            String(searchStr),
-            false,
-          );
+          envelope.$ngrams[key] = this._ngramsForQuery(key, String(searchStr));
         }
         if (
           condition.$gt !== undefined ||
@@ -539,7 +610,7 @@ export class FlashClient {
         }
       } else {
         envelope.$exact = envelope.$exact || {};
-        envelope.$exact[key] = this.blindIndex.generateTrapdoor(key, condition);
+        envelope.$exact[key] = this._trapdoorForQuery(key, condition);
       }
     }
 
@@ -558,6 +629,21 @@ export class FlashClient {
  * Client-facing Collection — encrypted CRUD, queries, aggregation, and ODM
  */
 export class FlashClientCollection {
+  /**
+   * @param {object|null|undefined} projection
+   * @returns {string[]|null}
+   */
+  static _projectionFields(projection) {
+    if (!projection) return null;
+    const isInclusive = Object.values(projection).some(
+      (v) => v === 1 || v === true,
+    );
+    if (!isInclusive) return null;
+    return Object.entries(projection)
+      .filter(([, v]) => v === 1 || v === true)
+      .map(([k]) => k);
+  }
+
   constructor(name, client) {
     this.name = name;
     this.client = client;
@@ -582,7 +668,7 @@ export class FlashClientCollection {
   async _rebuildClientIndexes() {
     const rawDocs = await this.raw.find({}, { limit: 100_000 });
     for (const raw of rawDocs) {
-      const doc = this.client.decryptDocument(raw);
+      const doc = FlashRecordCodec.decrypt(this.client, raw);
       if (doc.$vector) {
         this.vectorIndex.set(doc._id, doc.$vector);
       }
@@ -670,10 +756,7 @@ export class FlashClientCollection {
     for (const item of rankedIds) {
       let rawDoc = await this.raw._getRawDoc(item.docId);
       if (rawDoc) {
-        if (Buffer.isBuffer(rawDoc) || rawDoc instanceof Uint8Array) {
-          rawDoc = FlashBinary.deserialize(rawDoc);
-        }
-        const decrypted = this.client.decryptDocument(rawDoc);
+        const decrypted = FlashRecordCodec.decrypt(this.client, rawDoc);
         if (!filter || FlashQueryEvaluator.matches(decrypted, filter)) {
           results.push({
             ...decrypted,
@@ -691,11 +774,8 @@ export class FlashClientCollection {
     if (!this.isReady) await this.init();
     let validatedDoc = this.schema.validate(doc);
     validatedDoc =
-      (await this.client.plugins.runHook(
-        "beforeInsert",
-        validatedDoc,
-        this,
-      )) ?? validatedDoc;
+      (await this.client.plugins.runHook("beforeInsert", validatedDoc, this)) ??
+      validatedDoc;
     validatedDoc._id = validatedDoc._id
       ? String(validatedDoc._id)
       : crypto.randomUUID();
@@ -707,8 +787,8 @@ export class FlashClientCollection {
       this.vectorIndex.set(validatedDoc._id, validatedDoc.$vector);
     }
 
-    const encrypted = this.client.encryptDocument(validatedDoc);
-    const res = await this.raw.insertOne(encrypted);
+    const recordBuf = this.client.encryptToBuffer(validatedDoc);
+    const res = await this.raw.insertOne(recordBuf);
 
     // Index in secondary & text search indexes
     this.indexManager.indexDocument(validatedDoc);
@@ -733,10 +813,10 @@ export class FlashClientCollection {
       return validated;
     });
 
-    const encryptedDocs = validatedDocs.map((doc) =>
-      this.client.encryptDocument(doc),
+    const recordBuffers = validatedDocs.map((doc) =>
+      this.client.encryptToBuffer(doc),
     );
-    const res = await this.raw.insertMany(encryptedDocs);
+    const res = await this.raw.insertMany(recordBuffers);
 
     for (let i = 0; i < validatedDocs.length; i++) {
       const validated = validatedDocs[i];
@@ -750,7 +830,7 @@ export class FlashClientCollection {
       this._publishEvent("insert", validated);
     }
 
-    this.raw._schedulePersistIndexes();
+    this.raw._schedulePersistIndexes?.();
     return res;
   }
 
@@ -768,6 +848,14 @@ export class FlashClientCollection {
     if (!this.isReady) await this.init();
 
     const stats = options.executionStats || options.stats || null;
+
+    const projectionFields = FlashClientCollection._projectionFields(
+      options.projection,
+    );
+    const decryptRecord = (r) =>
+      projectionFields
+        ? FlashRecordCodec.decryptFields(this.client, r, projectionFields)
+        : FlashRecordCodec.decrypt(this.client, r);
 
     const equalityFields = {};
     for (const [k, v] of Object.entries(query)) {
@@ -787,9 +875,7 @@ export class FlashClientCollection {
           { $ids: compoundIds.map(String) },
           { ...options, stats },
         );
-        const decryptedDocs = rawResults.map((r) =>
-          this.client.decryptDocument(r),
-        );
+        const decryptedDocs = rawResults.map(decryptRecord);
         return decryptedDocs.filter((doc) =>
           FlashQueryEvaluator.matches(doc, query),
         );
@@ -810,9 +896,7 @@ export class FlashClientCollection {
           { $ids: ids.map(String) },
           { ...options, stats },
         );
-        const decryptedDocs = rawResults.map((r) =>
-          this.client.decryptDocument(r),
-        );
+        const decryptedDocs = rawResults.map(decryptRecord);
         return decryptedDocs.filter((doc) =>
           FlashQueryEvaluator.matches(doc, query),
         );
@@ -828,7 +912,7 @@ export class FlashClientCollection {
     }
     const rawResults = await this.raw.find(envelope, { ...options, stats });
 
-    const decryptedDocs = rawResults.map((r) => this.client.decryptDocument(r));
+    const decryptedDocs = rawResults.map(decryptRecord);
     const filteredDocs = decryptedDocs.filter((doc) =>
       FlashQueryEvaluator.matches(doc, query),
     );
@@ -894,8 +978,8 @@ export class FlashClientCollection {
         this,
         existing,
       )) ?? validated;
-    const encrypted = this.client.encryptDocument(validated);
-    await this.raw.insertOne(encrypted);
+    const recordBuf = this.client.encryptToBuffer(validated);
+    await this.raw.insertOne(recordBuf);
 
     this.indexManager.unindexDocument(existing);
     this.indexManager.indexDocument(validated);
@@ -1200,10 +1284,13 @@ class RemoteCollectionDriver {
     );
     if (!res.ok) throw new Error(`Remote FlashServer error: ${res.statusText}`);
     const data = await res.json();
-    return data.records || [];
+    return (data.records || []).map((r) => FlashRecordCodec.decodeFromWire(r));
   }
 
-  async insertOne(encryptedRecord) {
+  async insertOne(recordBufOrObj) {
+    const encryptedRecord = Buffer.isBuffer(recordBufOrObj)
+      ? FlashRecordCodec.encodeForWire(recordBufOrObj)
+      : recordBufOrObj;
     const res = await fetch(
       `${this.baseUrl}/api/v1/insert/${encodeURIComponent(this.name)}`,
       {
@@ -1215,6 +1302,26 @@ class RemoteCollectionDriver {
     if (!res.ok) throw new Error(`Remote FlashServer error: ${res.statusText}`);
     const data = await res.json();
     return data.result;
+  }
+
+  async insertMany(recordBufs = []) {
+    if (recordBufs.length === 0) {
+      return { insertedCount: 0, insertedIds: [] };
+    }
+    const encryptedRecords = recordBufs.map((buf) =>
+      FlashRecordCodec.encodeForWire(buf),
+    );
+    const res = await fetch(
+      `${this.baseUrl}/api/v1/insertMany/${encodeURIComponent(this.name)}`,
+      {
+        method: "POST",
+        headers: this._getHeaders(),
+        body: JSON.stringify({ encryptedRecords }),
+      },
+    );
+    if (!res.ok) throw new Error(`Remote FlashServer error: ${res.statusText}`);
+    const data = await res.json();
+    return data.result || { insertedCount: 0, insertedIds: [] };
   }
 
   async deleteOne(filter) {

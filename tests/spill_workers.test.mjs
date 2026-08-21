@@ -5,6 +5,7 @@ import path from "node:path";
 import os from "node:os";
 import { FlashClient } from "../src/client/flash_client.mjs";
 import { FlashCollection } from "../src/core/collection.mjs";
+import { FlashBinary } from "../src/binary/flash_binary.mjs";
 import { FlashWorkerPool } from "../src/engine/worker_pool.mjs";
 import { mergeSSTableFiles } from "../src/engine/compaction_merge.mjs";
 import {
@@ -136,9 +137,9 @@ test("FlashCollection - background worker compaction scheduling", async () => {
     );
     assert.ok(files.length >= 4);
 
-    await new Promise((r) => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, 200));
 
-    const stillValid = await col.findOne({ _id: "m0" });
+    const stillValid = FlashBinary.decodeRecord(await col.findOne({ _id: "m0" }));
     assert.ok(stillValid);
   } finally {
     await col.close();

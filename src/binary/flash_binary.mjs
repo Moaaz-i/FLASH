@@ -222,6 +222,17 @@ export class FlashBinary {
     return result;
   }
 
+  /** @param {Buffer|object} record */
+  static decodeRecord(record) {
+    if (Buffer.isBuffer(record)) return FlashBinary.deserialize(record);
+    return record;
+  }
+
+  /** @param {Array<Buffer|object>} records */
+  static decodeRecords(records) {
+    return records.map((r) => FlashBinary.decodeRecord(r));
+  }
+
   static _readValue(buffer, type, offset, len) {
     switch (type) {
       case FLASH_TYPE.NULL:

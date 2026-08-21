@@ -2,6 +2,8 @@
  * FLASH Multi-Database Federation Engine (FlashFederation)
  * Virtual collections spanning multiple heterogeneous or remote database clusters with scatter-gather queries.
  */
+import { FlashBinary } from "../binary/flash_binary.mjs";
+
 export class FlashFederation {
   constructor() {
     // dbName -> FlashDatabase
@@ -32,7 +34,9 @@ export class FlashFederation {
         try {
           const col = db.collection(collectionName);
           await col.init();
-          const docs = await col.find(queryEnvelope, options);
+          const docs = FlashBinary.decodeRecords(
+            await col.find(queryEnvelope, options),
+          );
           return docs.map(d => ({ ...d, _federationSource: name }));
         } catch {
           return [];

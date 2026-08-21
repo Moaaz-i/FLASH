@@ -37,6 +37,45 @@ export class FlashBlindIndex {
   }
 
   /**
+   * 32-byte trapdoor digest (compact storage — ~50% smaller than hex on disk).
+   * @param {string} fieldName
+   * @param {*} value
+   * @returns {Buffer}
+   */
+  generateTrapdoorBytes(fieldName, value) {
+    if (value === null || value === undefined) return null;
+    const normalized = String(value).trim().toLowerCase();
+    return crypto
+      .createHmac('sha256', this.key)
+      .update(`exact:${fieldName}:${normalized}`)
+      .digest();
+  }
+
+  /**
+   * Normalize trapdoor token for index map keys (hex legacy or base64 binary).
+   * @param {string|Buffer|null|undefined} token
+   * @returns {string|null}
+   */
+  static trapdoorKey(token) {
+    if (token == null) return null;
+    if (Buffer.isBuffer(token)) return token.toString('base64');
+    return String(token);
+  }
+
+  /**
+   * Coerce legacy hex or Buffer trapdoor to 32-byte Buffer.
+   * @param {string|Buffer} token
+   * @returns {Buffer}
+   */
+  static trapdoorBytes(token) {
+    if (Buffer.isBuffer(token)) return token;
+    if (typeof token === 'string' && /^[0-9a-f]{64}$/i.test(token)) {
+      return Buffer.from(token, 'hex');
+    }
+    return Buffer.from(String(token), 'utf-8');
+  }
+
+  /**
    * Generates N-Gram trapdoors for encrypted substring / regex matching ($regex, $substr)
    * With honey padding option to hide text length distribution
    * @param {string} fieldName
@@ -75,6 +114,56 @@ export class FlashBlindIndex {
     }
 
     return Array.from(tokens);
+  }
+
+  /**
+   * Compact n-gram trapdoors as 32-byte buffers (no honey padding when disabled).
+   * @param {string} fieldName
+   * @param {string} text
+   * @param {boolean} [addHoneyPadding=false]
+   * @returns {Buffer[]}
+   */
+  generateNGramTrapdoorsBytes(fieldName, text, addHoneyPadding = false) {
+    if (!text || typeof text !== 'string') return [];
+    const normalized = text.toLowerCase();
+    const tokenBufs = [];
+    const seen = new Set();
+
+    const pushToken = (buf) => {
+      const key = buf.toString('base64');
+      if (seen.has(key)) return;
+      seen.add(key);
+      tokenBufs.push(buf);
+    };
+
+    if (normalized.length < this.ngramSize) {
+      const single = this.generateTrapdoorBytes(fieldName, normalized);
+      if (single) pushToken(single);
+    } else {
+      for (let i = 0; i <= normalized.length - this.ngramSize; i++) {
+        const sub = normalized.slice(i, i + this.ngramSize);
+        pushToken(
+          crypto
+            .createHmac('sha256', this.key)
+            .update(`ngram:${fieldName}:${sub}`)
+            .digest(),
+        );
+      }
+    }
+
+    if (addHoneyPadding) {
+      const paddingCount = Math.max(1, 4 - (tokenBufs.length % 4));
+      for (let p = 0; p < paddingCount; p++) {
+        pushToken(
+          crypto
+            .createHmac('sha256', this.key)
+            .update(`honey:${fieldName}:${tokenBufs.length}:${p}`)
+            .digest(),
+        );
+      }
+    }
+
+    return tokenBufs;
   }
 
   /**

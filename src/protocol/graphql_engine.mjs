@@ -2,6 +2,8 @@
  * FLASH Zero-Knowledge GraphQL Engine (FlashGraphQL)
  * Lightweight schema generator and query executor over encrypted collections.
  */
+import { FlashBinary } from "../binary/flash_binary.mjs";
+
 export class FlashGraphQL {
   /**
    * @param {import('../core/database.mjs').FlashDatabase} db
@@ -26,7 +28,9 @@ export class FlashGraphQL {
       const options = {};
       if (req.limit) options.limit = req.limit;
 
-      const docs = await col.find(req.filter || {}, options);
+      const docs = FlashBinary.decodeRecords(
+        await col.find(req.filter || {}, options),
+      );
 
       // Project fields
       data[req.alias || req.collection] = docs.map(doc => {

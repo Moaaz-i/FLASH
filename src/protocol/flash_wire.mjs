@@ -1,6 +1,7 @@
 import net from "node:net";
 import crypto from "node:crypto";
 import { FlashBSON } from "./bson.mjs";
+import { FlashBinary } from "../binary/flash_binary.mjs";
 
 const OP_MSG = 2013;
 const OP_COMPRESSED = 2012;
@@ -155,7 +156,7 @@ export class FlashWireServer {
       const col = this.db.collection(cmd.count);
       await col.init();
       const filter = cmd.query || {};
-      const docs = await col.find({});
+      const docs = FlashBinary.decodeRecords(await col.find({}));
       const matched = docs.filter((d) => this._matchesFilter(d, filter));
       return { ok: 1, n: matched.length };
     }
@@ -187,7 +188,7 @@ export class FlashWireServer {
     if (cmd.aggregate !== undefined) {
       const col = this.db.collection(cmd.aggregate);
       await col.init();
-      let docs = await col.find({});
+      let docs = FlashBinary.decodeRecords(await col.find({}));
       for (const stage of cmd.pipeline || []) {
         if (stage.$match) {
           docs = docs.filter((d) => this._matchesFilter(d, stage.$match));
@@ -247,7 +248,7 @@ export class FlashWireServer {
     const filter = cmd.filter || {};
     const limit = cmd.limit ?? 101;
     const skip = cmd.skip ?? 0;
-    const docs = await col.find({});
+    const docs = FlashBinary.decodeRecords(await col.find({}));
     let matched = docs.filter((d) => this._matchesFilter(d, filter));
     matched = matched.slice(skip, skip + limit);
 
@@ -314,7 +315,7 @@ export class FlashWireServer {
   }
 
   async _findOneDoc(col, filter) {
-    const docs = await col.find({});
+    const docs = FlashBinary.decodeRecords(await col.find({}));
     return docs.find((d) => this._matchesFilter(d, filter)) || null;
   }
 

@@ -10,6 +10,7 @@ import {
   FlashLLMAdapter,
   FlashAIDatabase,
   FlashVectorIndex,
+  FlashBinary,
 } from '../src/index.mjs';
 
 test('Superpowers - Vector Quantization SQ8 & 1-Bit Binary (32x RAM Savings)', () => {
@@ -222,7 +223,9 @@ test('Superpowers - End-to-End FlashAIDatabase RAG with Vector Quantization & Ze
     assert.strictEqual(history[0].content, 'Is my data encrypted?');
 
     // Verify raw database record is ciphertext, not plaintext
-    const rawDoc = await aiDb.sessionCollection.findOne({ _id: 'session_007' });
+    const rawDoc = FlashBinary.decodeRecord(
+      await aiDb.sessionCollection.findOne({ _id: 'session_007' }),
+    );
     assert.ok(rawDoc.encryptedPayload && !rawDoc.encryptedPayload.includes('Zero-Knowledge'));
 
     // Verify memory statistics

@@ -4,7 +4,7 @@
 
 It is **not** a generic document store with encryption added later. Every layer — storage (`.farc`, `FlashBinary`), indexing (blind trapdoors, ORE), and query — assumes the engine never sees plaintext.
 
-> New here? Read [Positioning](/guide/positioning) and [Why Server-Blind AI Storage](/guide/why-server-blind-ai).
+> New here? Read [Positioning](/guide/positioning), [Release Notes](/guide/release-notes), and [Why Server-Blind AI Storage](/guide/why-server-blind-ai).
 
 ---
 

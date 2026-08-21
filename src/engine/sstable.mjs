@@ -141,7 +141,10 @@ export class FlashSSTable {
     const flushBlock = async () => {
       if (blockChunks.length === 0) return;
       const blockData = Buffer.concat(blockChunks);
-      const compressed = await FlashCompressor.compressBlock(blockData);
+      const compressed = await FlashCompressor.compressBlock(
+        blockData,
+        options.compressionLevel ?? 1,
+      );
       v2Meta.push({
         compOffset,
         compLen: compressed.length,

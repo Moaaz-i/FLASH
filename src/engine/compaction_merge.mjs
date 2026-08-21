@@ -21,8 +21,7 @@ export async function mergeSSTableFiles(dir, filePaths, targetLevel) {
 
       let isDeleted = false;
       try {
-        const doc = FlashBinary.deserialize(valBuf);
-        isDeleted = doc._deleted === true;
+        isDeleted = FlashBinary.getField(valBuf, "_deleted") === true;
       } catch {
         try {
           const parsed = JSON.parse(valBuf.toString("utf8"));

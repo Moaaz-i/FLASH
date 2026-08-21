@@ -13,6 +13,7 @@ import {
   FlashReplicationClient,
   FlashTxLog,
   FlashBSON,
+  FlashBinary,
 } from "../src/index.mjs";
 
 function getFreePort() {
@@ -178,7 +179,7 @@ test("Tx recovery: replay prepared transactions after crash", async () => {
 
   const col = db.collection("accounts");
   await col.init();
-  const doc = await col.findOne({ _id: "acc-1" });
+  const doc = FlashBinary.decodeRecord(await col.findOne({ _id: "acc-1" }));
   assert.equal(doc.balance, 500);
 
   await db.close();

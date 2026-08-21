@@ -18,6 +18,9 @@ import {
   DEFAULT_DURABILITY,
   L0_COMPACT_TRIGGER,
 } from "../engine/perf_defaults.mjs";
+import { MemoryArc } from "../storage/memory_arc.mjs";
+import { MemoryOplog } from "../storage/memory_oplog.mjs";
+import { MemorySSTable } from "../storage/memory_sstable.mjs";
 import { logger } from "./logger.mjs";
 
 /**
@@ -34,15 +37,26 @@ export class FlashCollection {
     this.indexManager = new FlashIndexManager();
     this.secondaryIndexManager = options.secondaryIndexManager || null;
     const durability = options.durability ?? DEFAULT_DURABILITY;
+    this.inMemory = options.inMemory === true;
+    this.disableMerkle = options.disableMerkle === true;
+    this.skipIndexPersist =
+      options.skipIndexPersist === true || this.inMemory;
     this.deferMerkleOnWrite = options.deferMerkleOnWrite !== false;
     this._lastMerkleRoot = "";
-    this.arc = new FlashArc(path.join(this.storageDir, "commit.farc"), {
-      durability,
-    });
-    this.wal = this.arc;
-    this.oplog = new FlashOplog(path.join(this.storageDir, "oplog.flog"), {
-      durability,
-    });
+
+    if (this.inMemory) {
+      this.arc = new MemoryArc();
+      this.wal = this.arc;
+      this.oplog = new MemoryOplog();
+    } else {
+      this.arc = new FlashArc(path.join(this.storageDir, "commit.farc"), {
+        durability,
+      });
+      this.wal = this.arc;
+      this.oplog = new FlashOplog(path.join(this.storageDir, "oplog.flog"), {
+        durability,
+      });
+    }
     this.mvcc = options.mvcc || new FlashMVCC();
     this.sstables = [];
     this.merkleTree = null;
@@ -54,6 +68,7 @@ export class FlashCollection {
     this._activeTxId = null;
     this._compacting = false;
     this.useWorkerFlush = options.useWorkerFlush !== false;
+    this.compressionLevel = options.compressionLevel ?? 1;
     this.workerPool = options.workerPool || FlashWorkerPool.getDefault();
   }
 
@@ -74,6 +89,7 @@ export class FlashCollection {
   }
 
   _schedulePersistIndexes() {
+    if (this.skipIndexPersist) return;
     if (this._persistTimer) return;
     this._persistTimer = setTimeout(async () => {
       this._persistTimer = null;
@@ -96,21 +112,24 @@ export class FlashCollection {
     if (this.isReady) return;
     logger.info("FlashCollection", "initializing", { collection: this.name });
 
-    if (!fs.existsSync(this.storageDir)) {
-      fs.mkdirSync(this.storageDir, { recursive: true });
-    }
-
-    const persistedIds = await FlashIndexPersistence.load(this.storageDir, {
-      indexManager: this.indexManager,
-      secondaryManager: this.secondaryIndexManager,
-    });
-    if (persistedIds) {
-      for (const id of persistedIds) {
-        this._trackDocId(id);
+    if (!this.inMemory) {
+      if (!fs.existsSync(this.storageDir)) {
+        fs.mkdirSync(this.storageDir, { recursive: true });
       }
+
+      const persistedIds = await FlashIndexPersistence.load(this.storageDir, {
+        indexManager: this.indexManager,
+        secondaryManager: this.secondaryIndexManager,
+      });
+      if (persistedIds) {
+        for (const id of persistedIds) {
+          this._trackDocId(id);
+        }
+      }
+
+      await this._loadExistingSSTables();
     }
 
-    await this._loadExistingSSTables();
     await this.oplog.open();
 
     let replayed = 0;
@@ -119,8 +138,8 @@ export class FlashCollection {
       if (opCode === ARC_OP.INSERT || opCode === ARC_OP.UPDATE) {
         this.memtable.set(key, dataBuf);
         try {
-          const doc = FlashBinary.deserialize(dataBuf);
-          if (doc._blind) this.indexManager.indexDocument(key, doc._blind);
+          const blind = FlashBinary.getField(dataBuf, "_blind");
+          if (blind) this.indexManager.indexDocument(key, blind);
           this._trackDocId(key);
           replayed++;
         } catch {}
@@ -187,6 +206,7 @@ export class FlashCollection {
   }
 
   async _rebuildMerkleTree() {
+    if (this.disableMerkle) return;
     const leafHashes = [];
     for (const id of this.docOrder) {
       const raw = await this._getRawDoc(id);
@@ -232,21 +252,35 @@ export class FlashCollection {
     return FlashInvariants.verify(this);
   }
 
-  async insertOne(doc, options = {}) {
+  async insertOne(docOrBuf, options = {}) {
     if (!this.isReady) await this.init();
 
-    if (!doc._id) {
-      doc._id = crypto.randomUUID();
-    }
+    let binaryBuf;
+    let docId;
 
-    const docId = String(doc._id);
-    const binaryBuf = FlashBinary.serialize(doc);
+    if (Buffer.isBuffer(docOrBuf)) {
+      binaryBuf = docOrBuf;
+      docId = FlashBinary.getField(binaryBuf, "_id");
+      if (docId == null) {
+        throw new Error("Buffer record must include _id before insert");
+      }
+      docId = String(docId);
+    } else {
+      if (!docOrBuf._id) {
+        docOrBuf._id = crypto.randomUUID();
+      }
+      docId = String(docOrBuf._id);
+      binaryBuf = FlashBinary.serialize(docOrBuf);
+    }
 
     await this.wal.append(WAL_OP.INSERT, docId, binaryBuf);
     this.memtable.set(docId, binaryBuf, binaryBuf.length);
 
-    if (doc._blind) {
-      this.indexManager.indexDocument(docId, doc._blind);
+    const blind = Buffer.isBuffer(docOrBuf)
+      ? FlashBinary.getField(binaryBuf, "_blind")
+      : docOrBuf._blind;
+    if (blind) {
+      this.indexManager.indexDocument(docId, blind);
     }
 
     this._trackDocId(docId);
@@ -264,7 +298,9 @@ export class FlashCollection {
 
     return {
       insertedId: docId,
-      merkleRoot: await this._getMerkleRootAccurate(),
+      merkleRoot: this.disableMerkle
+        ? ""
+        : await this._getMerkleRootAccurate(),
     };
   }
 
@@ -276,20 +312,34 @@ export class FlashCollection {
     const prepared = [];
     const oplogEntries = [];
 
-    for (const doc of docs) {
-      if (!doc._id) doc._id = crypto.randomUUID();
-      const docId = String(doc._id);
-      const binaryBuf = FlashBinary.serialize(doc);
+    for (const docOrBuf of docs) {
+      let docId;
+      let binaryBuf;
+
+      if (Buffer.isBuffer(docOrBuf)) {
+        binaryBuf = docOrBuf;
+        docId = FlashBinary.getField(binaryBuf, "_id");
+        if (docId == null) {
+          throw new Error("Buffer record must include _id before insertMany");
+        }
+        docId = String(docId);
+      } else {
+        if (!docOrBuf._id) docOrBuf._id = crypto.randomUUID();
+        docId = String(docOrBuf._id);
+        binaryBuf = FlashBinary.serialize(docOrBuf);
+      }
+
       walOps.push({ opCode: WAL_OP.INSERT, key: docId, data: binaryBuf });
-      prepared.push({ docId, binaryBuf, doc });
+      prepared.push({ docId, binaryBuf });
     }
 
     await this.wal.appendBatch(walOps);
 
     const insertedIds = [];
-    for (const { docId, binaryBuf, doc } of prepared) {
+    for (const { docId, binaryBuf } of prepared) {
       this.memtable.set(docId, binaryBuf, binaryBuf.length);
-      if (doc._blind) this.indexManager.indexDocument(docId, doc._blind);
+      const blind = FlashBinary.getField(binaryBuf, "_blind");
+      if (blind) this.indexManager.indexDocument(docId, blind);
       this._trackDocId(docId);
       insertedIds.push(docId);
       if (!options.skipOplog) {
@@ -321,25 +371,35 @@ export class FlashCollection {
     if (entries.length === 0) return null;
 
     const t0 = Date.now();
-    const timestamp = Date.now();
-    const sstPath = path.join(
-      this.storageDir,
-      `sstable_L0_${timestamp}_${this.sstables.length + 1}.sst`,
-    );
 
     let sstable;
-    if (this.useWorkerFlush && entries.length >= 512) {
-      await this.workerPool.runFlush(sstPath, entries, 0);
-      sstable = new FlashSSTable(sstPath, 0);
-      await sstable.load();
+    if (this.inMemory) {
+      sstable = MemorySSTable.fromEntries(entries, 0);
     } else {
-      sstable = await FlashSSTable.write(sstPath, entries, { level: 0 });
+      const timestamp = Date.now();
+      const sstPath = path.join(
+        this.storageDir,
+        `sstable_L0_${timestamp}_${this.sstables.length + 1}.sst`,
+      );
+
+      if (this.useWorkerFlush && entries.length >= 512) {
+        await this.workerPool.runFlush(sstPath, entries, 0);
+        sstable = new FlashSSTable(sstPath, 0);
+        await sstable.load();
+      } else {
+        sstable = await FlashSSTable.write(sstPath, entries, {
+          level: 0,
+          compressionLevel: this.compressionLevel,
+        });
+      }
     }
     this.sstables.unshift(sstable);
 
     this.memtable.clear();
     await this.wal.truncate();
-    await this._schedulePersistIndexesImmediate();
+    if (!this.skipIndexPersist) {
+      await this._schedulePersistIndexesImmediate();
+    }
 
     logger.info("FlashCollection", "flush completed", {
       collection: this.name,
@@ -348,17 +408,16 @@ export class FlashCollection {
       durationMs: Date.now() - t0,
     });
 
-    if (this.deferMerkleOnWrite) {
-      await this._rebuildMerkleTree();
-      this._lastMerkleRoot = this.merkleTree ? this.merkleTree.getRoot() : "";
-      this.isMerkleDirty = false;
-    } else {
+    if (!this.disableMerkle) {
       await this._rebuildMerkleTree();
       this._lastMerkleRoot = this.merkleTree ? this.merkleTree.getRoot() : "";
       this.isMerkleDirty = false;
     }
 
-    if (this._countSSTablesAtLevel(0) >= L0_COMPACT_TRIGGER) {
+    if (
+      !this.inMemory &&
+      this._countSSTablesAtLevel(0) >= L0_COMPACT_TRIGGER
+    ) {
       this._scheduleBackgroundCompact();
     }
 
@@ -366,7 +425,7 @@ export class FlashCollection {
   }
 
   _scheduleBackgroundCompact() {
-    if (this._compacting) return;
+    if (this.inMemory || this._compacting) return;
     this._compacting = true;
 
     setImmediate(async () => {
@@ -422,6 +481,7 @@ export class FlashCollection {
   }
 
   async _schedulePersistIndexesImmediate() {
+    if (this.skipIndexPersist) return;
     if (this._persistTimer) {
       clearTimeout(this._persistTimer);
       this._persistTimer = null;
@@ -450,6 +510,7 @@ export class FlashCollection {
   }
 
   getMerkleRoot() {
+    if (this.disableMerkle) return "";
     if (this.merkleTree && !this.isMerkleDirty) {
       return this.merkleTree.getRoot();
     }
@@ -475,6 +536,7 @@ export class FlashCollection {
   }
 
   async _getMerkleRootAccurate() {
+    if (this.disableMerkle) return "";
     const allInMem = this.docOrder.every((id) => {
       const v = this.memtable.get(id);
       return v && !v._tombstone;
@@ -580,7 +642,7 @@ export class FlashCollection {
         stats.keysExamined = 1;
         stats.docsExamined = buf ? 1 : 0;
       }
-      return buf ? [FlashBinary.deserialize(buf)] : [];
+      return buf ? [buf] : [];
     }
 
     if (queryEnvelope.$exact) {
@@ -660,17 +722,18 @@ export class FlashCollection {
         if (stats) stats.docsExamined++;
         const buf = await this._getRawDoc(id);
         if (!buf) continue;
-        const doc = FlashBinary.deserialize(buf);
-        let matchesAll = !!doc._plain;
-        if (doc._plain) {
+        const plain = FlashBinary.getField(buf, "_plain");
+        let matchesAll = !!plain;
+        if (plain) {
           for (const [pk, pv] of Object.entries(queryEnvelope.$plain)) {
-            if (doc._plain[pk] !== pv) {
+            if (plain[pk] !== pv) {
               matchesAll = false;
               break;
             }
           }
         }
-        if (matchesAll) plainMatches.add(String(doc._id));
+        const recordId = FlashBinary.getField(buf, "_id") ?? id;
+        if (matchesAll) plainMatches.add(String(recordId));
       }
       candidateIds =
         candidateIds === null
@@ -702,7 +765,7 @@ export class FlashCollection {
         skipped++;
         continue;
       }
-      results.push(FlashBinary.deserialize(buf));
+      results.push(buf);
       if (results.length >= limit) break;
     }
 
@@ -716,10 +779,10 @@ export class FlashCollection {
   }
 
   async deleteOne(queryEnvelope) {
-    const doc = await this.findOne(queryEnvelope);
-    if (!doc) return { deletedCount: 0 };
+    const buf = await this.findOne(queryEnvelope);
+    if (!buf) return { deletedCount: 0 };
 
-    const docId = String(doc._id);
+    const docId = String(FlashBinary.getField(buf, "_id") ?? queryEnvelope._id);
     await this.wal.append(WAL_OP.DELETE, docId, Buffer.alloc(0));
     this.memtable.delete(docId);
     this.indexManager.removeDocument(docId);
@@ -769,7 +832,16 @@ export class FlashCollection {
       clearTimeout(this._persistTimer);
       this._persistTimer = null;
     }
-    await this._schedulePersistIndexesImmediate();
+    if (this._compacting) {
+      this._compacting = false;
+    }
+    if (!this.skipIndexPersist) {
+      try {
+        await this._schedulePersistIndexesImmediate();
+      } catch {
+        // best effort on shutdown
+      }
+    }
     for (const sst of this.sstables) {
       await sst.close();
     }

@@ -77,9 +77,9 @@ export class FlashCompressor {
    * @param {Buffer} data
    * @returns {Promise<Buffer>}
    */
-  static async compressBlock(data) {
+  static async compressBlock(data, level = 1) {
     return new Promise((resolve, reject) => {
-      zlib.deflateRaw(data, { level: 1 }, (err, result) => {
+      zlib.deflateRaw(data, { level }, (err, result) => {
         if (err) reject(err);
         else resolve(result);
       });

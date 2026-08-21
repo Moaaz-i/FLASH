@@ -18,7 +18,8 @@ import {
   FlashETL,
   FlashDatabase,
   FlashCollection,
-  FlashClient
+  FlashClient,
+  FlashBinary,
 } from '../src/index.mjs';
 
 test('Enterprise Feature 1: FlashHNSWIndex - Fast O(log N) Graph Vector Search', async () => {
@@ -170,7 +171,7 @@ test('Enterprise Feature 5: FlashCompactor - LSM-Tree SSTable Merge & Tombstone 
   assert.equal(filesAfter.length, 1); // Consolidated into 1 level-1 SSTable!
 
   // Check active surviving records
-  const m1 = await col.findOne({ _id: 'm1' });
+  const m1 = FlashBinary.decodeRecord(await col.findOne({ _id: 'm1' }));
   assert.ok(m1);
 });
 

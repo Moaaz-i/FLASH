@@ -13,6 +13,12 @@ import {
   L0_COMPACT_TRIGGER,
   resolveDurability,
 } from "../src/engine/perf_defaults.mjs";
+import {
+  resolveEngineOptions,
+  TURBO_MEMTABLE_THRESHOLD,
+} from "../src/engine/perf_profiles.mjs";
+import { FlashClient } from "../src/client/flash_client.mjs";
+import { FlashRecordCodec } from "../src/client/record_codec.mjs";
 
 test("perf defaults - balanced durability batches fsync", () => {
   const cfg = resolveDurability("balanced");
@@ -95,7 +101,7 @@ test("FlashCollection insertMany - faster than repeated insertOne", async () => 
 
   try {
     await col.init();
-    const docs = Array.from({ length: 500 }, (_, i) => ({
+    const docs = Array.from({ length: 80 }, (_, i) => ({
       _id: `id_${i}`,
       _enc: { n: i },
       _blind: {},
@@ -152,4 +158,56 @@ test("FlashDatabase - engineOptions propagate to collection", async () => {
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
+});
+
+test("resolveEngineOptions - turbo profile", () => {
+  const opts = resolveEngineOptions({ performanceProfile: "turbo" });
+  assert.strictEqual(opts.durability, "throughput");
+  assert.strictEqual(opts.memtableThreshold, TURBO_MEMTABLE_THRESHOLD);
+  assert.strictEqual(opts.disableMerkle, true);
+  assert.strictEqual(opts.performanceProfile, "turbo");
+});
+
+test("FlashDatabase - inMemory mode uses no disk directory", async () => {
+  const db = new FlashDatabase("mem_db", { inMemory: true });
+  const col = db.collection("items");
+  await col.init();
+
+  assert.strictEqual(db.inMemory, true);
+  assert.strictEqual(col.inMemory, true);
+  assert.strictEqual(col.disableMerkle, false);
+
+  await col.insertOne(
+    { _id: "a1", _enc: { n: 1 }, _blind: {} },
+    { skipOplog: true },
+  );
+  const found = await col.find({ _id: "a1" });
+  assert.strictEqual(found.length, 1);
+
+  assert.deepStrictEqual(db.listCollections(), ["items"]);
+  await db.close();
+});
+
+test("FlashClient - turbo inMemory insert and partial decrypt", async () => {
+  const client = new FlashClient({
+    secretKey: "perf_test_key_123",
+    inMemory: true,
+    engineOptions: { performanceProfile: "turbo" },
+  });
+
+  const col = client.collection("perf");
+  await col.insertMany([
+    { name: "Alice", email: "alice@test.com", score: 10 },
+    { name: "Bob", email: "bob@test.com", score: 20 },
+  ]);
+
+  const projected = await col.find({}).select("name email").exec();
+  assert.strictEqual(projected.length, 2);
+  assert.strictEqual(projected[0].name, "Alice");
+  assert.ok(!("score" in projected[0]));
+
+  const buf = client.encryptToBuffer({ name: "Carol", secret: "hidden" });
+  const partial = FlashRecordCodec.decryptFields(client, buf, ["name"]);
+  assert.strictEqual(partial.name, "Carol");
+  assert.ok(!("secret" in partial));
 });

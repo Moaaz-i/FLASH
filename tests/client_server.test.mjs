@@ -59,6 +59,17 @@ test('Client-Server Mode - Remote FlashClient connecting over network URI to Fla
     const remaining = await users.find({});
     assert.equal(remaining.length, 0);
 
+    // 7. Batch insertMany over network
+    const batchRes = await users.insertMany([
+      { name: 'Ada Lovelace', email: 'ada@math.io', role: 'pioneer' },
+      { name: 'Grace Hopper', email: 'grace@navy.mil', role: 'pioneer' },
+    ]);
+    assert.equal(batchRes.insertedCount, 2);
+    assert.equal(batchRes.insertedIds.length, 2);
+
+    const pioneers = await users.find({ role: 'pioneer' });
+    assert.equal(pioneers.length, 2);
+
   } finally {
     if (server) {
       await new Promise(resolve => server.close(resolve));

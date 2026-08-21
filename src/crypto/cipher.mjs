@@ -41,7 +41,8 @@ export class FlashCipher {
    * @param {string|Buffer|object} data
    * @param {object} [options]
    * @param {string|Buffer} [options.aad] - Additional Authenticated Data to bind to this ciphertext
-   * @returns {string} Base64 encoded payload
+   * @param {boolean} [options.binary=false] - Return raw packed Buffer instead of base64
+   * @returns {string|Buffer} Base64 encoded payload or raw Buffer when binary=true
    */
   encrypt(data, options = {}) {
     let plaintext;
@@ -72,22 +73,24 @@ export class FlashCipher {
     if (options.aad) {
       // v2 payload: [MAGIC (4) | IV (12) | TAG (16) | CIPHERTEXT]
       const packed = Buffer.concat([AAD_MAGIC, iv, tag, encrypted]);
-      return packed.toString('base64');
+      return options.binary ? packed : packed.toString('base64');
     }
 
     // Legacy v1 payload (no AAD): [IV (12) | TAG (16) | CIPHERTEXT]
     const packed = Buffer.concat([iv, tag, encrypted]);
-    return packed.toString('base64');
+    return options.binary ? packed : packed.toString('base64');
   }
 
   /**
-   * Decrypts an AES-256-GCM base64 payload (v1 legacy or v2 AAD-bound).
-   * @param {string} payloadBase64
-   * @param {boolean|object} [asJsonOrOptions=false] - Legacy: pass `true` for JSON. New: `{ asJson, aad }`.
+   * @param {string|Buffer} payload
+   * @param {boolean|object} [asJsonOrOptions=false]
    * @returns {string|object}
    */
-  decrypt(payloadBase64, asJsonOrOptions = false) {
-    if (!payloadBase64 || typeof payloadBase64 !== 'string') return payloadBase64;
+  decrypt(payload, asJsonOrOptions = false) {
+    if (Buffer.isBuffer(payload)) {
+      return this._decryptBuffer(payload, asJsonOrOptions);
+    }
+    if (!payload || typeof payload !== 'string') return payload;
 
     // Backward-compat: support legacy `decrypt(payload, true)` signature
     let asJson = false;
@@ -99,7 +102,25 @@ export class FlashCipher {
       aad = asJsonOrOptions.aad || null;
     }
     
-    const buffer = Buffer.from(payloadBase64, 'base64');
+    const buffer = Buffer.from(payload, 'base64');
+    return this._decryptBuffer(buffer, asJsonOrOptions);
+  }
+
+  /**
+   * @param {Buffer} buffer
+   * @param {boolean|object} asJsonOrOptions
+   * @returns {string|object}
+   */
+  _decryptBuffer(buffer, asJsonOrOptions = false) {
+    let asJson = false;
+    let aad = null;
+    if (typeof asJsonOrOptions === "boolean") {
+      asJson = asJsonOrOptions;
+    } else if (asJsonOrOptions && typeof asJsonOrOptions === "object") {
+      asJson = asJsonOrOptions.asJson === true;
+      aad = asJsonOrOptions.aad || null;
+    }
+
     const hasAADHeader =
       buffer.length > 4 &&
       buffer[0] === AAD_MAGIC[0] &&

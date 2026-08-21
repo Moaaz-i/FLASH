@@ -62,3 +62,27 @@ FLASH is built for a threat model most databases ignore: **the server itself is 
 | **Server compromise**   | Full plaintext exposure                        | **Zero-knowledge** — root on the host yields only opaque blobs              |
 | **Query execution**     | Server evaluates filters on plaintext          | Server matches **blind trapdoors** and ORE tokens                           |
 | **Decryption boundary** | Server holds keys                              | **Client-only** — master key never leaves your application                  |
+
+---
+
+## 4. Wire record format _(v1.3.2+)_
+
+REST query/insert payloads use **FlashBinary buffers**, not plaintext JSON documents:
+
+```json
+{
+  "encryptedRecord": {
+    "_flashRecord": "RkxEQk...base64..."
+  }
+}
+```
+
+The `FlashClient` SDK handles encode/decode automatically when you use `uri`. Custom HTTP clients should use `FlashRecordCodec.encodeForWire()` / `decodeFromWire()`.
+
+**Notes:**
+
+- `insertMany` over remote mode currently loops single inserts
+- Server `/api/v1/query` returns `{ records: [{ _flashRecord: "..." }] }`
+- Decryption always happens on the **client**
+
+See [Buffer Pipeline](/guide/buffer-pipeline) and [Release Notes](/guide/release-notes).

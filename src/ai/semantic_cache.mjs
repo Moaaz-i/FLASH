@@ -1,5 +1,6 @@
 import { FlashHNSWIndex } from '../vector/hnsw_index.mjs';
 import { FlashQuantizer } from '../vector/quantizer.mjs';
+import { FlashBinary } from '../binary/flash_binary.mjs';
 
 /**
  * FLASH Multi-Tier Semantic LLM Response Cache (FlashSemanticCache)
@@ -86,7 +87,7 @@ export class FlashSemanticCache {
     // Search L2 Persistent Collection if configured
     if (this.l2Collection && promptText) {
       try {
-        const allDocs = await this.l2Collection.find({});
+        const allDocs = FlashBinary.decodeRecords(await this.l2Collection.find({}));
         const l2Doc = allDocs.find((d) => d.prompt === promptText);
         if (l2Doc) {
           const createdAtTime = l2Doc.createdAt ? new Date(l2Doc.createdAt).getTime() : Date.now();

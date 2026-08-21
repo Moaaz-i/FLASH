@@ -12,23 +12,37 @@
 export interface FlashEngineOptions {
   /** @default 'balanced' */
   durability?: "strict" | "balanced" | "throughput";
+  /** Preset tuning: turbo = max throughput, strict = max durability. @default 'balanced' */
+  performanceProfile?: "strict" | "balanced" | "turbo";
   /** Memtable flush threshold in bytes. @default 4194304 (4 MB) */
   memtableThreshold?: number;
   /** Use worker thread for large SSTable flushes. @default true */
   useWorkerFlush?: boolean;
   /** Defer Merkle rebuild on bulk write paths. @default true */
   deferMerkleOnWrite?: boolean;
+  /** Skip Merkle tree entirely (turbo default). @default false */
+  disableMerkle?: boolean;
+  /** Skip persisting index metadata to disk. @default false */
+  skipIndexPersist?: boolean;
+  /** SSTable deflate level 1–9. @default 1 (6 when storageProfile is compact) */
+  compressionLevel?: number;
+  /** Passed from client storageProfile — affects SSTable compression default */
+  storageProfile?: "standard" | "compact";
 }
 
 export interface FlashClientOptions {
   secretKey: string | Buffer;
   dbName?: string;
   storagePath?: string;
+  /** Pure in-memory engine — no filesystem I/O. Also enabled when storagePath is ':memory:' */
+  inMemory?: boolean;
   uri?: string;
   authKey?: string;
   pqcHardened?: boolean;
   autoTimestamps?: boolean;
   fieldPolicy?: Record<string, FieldPolicyType>;
+  /** `compact` minimizes disk: binary ciphertext, optional blind index, deflate L6 */
+  storageProfile?: "standard" | "compact";
   engineOptions?: FlashEngineOptions;
 }
 
@@ -68,10 +82,14 @@ export interface FlashPlugin {
     collection: FlashClientCollection,
     previous?: Record<string, unknown>,
   ) => Record<string, unknown> | Promise<Record<string, unknown>>;
+  afterUpdate?: (
+    doc: Record<string, unknown>,
+    collection: FlashClientCollection,
+  ) => void | Promise<void>;
 }
 
 export type FieldPolicyType =
-  "searchable" | "counter" | "plaintext" | "zk-secret";
+  "searchable" | "exact" | "encrypted" | "counter" | "plaintext" | "zk-secret";
 
 export interface QueryOptions {
   limit?: number;
@@ -224,6 +242,12 @@ export interface FLASH_TYPE {
 export interface FlashBinaryInterface {
   serialize(doc: Record<string, unknown>): Buffer;
   deserialize(buffer: Buffer): Record<string, unknown>;
+  decodeRecord(
+    record: Buffer | Record<string, unknown>,
+  ): Record<string, unknown>;
+  decodeRecords(
+    records: Array<Buffer | Record<string, unknown>>,
+  ): Record<string, unknown>[];
   getField(
     buffer: Buffer,
     targetKey: string,
@@ -296,6 +320,8 @@ export interface FlashLoggerInterface {
 
 export interface CipherEncryptOptions {
   aad?: string | Buffer;
+  /** Return raw packed Buffer instead of base64. @default false */
+  binary?: boolean;
 }
 
 export interface CipherDecryptOptions {
@@ -309,9 +335,11 @@ export class FlashCipher {
   encrypt(
     data: string | Buffer | Record<string, unknown>,
     options?: CipherEncryptOptions,
-  ): string;
-  decrypt(payloadBase64: string, options?: CipherDecryptOptions): string;
-  decrypt(payloadBase64: string, asJson: boolean): string;
+  ): string | Buffer;
+  decrypt(
+    payload: string | Buffer,
+    asJsonOrOptions?: boolean | CipherDecryptOptions,
+  ): string | Record<string, unknown>;
   encryptDeterministic(plaintext: string, domainKey?: Buffer): string;
 }
 
@@ -336,11 +364,22 @@ export class FlashBlindIndex {
     fieldName: string,
     value: string | number | boolean | null,
   ): string | null;
+  generateTrapdoorBytes(
+    fieldName: string,
+    value: string | number | boolean | null,
+  ): Buffer | null;
+  static trapdoorKey(token: string | Buffer | null | undefined): string | null;
+  static trapdoorBytes(token: string | Buffer): Buffer;
   generateNGramTrapdoors(
     fieldName: string,
     text: string,
     addHoneyPadding?: boolean,
   ): string[];
+  generateNGramTrapdoorsBytes(
+    fieldName: string,
+    text: string,
+    addHoneyPadding?: boolean,
+  ): Buffer[];
   generateRangeBuckets(
     fieldName: string,
     value: number | Date,
@@ -464,7 +503,7 @@ export class FlashBloomFilter {
 }
 
 export class FlashCompressor {
-  static compressBlock(data: Buffer): Promise<Buffer>;
+  static compressBlock(data: Buffer, level?: number): Promise<Buffer>;
   static decompressBlock(data: Buffer): Promise<Buffer>;
 }
 
@@ -530,6 +569,7 @@ export class FlashSSTable {
   static write(
     filePath: string,
     sortedEntries: MemTableEntry[],
+    options?: { level?: number; compressionLevel?: number },
   ): Promise<FlashSSTable>;
   constructor(filePath: string);
   load(): Promise<void>;
@@ -540,18 +580,20 @@ export class FlashSSTable {
 // Engine: FlashIndexManager
 // ============================================================================
 
+export type TrapdoorToken = string | Buffer;
+
 export interface BlindPayload {
-  exact?: Record<string, string>;
-  ngrams?: Record<string, string[]>;
+  exact?: Record<string, TrapdoorToken>;
+  ngrams?: Record<string, TrapdoorToken[]>;
   range?: Record<string, RangeBucketResult>;
 }
 
 export class FlashIndexManager {
   indexDocument(docId: string, blindPayload: BlindPayload): void;
   removeDocument(docId: string): void;
-  findExact(field: string, trapdoor: string): Set<string>;
-  findNGrams(field: string, queryTokens: string[]): Set<string>;
-  findRangeBuckets(field: string, rangeTokens: string[]): Set<string>;
+  findExact(field: string, trapdoor: TrapdoorToken): Set<string>;
+  findNGrams(field: string, queryTokens: TrapdoorToken[]): Set<string>;
+  findRangeBuckets(field: string, rangeTokens: TrapdoorToken[]): Set<string>;
 }
 
 // ============================================================================
@@ -1011,6 +1053,16 @@ export class FlashSnapshot {
 // Client: FlashQuery (Fluent)
 // ============================================================================
 
+export interface FlashQueryWhereBuilder<T = Record<string, unknown>> {
+  equals(value: unknown): FlashQuery<T>;
+  gt(value: unknown): FlashQuery<T>;
+  lt(value: unknown): FlashQuery<T>;
+  gte(value: unknown): FlashQuery<T>;
+  lte(value: unknown): FlashQuery<T>;
+  in(values: unknown[]): FlashQuery<T>;
+  regex(pattern: string): FlashQuery<T>;
+}
+
 export class FlashQuery<T = Record<string, unknown>> implements PromiseLike<
   T[]
 > {
@@ -1018,15 +1070,7 @@ export class FlashQuery<T = Record<string, unknown>> implements PromiseLike<
   limit(n: number): this;
   skip(n: number): this;
   select(fields: string | Record<string, 0 | 1>): this;
-  where(field: string): {
-    equals(value: unknown): this;
-    gt(value: unknown): this;
-    lt(value: unknown): this;
-    gte(value: unknown): this;
-    lte(value: unknown): this;
-    in(values: unknown[]): this;
-    regex(pattern: string): this;
-  };
+  where(field: string): FlashQueryWhereBuilder<T>;
   lean(): this;
   explain(): Promise<ExplainResult>;
   stream(): AsyncIterable<T>;
@@ -1400,11 +1444,39 @@ export class FlashReplicaSet {
 }
 
 // ============================================================================
+// Client: Record codec (default buffer pipeline)
+// ============================================================================
+
+export class FlashRecordCodec {
+  static toBuffer(client: FlashClient, doc: Record<string, unknown>): Buffer;
+  static extractId(bufOrObj: Buffer | Record<string, unknown>): string | null;
+  static extractBlind(buf: Buffer): Record<string, unknown> | null;
+  static extractPlain(buf: Buffer): Record<string, unknown> | null;
+  static toEncryptedEnvelope(
+    buf: Buffer,
+    client?: FlashClient,
+  ): EncryptedDocument;
+  static decrypt(
+    client: FlashClient,
+    bufOrObj: Buffer | Record<string, unknown>,
+  ): Record<string, unknown>;
+  static decryptFields(
+    client: FlashClient,
+    bufOrObj: Buffer | Record<string, unknown>,
+    fields: string[],
+  ): Record<string, unknown>;
+  static ensureBuffer(docOrBuf: Buffer | Record<string, unknown>): Buffer;
+  static encodeForWire(buf: Buffer): { _flashRecord: string };
+  static decodeFromWire(payload: Buffer | Record<string, unknown>): Buffer;
+}
+
+// ============================================================================
 // Client: FlashClient
 // ============================================================================
 
 export class FlashClient {
   readonly secretKey: string | Buffer;
+  readonly storageProfile: "standard" | "compact";
   constructor(config: FlashClientOptions);
   collection<T extends Record<string, unknown> = Record<string, unknown>>(
     name: string,
@@ -1477,7 +1549,15 @@ export class FlashClient {
   snapshot(): FlashSnapshot;
   listCollections(): Promise<string[]>;
   encryptDocument(doc: Record<string, unknown>): EncryptedDocument;
-  decryptDocument(encryptedRecord: EncryptedDocument): Record<string, unknown>;
+  encryptToBuffer(doc: Record<string, unknown>): Buffer;
+  decryptDocument(
+    encryptedRecord: EncryptedDocument | Buffer,
+  ): Record<string, unknown>;
+  decryptFromBuffer(buf: Buffer): Record<string, unknown>;
+  decryptFieldsFromBuffer(
+    buf: Buffer,
+    fields: string[],
+  ): Record<string, unknown>;
   buildQueryEnvelope(query?: Record<string, unknown>): QueryEnvelope;
   close(): Promise<void>;
 }
@@ -1488,18 +1568,20 @@ export class FlashClient {
 
 export interface EncryptedDocument {
   _id: string;
-  _enc: Record<string, string>;
-  _blind: BlindPayload;
-  _homo: Record<string, string>;
-  _plain: Record<string, unknown>;
+  _enc: Record<string, string | Buffer>;
+  _blind?: BlindPayload;
+  _homo?: Record<string, string>;
+  _plain?: Record<string, unknown>;
 }
 
 export interface QueryEnvelope {
   _id?: string;
-  $exact?: Record<string, string>;
-  $ngrams?: Record<string, string[]>;
-  $range?: Record<string, string[] | RangeBucketResult>;
+  $exact?: Record<string, TrapdoorToken>;
+  $ngrams?: Record<string, TrapdoorToken[]>;
+  $range?: Record<string, TrapdoorToken[] | RangeBucketResult>;
   $plain?: Record<string, unknown>;
+  $ids?: string[];
+  $secondary?: Record<string, unknown>;
 }
 
 // ============================================================================
@@ -1509,6 +1591,9 @@ export interface QueryEnvelope {
 export class FlashCollection {
   readonly name: string;
   readonly storageDir: string;
+  readonly inMemory: boolean;
+  readonly disableMerkle: boolean;
+  readonly compressionLevel: number;
   readonly memtable: FlashMemTable;
   readonly sstables: FlashSSTable[];
   readonly arc: FlashArc;
@@ -1517,15 +1602,19 @@ export class FlashCollection {
   readonly docOrder: string[];
   isReady: boolean;
   init(): Promise<void>;
-  insertOne(doc: Record<string, unknown>): Promise<InsertResult>;
-  insertMany(docs: Array<Record<string, unknown>>): Promise<InsertManyResult>;
+  insertOne(
+    docOrBuf: Record<string, unknown> | Buffer,
+    options?: { skipOplog?: boolean },
+  ): Promise<InsertResult>;
+  insertMany(
+    docs: Array<Record<string, unknown> | Buffer>,
+    options?: { skipOplog?: boolean },
+  ): Promise<InsertManyResult>;
   find(
     queryEnvelope?: QueryEnvelope,
     options?: QueryOptions,
-  ): Promise<Array<Record<string, unknown>>>;
-  findOne(
-    queryEnvelope?: QueryEnvelope,
-  ): Promise<Record<string, unknown> | null>;
+  ): Promise<Buffer[]>;
+  findOne(queryEnvelope?: QueryEnvelope): Promise<Buffer | null>;
   deleteOne(queryEnvelope?: QueryEnvelope): Promise<DeleteResult>;
   flush(): Promise<FlashSSTable | null>;
   compact(): Promise<CompactionResult>;
@@ -1537,7 +1626,15 @@ export class FlashCollection {
   getMerkleProofAsync(
     docId: string,
   ): Promise<{ index: number; proof: string[]; root: string } | null>;
-  verifyRecordIntegrity(docId: string): MerkleProofResult;
+  verifyRecordIntegrity(docId: string): Promise<MerkleProofResult>;
+  verifyRecordIntegrityAsync(docId: string): Promise<MerkleProofResult>;
+  applyRawInsert(
+    docId: string,
+    binaryBuf: Buffer,
+    blindPayload?: Record<string, unknown> | null,
+    options?: { skipOplog?: boolean },
+  ): Promise<void>;
+  _getRawDoc(docId: string): Promise<Buffer | null>;
 }
 
 // ============================================================================
@@ -1547,8 +1644,17 @@ export class FlashCollection {
 export class FlashDatabase {
   readonly dbName: string;
   readonly storagePath: string;
+  readonly inMemory: boolean;
+  readonly engineOptions: FlashEngineOptions;
   readonly collections: Map<string, FlashCollection>;
-  constructor(name?: string, options?: { storagePath?: string });
+  constructor(
+    name?: string,
+    options?: {
+      storagePath?: string;
+      inMemory?: boolean;
+      engineOptions?: FlashEngineOptions;
+    },
+  );
   collection(name: string): FlashCollection;
   listCollections(): string[];
   dropCollection(name: string): Promise<void>;
@@ -1565,6 +1671,7 @@ export interface FlashServerOptions {
   storagePath?: string;
   authKey?: string;
   dbName?: string;
+  engineOptions?: FlashEngineOptions;
 }
 
 export class FlashServer {
@@ -1576,7 +1683,7 @@ export class FlashServer {
 // ============================================================================
 
 export type MetricOp =
-  "insert" | "find" | "update" | "delete" | "flush" | "compact";
+  "insert" | "insertMany" | "find" | "update" | "delete" | "flush" | "compact";
 
 export class FlashMetrics {
   constructor(options?: { latencyBuckets?: number[] });
@@ -2455,4 +2562,47 @@ export class FlashEnhancedPubSub {
   getTopics(): string[];
   getSubscriberCount(topic: string): number;
   destroy(): void;
+}
+
+// ============================================================================
+// Performance profiles & compact storage (v1.3.2+)
+// ============================================================================
+
+export const TURBO_MEMTABLE_THRESHOLD: number;
+
+export function resolveEngineOptions(
+  userOptions?: FlashEngineOptions,
+): FlashEngineOptions;
+
+export class FlashStorageCompact {
+  static flattenRecord(record: EncryptedDocument): Record<string, unknown>;
+  static expandRecord(flat: Record<string, unknown>): EncryptedDocument;
+}
+
+export class MemoryArc {
+  open(): Promise<void>;
+  sync(): Promise<void>;
+  append(opCode: number, key: string, data: Buffer): Promise<void>;
+  appendBatch(
+    operations: Array<{ opCode: number; key: string; data: Buffer }>,
+  ): Promise<void>;
+  truncate(): Promise<void>;
+  close(): Promise<void>;
+}
+
+export class MemoryOplog {
+  open(): Promise<void>;
+  append(): Promise<void>;
+  appendBatch(entries?: unknown[]): Promise<void>;
+  close(): Promise<void>;
+}
+
+export class MemorySSTable {
+  readonly level: number;
+  readonly filePath: string;
+  readonly indexMap: Map<string, FlashSSTableMeta>;
+  static fromEntries(entries: MemTableEntry[], level?: number): MemorySSTable;
+  load(): Promise<void>;
+  close(): Promise<void>;
+  get(key: string): Promise<Buffer | null>;
 }

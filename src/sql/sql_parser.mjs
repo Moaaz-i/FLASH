@@ -2,6 +2,8 @@
  * FLASH Zero-Knowledge SQL Query Parser & Execution Engine (FlashSQL)
  * Converts standard SQL queries into encrypted document queries and ORE comparisons.
  */
+import { FlashBinary } from "../binary/flash_binary.mjs";
+
 export class FlashSQL {
   /**
    * Parses and executes a standard SQL query against a FlashDatabase or collection
@@ -19,7 +21,7 @@ export class FlashSQL {
     await col.init();
 
     // Query collection
-    let records = await col.find({});
+    let records = FlashBinary.decodeRecords(await col.find({}));
 
     // Filter WHERE
     if (parsed.where.length > 0) {

@@ -2,6 +2,7 @@ import http from 'node:http';
 import { FlashDatabase } from '../core/database.mjs';
 import { FlashMetrics } from './metrics.mjs';
 import { logger } from '../core/logger.mjs';
+import { FlashRecordCodec } from '../client/record_codec.mjs';
 
 /**
  * FLASH Standalone Server Daemon (FlashServer)
@@ -49,8 +50,9 @@ export class FlashServer {
     const storagePath = options.storagePath || './flash_server_data';
     const dbName = options.dbName || 'flash_server_db';
     const authKey = options.authKey || null;
+    const engineOptions = options.engineOptions || {};
 
-    const db = new FlashDatabase(dbName, { storagePath });
+    const db = new FlashDatabase(dbName, { storagePath, engineOptions });
     const metrics = new FlashMetrics();
 
     const server = http.createServer(async (req, res) => {
@@ -127,11 +129,14 @@ export class FlashServer {
           const col = db.collection(colName);
           await col.init();
           const records = await col.find(envelope || {}, options || {});
+          const wireRecords = records.map((r) =>
+            Buffer.isBuffer(r) ? FlashRecordCodec.encodeForWire(r) : r,
+          );
           const durationMs = Date.now() - startOpTime;
           metrics.recordOp('find', durationMs);
           logger.info('FlashServer', 'find completed', { collection: colName, durationMs });
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({ records }));
+          return res.end(JSON.stringify({ records: wireRecords }));
         } catch (err) {
           metrics.recordError('find');
           logger.error('FlashServer', 'find failed', { collection: colName, error: err.message });
@@ -147,7 +152,8 @@ export class FlashServer {
           const { encryptedRecord } = await readBody();
           const col = db.collection(colName);
           await col.init();
-          const result = await col.insertOne(encryptedRecord);
+          const recordBuf = FlashRecordCodec.decodeFromWire(encryptedRecord);
+          const result = await col.insertOne(recordBuf);
           const durationMs = Date.now() - startOpTime;
           metrics.recordOp('insert', durationMs);
           logger.info('FlashServer', 'insert completed', { collection: colName, durationMs });
@@ -156,6 +162,34 @@ export class FlashServer {
         } catch (err) {
           metrics.recordError('insert');
           logger.error('FlashServer', 'insert failed', { collection: colName, error: err.message });
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ error: err.message }));
+        }
+      }
+
+      // Execute Raw Encrypted Batch Insert
+      if (url.pathname.startsWith('/api/v1/insertMany/') && req.method === 'POST') {
+        const colName = decodeURIComponent(url.pathname.replace('/api/v1/insertMany/', ''));
+        try {
+          const { encryptedRecords } = await readBody();
+          const col = db.collection(colName);
+          await col.init();
+          const recordBufs = (encryptedRecords || []).map((r) =>
+            FlashRecordCodec.decodeFromWire(r),
+          );
+          const result = await col.insertMany(recordBufs);
+          const durationMs = Date.now() - startOpTime;
+          metrics.recordOp('insertMany', durationMs);
+          logger.info('FlashServer', 'insertMany completed', {
+            collection: colName,
+            count: result.insertedCount,
+            durationMs,
+          });
+          res.writeHead(201, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ success: true, result }));
+        } catch (err) {
+          metrics.recordError('insertMany');
+          logger.error('FlashServer', 'insertMany failed', { collection: colName, error: err.message });
           res.writeHead(500, { 'Content-Type': 'application/json' });
           return res.end(JSON.stringify({ error: err.message }));
         }
