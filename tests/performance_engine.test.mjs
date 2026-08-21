@@ -92,7 +92,7 @@ test("FlashOplog appendBatch - batches durability sync", async () => {
   }
 });
 
-test("FlashCollection insertMany - faster than repeated insertOne", async () => {
+test("FlashCollection insertMany - batches WAL writes (single appendBatch)", async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flash-perf-col-"));
   const col = new FlashCollection("bench", tmpDir, {
     durability: "balanced",
@@ -107,28 +107,35 @@ test("FlashCollection insertMany - faster than repeated insertOne", async () => 
       _blind: {},
     }));
 
-    const t0 = Date.now();
-    for (const doc of docs) {
-      await col.insertOne(doc, { skipOplog: true });
-    }
-    const singleMs = Date.now() - t0;
+    let appendCalls = 0;
+    let batchCalls = 0;
+    const origAppend = col.wal.append.bind(col.wal);
+    const origBatch = col.wal.appendBatch.bind(col.wal);
+    col.wal.append = async (...args) => {
+      appendCalls += 1;
+      return origAppend(...args);
+    };
+    col.wal.appendBatch = async (...args) => {
+      batchCalls += 1;
+      return origBatch(...args);
+    };
 
-    const col2 = new FlashCollection("bench2", tmpDir, {
-      durability: "balanced",
-      deferMerkleOnWrite: true,
-    });
-    await col2.init();
+    const res = await col.insertMany(docs, { skipOplog: true });
+    assert.equal(res.insertedCount, 80);
+    assert.equal(batchCalls, 1, "insertMany must use one WAL appendBatch");
+    assert.equal(appendCalls, 0, "insertMany must not call WAL append per row");
 
-    const t1 = Date.now();
-    await col2.insertMany(docs.map((d) => ({ ...d, _id: d._id + "_b" })), {
-      skipOplog: true,
-    });
-    const batchMs = Date.now() - t1;
+    let singleAppendCalls = 0;
+    col.wal.append = async (...args) => {
+      singleAppendCalls += 1;
+      return origAppend(...args);
+    };
 
-    assert.ok(
-      batchMs <= singleMs,
-      `insertMany (${batchMs}ms) should beat loop insertOne (${singleMs}ms)`,
+    await col.insertOne(
+      { _id: "solo", _enc: { n: 99 }, _blind: {} },
+      { skipOplog: true },
     );
+    assert.equal(singleAppendCalls, 1, "insertOne uses WAL append once");
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
