@@ -7,7 +7,7 @@ TCP binary protocol with BSON payloads for remote FLASH clients. Default port: *
 ## Server
 
 ```javascript
-import { FlashDatabase, FlashWireServer } from '@moaaz-yahia-zakaria/flash-db';
+import { FlashDatabase, FlashWireServer } from 'flash-db';
 
 const db = new FlashDatabase('wire_db', { storagePath: './data' });
 const server = new FlashWireServer(db, {
@@ -38,7 +38,7 @@ await server.start();
 ## Client
 
 ```javascript
-import { FlashWireClient } from '@moaaz-yahia-zakaria/flash-db';
+import { FlashWireClient } from 'flash-db';
 
 const client = new FlashWireClient('127.0.0.1', 6744);
 const hello = await client.command({ flashHello: 1, $db: 'admin' });
@@ -56,7 +56,7 @@ const found = await client.command({
 Combined HTTP (`6742`) + wire (`6744`) edge daemon:
 
 ```javascript
-import { FlashEdgeNode } from '@moaaz-yahia-zakaria/flash-db';
+import { FlashEdgeNode } from 'flash-db';
 
 const edge = new FlashEdgeNode({
   storagePath: './edge_data',

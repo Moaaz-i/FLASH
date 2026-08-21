@@ -6,10 +6,10 @@
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-3178c6.svg)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/Tests-146%2F146%20Passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-155%2F155%20Passing-brightgreen.svg)]()
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![Docs](https://img.shields.io/badge/Docs-VitePress-blue.svg)](https://moaaz-i.github.io/FLASH/)
-[![npm](https://img.shields.io/badge/npm-%40moaaz--yahia--zakaria%2Fflash--db-red.svg)](https://www.npmjs.com/package/@moaaz-yahia-zakaria/flash-db)
+[![npm version](https://img.shields.io/npm/v/flash-db.svg)](https://www.npmjs.com/package/flash-db)
 
 _The server never sees your keys, your queries, or your plaintext. Built for private AI, local-first apps, and encrypted intelligence._
 
@@ -72,7 +72,7 @@ _The server never sees your keys, your queries, or your plaintext. Built for pri
 ## 📦 Installation
 
 ```bash
-npm install @moaaz-yahia-zakaria/flash-db
+npm install flash-db
 ```
 
 ---
@@ -80,7 +80,7 @@ npm install @moaaz-yahia-zakaria/flash-db
 ## ⚡ Quick Start
 
 ```typescript
-import { FlashClient } from "@moaaz-yahia-zakaria/flash-db";
+import { FlashClient } from "flash-db";
 
 // 1. Initialize Client with Master Secret Key
 const client = new FlashClient({

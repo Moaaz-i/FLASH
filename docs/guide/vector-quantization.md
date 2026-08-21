@@ -22,7 +22,7 @@ Storing high-dimensional AI vectors (e.g. OpenAI 1536-dim or BERT 768-dim) as ra
 Scalar Quantization (SQ8) compresses 32-bit floating point values (4 bytes) into 8-bit integers (1 byte), retaining **> 99% accuracy** while reducing RAM footprint by **75%**.
 
 ```javascript
-import { FlashQuantizer } from '@moaaz-yahia-zakaria/flash-db';
+import { FlashQuantizer } from 'flash-db';
 
 const floatVector = new Float32Array([0.85, -0.42, 0.91, -0.15, 0.05, 0.77, -0.88, 0.33]);
 
@@ -46,7 +46,7 @@ Packs vector sign bits directly into unsigned 32-bit integers (`Uint32Array`).
 Distances are computed in single-cycle CPU instructions using bitwise **`XOR`** and **`POPCNT`**:
 
 ```javascript
-import { FlashQuantizer } from '@moaaz-yahia-zakaria/flash-db';
+import { FlashQuantizer } from 'flash-db';
 
 // 1. Quantize vectors to 1-Bit Binary Bitmasks
 const binA = FlashQuantizer.quantizeBinary(vectorA);
@@ -67,7 +67,7 @@ console.log(`Binary Cosine Match: ${cosineSim.toFixed(4)}`);
 You can enable quantization seamlessly with zero configuration:
 
 ```javascript
-import { FlashAIDatabase } from '@moaaz-yahia-zakaria/flash-db';
+import { FlashAIDatabase } from 'flash-db';
 
 const aiDb = new FlashAIDatabase({
   name: 'enterprise_rag_vault',

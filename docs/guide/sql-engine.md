@@ -16,7 +16,7 @@
 ## Example Usage
 
 ```javascript
-import { FlashDatabase, FlashSQL } from '@moaaz-yahia-zakaria/flash-db';
+import { FlashDatabase, FlashSQL } from 'flash-db';
 
 const db = new FlashDatabase('ecommerce', { storagePath: './data' });
 const customers = db.collection('customers');

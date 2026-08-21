@@ -28,14 +28,14 @@ FLASH is an **encrypted intelligence database** — server-blind by architecture
 | `FlashEdgeNode` | HTTP + FLASH wire edge daemon |
 | `FlashAuditStream` | Change stream + tamper-proof audit chain |
 
-All modules are available from `FlashClient` or direct imports from `@moaaz-yahia-zakaria/flash-db`.
+All modules are available from `FlashClient` or direct imports from `flash-db`.
 
 ---
 
 ## Quick Start
 
 ```javascript
-import { FlashClient } from '@moaaz-yahia-zakaria/flash-db';
+import { FlashClient } from 'flash-db';
 
 const client = new FlashClient({
   secretKey: 'your-master-key',

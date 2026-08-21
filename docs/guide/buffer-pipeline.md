@@ -27,7 +27,7 @@ Benefits:
 ### Write path
 
 ```javascript
-import { FlashClient } from "@moaaz-yahia-zakaria/flash-db";
+import { FlashClient } from "flash-db";
 
 const client = new FlashClient({ secretKey: "key", storagePath: "./data" });
 const col = client.collection("users");
@@ -61,7 +61,7 @@ if (raw) {
 Exported from the main package for tools, replication, and custom storage layers.
 
 ```javascript
-import { FlashClient, FlashRecordCodec, FlashBinary } from "@moaaz-yahia-zakaria/flash-db";
+import { FlashClient, FlashRecordCodec, FlashBinary } from "flash-db";
 
 const client = new FlashClient({ secretKey: "key" });
 
@@ -94,7 +94,7 @@ const restored = FlashRecordCodec.decodeFromWire(wire);
 For **engine-level** code (SQL engine, Wire protocol, ETL, federation):
 
 ```javascript
-import { FlashBinary } from "@moaaz-yahia-zakaria/flash-db";
+import { FlashBinary } from "flash-db";
 
 const col = db.collection("items"); // FlashCollection (low-level)
 const buffers = await col.find({});

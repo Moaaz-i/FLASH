@@ -7,7 +7,7 @@ FLASH DB enables building real-time collaboration apps, chat systems, and reacti
 ## Subscribing to Collection Events
 
 ```javascript
-import { FlashClient } from '@moaaz-yahia-zakaria/flash-db';
+import { FlashClient } from 'flash-db';
 
 const client = new FlashClient({ secretKey: 'chat_secret_key' });
 const messages = client.collection('messages');

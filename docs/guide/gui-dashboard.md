@@ -9,7 +9,7 @@ FLASH DB ships **FLASH Intelligence Console** — a local web UI for encrypted i
 ## Launch
 
 ```javascript
-import { FlashClient } from "@moaaz-yahia-zakaria/flash-db";
+import { FlashClient } from "flash-db";
 
 const client = new FlashClient({
   secretKey: "master_passphrase",

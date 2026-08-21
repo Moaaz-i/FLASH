@@ -2,7 +2,13 @@
 
 What changed in recent FLASH releases and how to adopt it in your apps.
 
-**Current version:** `1.3.2` · **Tests:** 146/146
+**Current version:** `1.0.0` · **Tests:** 155/155
+
+---
+
+## v1.0.0 — npm package `flash-db`
+
+Official npm name is **`flash-db`**. Install with `npm install flash-db` and import from `'flash-db'`.
 
 ---
 
@@ -169,7 +175,7 @@ See [Positioning & Identity](/guide/positioning).
 ### Recommended client setup (2026)
 
 ```javascript
-import { FlashClient } from "@moaaz-yahia-zakaria/flash-db";
+import { FlashClient } from "flash-db";
 
 const client = new FlashClient({
   secretKey: process.env.FLASH_SECRET_KEY,

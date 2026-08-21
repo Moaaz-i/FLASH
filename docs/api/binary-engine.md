@@ -12,7 +12,7 @@ Serializes a JavaScript object into a packed binary buffer with an embedded offs
 - **Returns:** `Buffer`
 
 ```javascript
-import { FlashBinary } from '@moaaz-yahia-zakaria/flash-db';
+import { FlashBinary } from 'flash-db';
 
 const buffer = FlashBinary.serialize({
   username: 'hyper_user',

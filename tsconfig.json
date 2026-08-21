@@ -10,7 +10,7 @@
     "verbatimModuleSyntax": true,
     "types": ["node"],
     "paths": {
-      "@moaaz-yahia-zakaria/flash-db": ["./src/index.d.ts"]
+      "flash-db": ["./src/index.d.ts"]
     }
   },
   "include": ["tests/types/**/*.ts"]

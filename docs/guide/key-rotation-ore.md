@@ -16,7 +16,7 @@ Ciphertexts include their version envelope: `flash:v<version>:<iv>:<authTag>:<ci
 * **Batch Migration**: Seamlessly re-encrypt millions of documents in background batches.
 
 ```javascript
-import { FlashKeyRotationManager } from '@moaaz-yahia-zakaria/flash-db';
+import { FlashKeyRotationManager } from 'flash-db';
 
 const keyManager = new FlashKeyRotationManager('master_quantum_secret_2026');
 
@@ -55,7 +55,7 @@ if (keyManager.needsReEncryption(v1Cipher)) {
 3. The server never learns the plaintext numbers, account balances, or timestamps!
 
 ```javascript
-import { FlashORE } from '@moaaz-yahia-zakaria/flash-db';
+import { FlashORE } from 'flash-db';
 
 const ore = new FlashORE('secret_field_prf_key');
 

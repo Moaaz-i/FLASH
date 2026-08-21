@@ -7,7 +7,7 @@ The `FlashClientCollection` class provides a fluent document DB interface for ex
 ## Getting a Collection
 
 ```javascript
-import { FlashClient } from '@moaaz-yahia-zakaria/flash-db';
+import { FlashClient } from 'flash-db';
 
 const client = new FlashClient({ secretKey: 'master-key' });
 

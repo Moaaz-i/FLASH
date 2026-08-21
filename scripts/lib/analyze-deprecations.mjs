@@ -207,9 +207,12 @@ export function analyzeDeprecations({
   pkgName,
   recommended,
   releaseNotesPath = join(REPO_ROOT, "docs/guide/release-notes.md"),
+  publishedVersions = null,
 }) {
-  const published = fetchPublishedVersions(pkgName);
-  const latest = fetchLatestVersion(pkgName) || recommended;
+  const published = publishedVersions ?? fetchPublishedVersions(pkgName);
+  const latest =
+    (publishedVersions ? maxSemver(publishedVersions) : fetchLatestVersion(pkgName)) ||
+    recommended;
   const notes = parseReleaseNotes(releaseNotesPath);
   const candidates = new Map();
 

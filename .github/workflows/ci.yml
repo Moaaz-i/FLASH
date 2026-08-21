@@ -112,7 +112,7 @@ jobs:
       - name: Check npm registry
         id: npm
         run: |
-          PKG="@moaaz-yahia-zakaria/flash-db"
+          PKG=$(node -pe "require('./package.json').name")
           VERSION="${{ steps.pkg.outputs.version }}"
           if npm view "${PKG}@${VERSION}" version >/dev/null 2>&1; then
             echo "published=true" >> "$GITHUB_OUTPUT"
