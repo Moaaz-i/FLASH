@@ -8,7 +8,7 @@ Pure Node.js WebSocket server — no external dependencies.
 
 ```javascript
 import http from 'node:http';
-import { FlashWebSocketServer } from '@moaaz-i/flash-db';
+import { FlashWebSocketServer } from 'flash-zk';
 
 const server = http.createServer();
 const wss = new FlashWebSocketServer(server, { path: '/ws' });
@@ -92,7 +92,7 @@ ws.onmessage = (event) => {
 Track who's online, offline, or in a specific state.
 
 ```javascript
-import { FlashPresence } from '@moaaz-i/flash-db';
+import { FlashPresence } from 'flash-zk';
 
 const presence = new FlashPresence({
   heartbeatTimeout: 10000,   // ms before marking offline
@@ -161,7 +161,7 @@ presence.disconnect('user-1');  // connections: 0, goes offline
 Fast in-memory cache with TTL expiration and LRU eviction.
 
 ```javascript
-import { FlashLRUCache } from '@moaaz-i/flash-db';
+import { FlashLRUCache } from 'flash-zk';
 
 const cache = new FlashLRUCache({
   maxSize: 10000,
@@ -224,7 +224,7 @@ cache.set('leaderboard:daily', topPlayers, 300000);
 Persistent message broker with wildcards, history, and dead-letter queue.
 
 ```javascript
-import { FlashEnhancedPubSub } from '@moaaz-i/flash-db';
+import { FlashEnhancedPubSub } from 'flash-zk';
 
 const pubsub = new FlashEnhancedPubSub({
   maxHistory: 1000,

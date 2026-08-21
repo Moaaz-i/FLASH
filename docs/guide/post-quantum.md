@@ -9,7 +9,7 @@ Quantum computers pose a severe future threat to classical public-key cryptograp
 To initialize a client with post-quantum key derivation:
 
 ```javascript
-import { FlashClient } from '@moaaz-i/flash-db';
+import { FlashClient } from 'flash-zk';
 
 const client = new FlashClient({
   secretKey: 'quantum_resilient_passphrase_2026',
@@ -24,7 +24,7 @@ const client = new FlashClient({
 FLASH DB exports low-level lattice key exchange utilities:
 
 ```javascript
-import { FlashPQC } from '@moaaz-i/flash-db';
+import { FlashPQC } from 'flash-zk';
 
 // 1. Generate Quantum-Resistant Key Pair (64-byte Seed expanded via SHA3-512)
 const aliceKeys = FlashPQC.generateKeyPair();

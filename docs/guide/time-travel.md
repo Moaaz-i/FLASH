@@ -9,7 +9,7 @@
 You can query any document as it existed at a past timestamp or historical commit point:
 
 ```javascript
-import { FlashMVCC, FlashTimeTravel } from '@moaaz-i/flash-db';
+import { FlashMVCC, FlashTimeTravel } from 'flash-zk';
 
 const mvcc = new FlashMVCC();
 const timeTravel = new FlashTimeTravel(mvcc);

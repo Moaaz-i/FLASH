@@ -9,7 +9,7 @@
 Tamper-proof, HMAC-chained append-only logs for all sensitive database events:
 
 ```javascript
-import { FlashAuditVault } from '@moaaz-i/flash-db';
+import { FlashAuditVault } from 'flash-zk';
 
 const vault = new FlashAuditVault('secure_vault_secret_2026');
 
@@ -26,7 +26,7 @@ console.log(check.valid); // true!
 ## 2. Role-Based Access Control (`FlashRBAC`)
 
 ```javascript
-import { FlashRBAC } from '@moaaz-i/flash-db';
+import { FlashRBAC } from 'flash-zk';
 
 const rbac = new FlashRBAC();
 rbac.createRole('doctor', ['patients:read', 'prescriptions:write']);
@@ -41,7 +41,7 @@ console.log(rbac.can('user_123', 'billing', 'delete')); // false
 ## 3. Dynamic PII Data Masking (`FlashDataMasker`)
 
 ```javascript
-import { FlashDataMasker } from '@moaaz-i/flash-db';
+import { FlashDataMasker } from 'flash-zk';
 
 const masked = FlashDataMasker.maskDocument(
   { name: 'John Doe', email: 'john.doe@company.com', card: '4111222233334444' },

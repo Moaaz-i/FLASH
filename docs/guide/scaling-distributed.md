@@ -7,7 +7,7 @@
 ## 1. Distributed Locks (`FlashDistributedLock`)
 
 ```javascript
-import { FlashDistributedLock } from '@moaaz-i/flash-db';
+import { FlashDistributedLock } from 'flash-zk';
 
 const dlock = new FlashDistributedLock();
 const lock = dlock.acquire('monthly_billing_job', 'worker_node_1', 10000); // 10s TTL
@@ -25,7 +25,7 @@ if (lock.acquired) {
 Reliably stream database mutations to Apache Kafka, RabbitMQ, or Webhooks:
 
 ```javascript
-import { FlashCDC } from '@moaaz-i/flash-db';
+import { FlashCDC } from 'flash-zk';
 
 const cdc = new FlashCDC();
 
@@ -43,7 +43,7 @@ cdc.recordChange('orders', 'INSERT', 'ord_123', { amount: 200 });
 ## 3. Streaming Pub/Sub (`FlashPubSub`)
 
 ```javascript
-import { FlashPubSub } from '@moaaz-i/flash-db';
+import { FlashPubSub } from 'flash-zk';
 
 const pubsub = new FlashPubSub();
 pubsub.subscribe('notifications', 'user_client', (msg, ack) => {
@@ -59,7 +59,7 @@ pubsub.publish('notifications', { text: 'Your invoice is ready' });
 ## 4. Multi-Database Federation (`FlashFederation`)
 
 ```javascript
-import { FlashFederation, FlashDatabase } from '@moaaz-i/flash-db';
+import { FlashFederation, FlashDatabase } from 'flash-zk';
 
 const fed = new FlashFederation();
 fed.registerMember('us_cluster', new FlashDatabase('db_us', { storagePath: './data_us' }));

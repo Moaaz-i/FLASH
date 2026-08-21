@@ -15,7 +15,7 @@ import {
   type FlashEngineOptions,
   type QueryEnvelope,
   type TrapdoorToken,
-} from "@moaaz-i/flash-db";
+} from "flash-zk";
 
 const engineOpts: FlashEngineOptions = resolveEngineOptions({
   performanceProfile: "turbo",

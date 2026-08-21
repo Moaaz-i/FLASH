@@ -20,7 +20,7 @@ Document Version Chain for "user_101":
 ### Snapshot Isolation Example
 
 ```javascript
-import { FlashMVCC } from '@moaaz-i/flash-db';
+import { FlashMVCC } from 'flash-zk';
 
 const mvcc = new FlashMVCC();
 
@@ -69,7 +69,7 @@ When operations in a transaction span across multiple sharded nodes in a `FlashC
 ### Distributed Transaction Example
 
 ```javascript
-import { FlashCluster, FlashDatabase } from '@moaaz-i/flash-db';
+import { FlashCluster, FlashDatabase } from 'flash-zk';
 
 const cluster = new FlashCluster();
 cluster.addShard('us_node', new FlashDatabase('us_db', { storagePath: './data/us' }));

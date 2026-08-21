@@ -7,7 +7,7 @@ For mission-critical fintech, banking, and inventory systems, FLASH DB provides 
 ## Transaction Lifecycle
 
 ```javascript
-import { FlashClient } from '@moaaz-i/flash-db';
+import { FlashClient } from 'flash-zk';
 
 const client = new FlashClient({ secretKey: 'fintech_master_key' });
 const accounts = client.collection('accounts');

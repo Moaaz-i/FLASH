@@ -6,16 +6,18 @@ What changed in recent FLASH releases and how to adopt it in your apps.
 
 ---
 
-## v1.0.0 — npm `@moaaz-i/flash-db`
+## v1.0.0 — npm `flash-zk`
 
-npm rejected the unscoped name `flash-db` (too similar to the existing `flashdb` package). The official npm name is **`@moaaz-i/flash-db`**.
+npm rejected the unscoped name `flash-db` (too similar to the existing `flashdb` package). The scoped name `@moaaz-i/flash-db` requires creating the `@moaaz-i` org on npm first.
+
+The official npm name is **`flash-zk`** (short, unscoped, zero-knowledge):
 
 ```bash
-npm install @moaaz-i/flash-db
+npm install flash-zk
 ```
 
 ```js
-import { FlashClient } from "@moaaz-i/flash-db";
+import { FlashClient } from "flash-zk";
 ```
 
 ---
@@ -183,7 +185,7 @@ See [Positioning & Identity](/guide/positioning).
 ### Recommended client setup (2026)
 
 ```javascript
-import { FlashClient } from "@moaaz-i/flash-db";
+import { FlashClient } from "flash-zk";
 
 const client = new FlashClient({
   secretKey: process.env.FLASH_SECRET_KEY,

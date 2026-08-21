@@ -7,7 +7,7 @@ FLASH ships **`FlashLangChainAdapter`** — a LangChain-style surface for encryp
 ## Installation
 
 ```bash
-npm install @moaaz-i/flash-db
+npm install flash-zk
 ```
 
 ---
@@ -15,7 +15,7 @@ npm install @moaaz-i/flash-db
 ## Quick Start
 
 ```javascript
-import { FlashClient } from "@moaaz-i/flash-db";
+import { FlashClient } from "flash-zk";
 
 const client = new FlashClient({
   secretKey: process.env.FLASH_MASTER_KEY,

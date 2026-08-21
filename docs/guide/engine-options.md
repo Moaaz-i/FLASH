@@ -7,7 +7,7 @@ FLASH v1.2.5+ exposes **`engineOptions`** on `FlashClient` and `FlashDatabase` f
 ## Quick Reference
 
 ```javascript
-import { FlashClient } from "@moaaz-i/flash-db";
+import { FlashClient } from "flash-zk";
 
 const client = new FlashClient({
   secretKey: "your-master-key",
@@ -92,7 +92,7 @@ engineOptions: {
 Direct `FlashArc` / `FlashOplog` usage:
 
 ```javascript
-import { FlashArc } from "@moaaz-i/flash-db/engine/arc.mjs";
+import { FlashArc } from "flash-zk/engine/arc.mjs";
 
 // Legacy: syncOnWrite true → strict mode
 const strict = new FlashArc("./data/commit.farc", { syncOnWrite: true });

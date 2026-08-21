@@ -7,7 +7,7 @@ FLASH ships **cross-domain primitives** on top of the core database. Use the sam
 ## 1. Collections (core)
 
 ```javascript
-import { FlashClient } from "@moaaz-i/flash-db";
+import { FlashClient } from "flash-zk";
 
 const client = new FlashClient({
   secretKey: "your-master-key",

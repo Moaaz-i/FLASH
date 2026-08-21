@@ -12,7 +12,7 @@ await pack.exportToFile(['docs', 'knowledge'], './backup.flashpack', {
   textCache: vault.exportTextCache(), // optional EmbeddingVault cache
 });
 
-import { FlashPortableBundle } from '@moaaz-i/flash-db';
+import { FlashPortableBundle } from 'flash-zk';
 const manifest = await FlashPortableBundle.importFromFile('./backup.flashpack', client);
 ```
 
@@ -36,7 +36,7 @@ const manifest = await sync.pull(); // latest bundle
 Query multiple FLASH clients and merge results client-side (each peer holds its own keys).
 
 ```javascript
-import { FlashFederatedQuery } from '@moaaz-i/flash-db';
+import { FlashFederatedQuery } from 'flash-zk';
 
 const fed = new FlashFederatedQuery();
 fed.addPeer('eu', clientEU).addPeer('us', clientUS);
@@ -69,7 +69,7 @@ const delta = nodeA.exportDelta();
 Browser-local encrypted storage (memory driver; IndexedDB-ready adapter).
 
 ```javascript
-import { FlashBrowserVault } from '@moaaz-i/flash-db';
+import { FlashBrowserVault } from 'flash-zk';
 
 const vault = new FlashBrowserVault(secretKey);
 await vault.put('prefs', { theme: 'dark', lang: 'ar' });

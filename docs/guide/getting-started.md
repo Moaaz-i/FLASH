@@ -13,7 +13,7 @@ It is **not** a generic document store with encryption added later. Every layer 
 The fastest path to FLASH's identity — **Private RAG → Agent Memory → Sealed Vault**:
 
 ```javascript
-import { FlashClient } from "@moaaz-i/flash-db";
+import { FlashClient } from "flash-zk";
 
 const client = new FlashClient({
   secretKey: "my_super_secret_master_passphrase_2026",
@@ -75,7 +75,7 @@ See [Engine Options & Durability](/guide/engine-options).
 Install the library directly into your project:
 
 ```bash
-npm install @moaaz-i/flash-db
+npm install flash-zk
 ```
 
 Ensure your `package.json` specifies `"type": "module"`.
@@ -87,7 +87,7 @@ Ensure your `package.json` specifies `"type": "module"`.
 ### 1. Initialize the Client
 
 ```javascript
-import { FlashClient } from "@moaaz-i/flash-db";
+import { FlashClient } from "flash-zk";
 
 const client = new FlashClient({
   secretKey: "my_super_secret_master_passphrase_2026", // Master 256-bit encryption key

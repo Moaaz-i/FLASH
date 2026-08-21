@@ -9,7 +9,7 @@ FLASH DB gives you the best of both worlds: **100% Schema Freedom (Schema-less N
 You can define rules directly when instantiating a collection:
 
 ```javascript
-import { FlashClient } from '@moaaz-i/flash-db';
+import { FlashClient } from 'flash-zk';
 
 const client = new FlashClient({ secretKey: 'master_key' });
 

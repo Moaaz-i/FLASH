@@ -7,7 +7,7 @@ The `FlashClient` class is the primary entry point for developers. It handles cl
 ## Constructor
 
 ```javascript
-import { FlashClient } from '@moaaz-i/flash-db';
+import { FlashClient } from 'flash-zk';
 
 const client = new FlashClient(options);
 ```

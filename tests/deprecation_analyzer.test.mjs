@@ -63,7 +63,7 @@ test("analyzeDeprecations deprecates predecessor of fix release only", () => {
   );
 
   const analysis = analyzeDeprecations({
-    pkgName: "@moaaz-i/flash-db",
+    pkgName: "flash-zk",
     recommended: "1.3.2",
     releaseNotesPath: notes,
     publishedVersions: ["1.3.0", "1.3.1", "1.3.2"],

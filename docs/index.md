@@ -70,7 +70,7 @@ features:
 ## Quick Example
 
 ```javascript
-import { FlashClient } from "@moaaz-i/flash-db";
+import { FlashClient } from "flash-zk";
 
 // 1. Initialize Client with Master Secret Key
 const client = new FlashClient({

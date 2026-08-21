@@ -26,7 +26,7 @@ It eliminates the complex fragmentation of external vector databases, semantic c
 ## 🚀 End-to-End Quick Start
 
 ```javascript
-import { FlashAIDatabase } from '@moaaz-i/flash-db';
+import { FlashAIDatabase } from 'flash-zk';
 
 // 1. Initialize the Sovereign AI Database with SQ8 Quantization
 const aiDb = new FlashAIDatabase({

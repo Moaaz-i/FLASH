@@ -9,7 +9,7 @@
 [![Tests](https://img.shields.io/badge/Tests-155%2F155%20Passing-brightgreen.svg)]()
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![Docs](https://img.shields.io/badge/Docs-VitePress-blue.svg)](https://moaaz-i.github.io/FLASH/)
-[![npm version](https://img.shields.io/npm/v/@moaaz-i/flash-db.svg)](https://www.npmjs.com/package/@moaaz-i/flash-db)
+[![npm version](https://img.shields.io/npm/v/flash-zk.svg)](https://www.npmjs.com/package/flash-zk)
 
 _The server never sees your keys, your queries, or your plaintext. Built for private AI, local-first apps, and encrypted intelligence._
 
@@ -72,7 +72,7 @@ _The server never sees your keys, your queries, or your plaintext. Built for pri
 ## 📦 Installation
 
 ```bash
-npm install @moaaz-i/flash-db
+npm install flash-zk
 ```
 
 ---
@@ -80,7 +80,7 @@ npm install @moaaz-i/flash-db
 ## ⚡ Quick Start
 
 ```typescript
-import { FlashClient } from "@moaaz-i/flash-db";
+import { FlashClient } from "flash-zk";
 
 // 1. Initialize Client with Master Secret Key
 const client = new FlashClient({
@@ -120,7 +120,7 @@ console.log(found[0].name); // 'Ada Lovelace'
 ## 🧠 AI Vector Search & Private RAG (HNSW)
 
 ```typescript
-import { FlashHNSWIndex } from "@moaaz-i/flash-db";
+import { FlashHNSWIndex } from "flash-zk";
 
 const hnsw = new FlashHNSWIndex({
   M: 16,

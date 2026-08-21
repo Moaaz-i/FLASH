@@ -49,7 +49,7 @@ await client.db.recoverTransactions({ replay: true });
 ## Replica Set
 
 ```javascript
-import { FlashReplicaSet } from "@moaaz-i/flash-db";
+import { FlashReplicaSet } from "flash-zk";
 
 const rs = new FlashReplicaSet({
   storageRoot: "./replica_data",

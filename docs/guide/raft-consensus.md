@@ -22,7 +22,7 @@ Each node in a cluster operates in one of three states:
 ## Example Usage
 
 ```javascript
-import { FlashRaft } from '@moaaz-i/flash-db';
+import { FlashRaft } from 'flash-zk';
 
 // Initialize 3-node cluster
 const node1 = new FlashRaft('node_us_1', ['node_us_2', 'node_us_3']);

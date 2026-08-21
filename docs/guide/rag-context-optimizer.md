@@ -21,7 +21,7 @@ This reduces LLM API costs by **60% to 80%** and speeds up LLM inference time.
 ## 🚀 Usage Example
 
 ```javascript
-import { FlashContextOptimizer } from '@moaaz-i/flash-db';
+import { FlashContextOptimizer } from 'flash-zk';
 
 // 1. Ranked lists from Vector and BM25 retrievers
 const vectorResults = [

@@ -34,7 +34,7 @@ Client Request → WAL Frame(s) → fsync (mode-dependent) → MemTable Update �
 | **`throughput`** | No auto-fsync until `close()`                             | —       |
 
 ```js
-import { FlashClient } from "@moaaz-i/flash-db";
+import { FlashClient } from "flash-zk";
 
 const client = new FlashClient({
   secretKey: "your-key",
@@ -42,7 +42,7 @@ const client = new FlashClient({
 });
 
 // Low-level WAL
-import { FlashArc } from "@moaaz-i/flash-db/engine/arc.mjs";
+import { FlashArc } from "flash-zk/engine/arc.mjs";
 const wal = new FlashArc("./data/commit.farc", { durability: "balanced" });
 ```
 

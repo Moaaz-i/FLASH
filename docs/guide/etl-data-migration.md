@@ -11,7 +11,7 @@ Newline Delimited JSON (NDJSON / JSON Lines) allows streaming millions of docume
 ### 1. Export Collection to NDJSON
 
 ```javascript
-import { FlashCollection, FlashETL } from '@moaaz-i/flash-db';
+import { FlashCollection, FlashETL } from 'flash-zk';
 
 const col = new FlashCollection('customers', './data');
 await col.init();

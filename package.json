@@ -1,5 +1,5 @@
 {
-  "name": "@moaaz-i/flash-db",
+  "name": "flash-zk",
   "version": "1.0.0",
   "description": "Zero-knowledge encrypted intelligence database — local-first, AI-native, server-blind document engine",
   "type": "module",

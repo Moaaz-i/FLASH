@@ -11,7 +11,7 @@
 Runs a dedicated binary TCP socket listener with protobuf-like length-prefixed framing for Go, Python, and Rust client integration:
 
 ```javascript
-import { FlashDatabase, FlashGRPCServer } from '@moaaz-i/flash-db';
+import { FlashDatabase, FlashGRPCServer } from 'flash-zk';
 
 const db = new FlashDatabase('rpc_db', { storagePath: './data' });
 const grpcServer = new FlashGRPCServer(db, { port: 6743 });
@@ -27,7 +27,7 @@ console.log('⚡ gRPC binary service running on port 6743');
 Execute standard GraphQL queries against collections with field projection and pagination:
 
 ```javascript
-import { FlashDatabase, FlashGraphQL } from '@moaaz-i/flash-db';
+import { FlashDatabase, FlashGraphQL } from 'flash-zk';
 
 const db = new FlashDatabase('app_db', { storagePath: './data' });
 const gql = new FlashGraphQL(db);

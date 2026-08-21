@@ -26,7 +26,7 @@ After Compaction:
 ### 1. Manual Collection Compaction
 
 ```javascript
-import { FlashCollection } from '@moaaz-i/flash-db';
+import { FlashCollection } from 'flash-zk';
 
 const col = new FlashCollection('audit_logs', './data');
 await col.init();
@@ -47,7 +47,7 @@ console.log(report);
 ### 2. Automated Background Compaction Worker
 
 ```javascript
-import { FlashCompactor, FlashDatabase } from '@moaaz-i/flash-db';
+import { FlashCompactor, FlashDatabase } from 'flash-zk';
 
 const db = new FlashDatabase('prod_db', { storagePath: './data' });
 const users = db.collection('users');
