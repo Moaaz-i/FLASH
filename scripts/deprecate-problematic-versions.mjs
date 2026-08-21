@@ -68,20 +68,21 @@ function deprecate(version, message) {
   console.log(`deprecated ${PKG}@${version}`);
 }
 
-function undeprecate(version) {
+function clearDeprecation(version) {
   if (process.env.DRY_RUN === "1") {
-    console.log(`[dry-run] would undeprecate ${PKG}@${version}`);
+    console.log(`[dry-run] would clear deprecation on ${PKG}@${version}`);
     return;
   }
   try {
-    npm(["undeprecate", `${PKG}@${version}`]);
+    // npm 10 (Node 22 CI): no `undeprecate` — empty message clears deprecation.
+    npm(["deprecate", `${PKG}@${version}`, ""]);
   } catch (err) {
     const msg = err.stderr?.toString?.() || err.message || String(err);
-    console.error(`failed to undeprecate ${PKG}@${version}: ${msg}`);
+    console.error(`failed to clear deprecation on ${PKG}@${version}: ${msg}`);
     process.exit(1);
   }
   if (currentDeprecation(version)) {
-    console.error(`undeprecate failed — ${PKG}@${version} still deprecated`);
+    console.error(`clear failed — ${PKG}@${version} still deprecated`);
     process.exit(1);
   }
   console.log(`undeprecated ${PKG}@${version}`);
@@ -175,7 +176,7 @@ for (const version of analysis.published) {
   if (deprecateSet.has(version) || version === analysis.latest) continue;
   if (!currentDeprecation(version)) continue;
   console.log(`restore ${version} (no longer affected)`);
-  undeprecate(version);
+  clearDeprecation(version);
   restored += 1;
 }
 
