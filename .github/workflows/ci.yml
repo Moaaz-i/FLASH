@@ -150,6 +150,8 @@ jobs:
         run: npm install -g npm@11
 
       - name: Analyze and soft-deprecate problematic npm releases
-        run: node scripts/deprecate-problematic-versions.mjs
+        run: |
+          npm config delete always-auth 2>/dev/null || true
+          node scripts/deprecate-problematic-versions.mjs
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

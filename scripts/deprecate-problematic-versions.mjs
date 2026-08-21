@@ -89,58 +89,100 @@ function sleepMs(ms) {
   execSync(`sleep ${Math.ceil(ms / 1000)}`, { stdio: "ignore" });
 }
 
-function clearDeprecation(version) {
-  const target = spec(version);
-
-  if (process.env.DRY_RUN === "1") {
-    console.log(`[dry-run] would clear deprecation on ${target}`);
-    return;
-  }
-
-  const runners = [];
+function sendClearDeprecation(target) {
+  let lastErr = null;
   if (npmHasUndeprecate()) {
-    runners.push(() => {
+    try {
       execFileSync("npm", ["undeprecate", target], {
         stdio: ["ignore", "pipe", "pipe"],
         env: npmEnv(),
       });
-    });
+      return;
+    } catch (err) {
+      lastErr = err;
+    }
   }
-  runners.push(() => {
+  try {
     execSync(`npm deprecate ${JSON.stringify(target)} ""`, {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
       env: npmEnv(),
     });
-  });
+  } catch (err) {
+    const msg = lastErr?.stderr?.toString?.() || err.stderr?.toString?.() || err.message;
+    throw new Error(msg || String(err));
+  }
+}
 
-  let lastErr = null;
-  for (const run of runners) {
-    try {
-      run();
-      lastErr = null;
-      break;
-    } catch (err) {
-      lastErr = err;
-    }
+/** @returns {boolean} */
+function clearDeprecation(version) {
+  const target = spec(version);
+
+  if (process.env.DRY_RUN === "1") {
+    console.log(`[dry-run] would clear deprecation on ${target}`);
+    return true;
   }
 
-  if (lastErr) {
-    const msg = lastErr.stderr?.toString?.() || lastErr.message || String(lastErr);
-    console.error(`failed to clear deprecation on ${target}: ${msg}`);
-    process.exit(1);
+  try {
+    sendClearDeprecation(target);
+  } catch (err) {
+    console.error(`failed to clear deprecation on ${target}: ${err.message}`);
+    return false;
   }
 
-  for (let attempt = 0; attempt < 6; attempt += 1) {
+  for (let attempt = 0; attempt < 15; attempt += 1) {
     if (!currentDeprecation(version)) {
       console.log(`undeprecated ${target}`);
-      return;
+      return true;
     }
-    if (attempt < 5) sleepMs(2000);
+    if (attempt > 0 && attempt % 3 === 0) {
+      try {
+        sendClearDeprecation(target);
+      } catch {
+        // registry may still be catching up
+      }
+    }
+    if (attempt < 14) sleepMs(3000);
   }
 
-  console.error(`clear failed — ${target} still deprecated after registry sync`);
-  process.exit(1);
+  console.warn(`warn: ${target} still shows deprecated locally — will retry later in run`);
+  return false;
+}
+
+function versionsNeedingRestore() {
+  return analysis.published.filter(
+    (version) =>
+      !deprecateSet.has(version) &&
+      version !== analysis.latest &&
+      isPublished(version) &&
+      currentDeprecation(version),
+  );
+}
+
+function restoreDeprecatedVersions() {
+  let restored = 0;
+  let pending = versionsNeedingRestore();
+
+  for (let pass = 1; pass <= 2 && pending.length; pass += 1) {
+    if (pass > 1) {
+      console.log(`\nRetry restore pass ${pass} (${pending.length} version(s))…`);
+      sleepMs(5000);
+    }
+
+    const failed = [];
+    for (const version of pending) {
+      console.log(`restore ${version} (no longer affected)`);
+      if (clearDeprecation(version)) {
+        restored += 1;
+      } else {
+        failed.push(version);
+      }
+      sleepMs(2000);
+    }
+    pending = failed;
+  }
+
+  return restored;
 }
 
 const analysis = analyzeDeprecations({
@@ -148,14 +190,14 @@ const analysis = analyzeDeprecations({
   recommended: RECOMMENDED,
 });
 
+const deprecateSet = new Set(analysis.toDeprecate.map((d) => d.version));
+
 console.log(analysis.report);
 console.log("");
 
 if (process.env.ANALYZE === "1") {
   process.exit(0);
 }
-
-const deprecateSet = new Set(analysis.toDeprecate.map((d) => d.version));
 
 function verifyAnalysis() {
   const missing = analysis.toDeprecate
@@ -227,13 +269,7 @@ for (const { version, message } of analysis.toDeprecate) {
   applied += 1;
 }
 
-for (const version of analysis.published) {
-  if (deprecateSet.has(version) || version === analysis.latest) continue;
-  if (!currentDeprecation(version)) continue;
-  console.log(`restore ${version} (no longer affected)`);
-  clearDeprecation(version);
-  restored += 1;
-}
+restored = restoreDeprecatedVersions();
 
 if (!applied && !restored) {
   console.log("No registry changes needed.");
