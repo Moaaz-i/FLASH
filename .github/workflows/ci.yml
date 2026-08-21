@@ -146,6 +146,9 @@ jobs:
           node-version: 22.x
           registry-url: https://registry.npmjs.org
 
+      - name: Upgrade npm for undeprecate support
+        run: npm install -g npm@11
+
       - name: Analyze and soft-deprecate problematic npm releases
         run: node scripts/deprecate-problematic-versions.mjs
         env:
