@@ -151,6 +151,8 @@ Compaction of SSTables does **not** affect trash — trash is independent of LSM
 
 Single file for **all collections** in the database.
 
+When you **`dropCollection(name)`**, all trash entries for that collection are **removed automatically** — there is nothing left to `restoreOne` for a collection that no longer exists.
+
 ---
 
 ## Low-level: `FlashTrashVault`
@@ -174,3 +176,43 @@ await vault.close();
 ```
 
 Most apps should use `FlashClientCollection.restoreOne` instead of calling the vault directly.
+
+---
+
+## Deletion activity log (optional, permanent)
+
+Separate from trash: a **metadata-only** log of delete/restore/drop events — **no document bodies**, **not restorable**.
+
+|           | Trash               | Deletion log                             |
+| --------- | ------------------- | ---------------------------------------- |
+| Default   | **On** (disk DBs)   | **Off** — programmer must enable         |
+| Purpose   | Undo (`restoreOne`) | Permanent audit / UI history             |
+| File      | `.flash-trash`      | `.flash-deletion-log`                    |
+| Retention | Bounded FIFO        | **Permanent** until `purgeDeletionLog()` |
+| On disk   | Per-entry sealed    | **Single sealed blob** (deflate + AES)   |
+
+Enable when you want a durable activity feed without keeping full deleted documents:
+
+```javascript
+const client = new FlashClient({
+  secretKey: "your-key",
+  storagePath: "./data",
+  engineOptions: {
+    deletionLog: {
+      enabled: true,
+    },
+  },
+});
+
+await notes.deleteOne({ _id: "n1" });
+
+const log = await notes.listDeletions({ limit: 20 });
+// [{ collection: "notes", docId: "n1", action: "delete", at: 173..., restorable: true }]
+
+await client.listDeletions({ action: "delete" });
+await client.purgeDeletionLog(); // explicit wipe only
+```
+
+Entries **persist on disk** for as long as the log stays enabled — no automatic expiry or FIFO cap. The `.flash-deletion-log` file is **deflate-compressed and AES-sealed** with a key derived from your `secretKey`; it cannot be read without FLASH's decoder (`deletionLogSecret` internally). Use `purgeDeletionLog()` or `deletionLog.purgeCollection(name)` only when you intentionally want to clear history.
+
+`dropCollection(name)` **appends** a `drop_collection` event and keeps prior log rows for that collection.

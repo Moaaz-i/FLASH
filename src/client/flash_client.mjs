@@ -146,10 +146,15 @@ export class FlashClient {
         .createHash("sha256")
         .update(`${config.secretKey}:flash-trash`)
         .digest("hex");
+      const deletionLogSecret = crypto
+        .createHash("sha256")
+        .update(`${config.secretKey}:flash-deletion-log`)
+        .digest("hex");
       const engineOptions = resolveEngineOptions({
         ...(config.engineOptions || {}),
         storageProfile: this.storageProfile,
         trashSecret,
+        deletionLogSecret,
       });
 
       this.db = new FlashDatabase(config.dbName || "flash_db", {
@@ -634,6 +639,17 @@ export class FlashClient {
     await this.db.trashVault.purge();
     return { purged: true };
   }
+
+  async listDeletions(options = {}) {
+    if (!this.db.deletionLog) return [];
+    return this.db.deletionLog.list(options);
+  }
+
+  async purgeDeletionLog() {
+    if (!this.db.deletionLog) return { purged: false };
+    await this.db.deletionLog.purge();
+    return { purged: true };
+  }
 }
 
 /**
@@ -1039,9 +1055,20 @@ export class FlashClientCollection {
     }
 
     const envelope = this.client.buildQueryEnvelope(query);
-    const res = await this.raw.deleteOne(envelope, { skipTrash: true });
+    const res = await this.raw.deleteOne(envelope, {
+      skipTrash: true,
+      skipDeletionLog: true,
+    });
 
     if (res.deletedCount > 0) {
+      if (this.client.db.deletionLog) {
+        await this.client.db.deletionLog.append({
+          collection: this.name,
+          docId: String(docToDelete._id),
+          action: "delete",
+          restorable: Boolean(this.client.db.trashVault?.enabled),
+        });
+      }
       this.vectorIndex.delete(String(docToDelete._id));
       this.indexManager.unindexDocument(docToDelete);
       for (const stream of this.changeStreams) {
@@ -1091,7 +1118,24 @@ export class FlashClientCollection {
     }
 
     await vault.remove(id, this.name);
+
+    if (this.client.db.deletionLog) {
+      await this.client.db.deletionLog.append({
+        collection: this.name,
+        docId: id,
+        action: "restore",
+        restorable: false,
+      });
+    }
+
     return { restored: true, docId: id };
+  }
+
+  async listDeletions(options = {}) {
+    if (!this.isReady) await this.init();
+    const log = this.client.db.deletionLog;
+    if (!log) return [];
+    return log.list({ ...options, collection: this.name });
   }
 
   async listTrash(options = {}) {

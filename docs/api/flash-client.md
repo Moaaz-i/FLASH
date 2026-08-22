@@ -150,6 +150,31 @@ Clear the bounded undo archive (`.flash-trash`) for the whole database.
 await client.purgeTrash();
 ```
 
+### `listDeletions(options?)`
+
+List metadata-only deletion activity when `engineOptions.deletionLog.enabled` is true. The on-disk log is encrypted; returns `[]` when disabled.
+
+- **Parameters (optional):**
+  - `limit?: number`
+  - `collection?: string`
+  - `action?: "delete" | "restore" | "drop_collection"`
+- **Returns:** `Promise<FlashDeletionLogEntry[]>`
+
+```javascript
+const log = await client.listDeletions({ limit: 50, action: "delete" });
+// [{ collection: "notes", docId: "n1", action: "delete", at: 173..., restorable: true }]
+```
+
+### `purgeDeletionLog()`
+
+Clear the permanent deletion activity log (`.flash-deletion-log`). Entries are not auto-evicted; this is the only way to wipe history besides `deletionLog.purgeCollection(name)`.
+
+- **Returns:** `Promise<{ purged: boolean }>`
+
+```javascript
+await client.purgeDeletionLog();
+```
+
 ### `listCollections()`
 
 List all collection names in the database.

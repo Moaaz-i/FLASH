@@ -5,6 +5,7 @@ import { FlashMVCC } from '../transactions/mvcc.mjs';
 import { FlashTxLog } from '../transactions/tx_log.mjs';
 import { FlashWorkerPool } from '../engine/worker_pool.mjs';
 import { FlashTrashVault, resolveTrashOptions } from '../engine/trash_vault.mjs';
+import { FlashDeletionLog, resolveDeletionLogOptions } from '../engine/deletion_log.mjs';
 
 /**
  * FLASH Database Engine (FlashDatabase)
@@ -21,6 +22,7 @@ export class FlashDatabase {
     this.mvcc = new FlashMVCC();
     this.engineOptions = options.engineOptions || {};
     this.trashVault = null;
+    this.deletionLog = null;
 
     if (!this.inMemory) {
       this._ensureDir();
@@ -31,6 +33,16 @@ export class FlashDatabase {
           {
             ...trashOpts,
             trashSecret: this.engineOptions.trashSecret,
+          },
+        );
+      }
+      const logOpts = resolveDeletionLogOptions(this.engineOptions);
+      if (logOpts.enabled) {
+        this.deletionLog = new FlashDeletionLog(
+          path.join(this.storagePath, ".flash-deletion-log"),
+          {
+            ...logOpts,
+            logSecret: this.engineOptions.deletionLogSecret,
           },
         );
       }
@@ -57,6 +69,7 @@ export class FlashDatabase {
       mvcc: this.mvcc,
       inMemory: this.inMemory,
       trashVault: this.trashVault,
+      deletionLog: this.deletionLog,
       ...this.engineOptions,
     });
     this.collections.set(name, col);
@@ -87,6 +100,17 @@ export class FlashDatabase {
       await col.wal.close();
       this.collections.delete(name);
     }
+    if (this.trashVault) {
+      await this.trashVault.purgeCollection(name);
+    }
+    if (this.deletionLog) {
+      await this.deletionLog.append({
+        collection: name,
+        docId: "",
+        action: "drop_collection",
+        restorable: false,
+      });
+    }
     if (this.inMemory) return;
     const colDir = path.join(this.storagePath, name);
     if (fs.existsSync(colDir)) {
@@ -104,6 +128,9 @@ export class FlashDatabase {
     this.collections.clear();
     if (this.trashVault) {
       await this.trashVault.close();
+    }
+    if (this.deletionLog) {
+      await this.deletionLog.close();
     }
     if (FlashWorkerPool._defaultInstance) {
       await FlashWorkerPool._defaultInstance.shutdown();

@@ -215,6 +215,24 @@ export class FlashTrashVault {
     await this._persist();
   }
 
+  /**
+   * Remove all trash entries for a dropped collection.
+   * @param {string} collection
+   * @returns {Promise<number>} entries removed
+   */
+  async purgeCollection(collection) {
+    if (!this.enabled) return 0;
+    if (!this._ready) await this.open();
+    const name = String(collection);
+    const before = this._entries.length;
+    this._entries = this._entries.filter((e) => e.collection !== name);
+    const removed = before - this._entries.length;
+    if (removed > 0) {
+      await this._persist();
+    }
+    return removed;
+  }
+
   _evictExpired() {
     const minTs = Date.now() - this.maxAgeMs;
     this._entries = this._entries.filter((e) => e.deletedAt >= minTs);

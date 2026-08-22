@@ -106,6 +106,22 @@ See [Trash & Restore](/guide/trash-restore) for `restoreOne`, `listTrash`, and e
 
 ---
 
+## Deletion activity log
+
+Optional **permanent** metadata-only log — **disabled by default** (opt-in). On disk the file is a **single deflate-compressed, AES-sealed blob** (key derived from `secretKey`).
+
+```javascript
+engineOptions: {
+  deletionLog: {
+    enabled: true,
+  },
+},
+```
+
+See [Trash & Restore — Deletion activity log](/guide/trash-restore#deletion-activity-log-optional-permanent) for `listDeletions` and purge behavior.
+
+---
+
 ## Low-Level API
 
 Direct `FlashArc` / `FlashOplog` usage:

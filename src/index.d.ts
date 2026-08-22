@@ -30,8 +30,27 @@ export interface FlashEngineOptions {
   storageProfile?: "standard" | "compact";
   /** Bounded compressed trash archive for undo (`.flash-trash`). @default enabled */
   trash?: FlashTrashOptions;
+  /** Optional metadata-only deletion activity log (`.flash-deletion-log`). @default disabled */
+  deletionLog?: FlashDeletionLogOptions;
   /** Internal: derived from client secretKey — encrypts trash payloads */
   trashSecret?: string | Buffer;
+  /** Internal: derived from client secretKey — seals deletion log file */
+  deletionLogSecret?: string | Buffer;
+}
+
+export interface FlashDeletionLogOptions {
+  /** Opt-in only — no log file until explicitly enabled. @default false */
+  enabled?: boolean;
+}
+
+export type FlashDeletionAction = "delete" | "restore" | "drop_collection";
+
+export interface FlashDeletionLogEntry {
+  collection: string;
+  docId: string;
+  action: FlashDeletionAction;
+  at: number;
+  restorable: boolean;
 }
 
 export interface FlashTrashOptions {
@@ -1149,6 +1168,10 @@ export class FlashClientCollection<
   restoreOne(docId: string): Promise<FlashRestoreResult>;
   listTrash(options?: { limit?: number }): Promise<FlashTrashEntry[]>;
   purgeTrash(): Promise<{ purged: boolean }>;
+  listDeletions(options?: {
+    limit?: number;
+    action?: FlashDeletionAction;
+  }): Promise<FlashDeletionLogEntry[]>;
   bulkWrite(
     operations: BulkWriteOperation[],
     options?: { ordered?: boolean },
@@ -1509,6 +1532,8 @@ export class FlashRecordCodec {
 export class FlashClient {
   readonly secretKey: string | Buffer;
   readonly storageProfile: "standard" | "compact";
+  /** Embedded or remote database handle — `dropCollection`, `recoverTransactions`, `trashVault`, low-level `collection()`. */
+  readonly db: FlashDatabase;
   constructor(config: FlashClientOptions);
   collection<T extends Record<string, unknown> = Record<string, unknown>>(
     name: string,
@@ -1523,6 +1548,12 @@ export class FlashClient {
   backup(destinationPath: string): Promise<BackupResult>;
   restore(backupPath: string): Promise<RestoreResult>;
   purgeTrash(): Promise<{ purged: boolean }>;
+  listDeletions(options?: {
+    limit?: number;
+    collection?: string;
+    action?: FlashDeletionAction;
+  }): Promise<FlashDeletionLogEntry[]>;
+  purgeDeletionLog(): Promise<{ purged: boolean }>;
   openDashboard(options?: FlashDashboardOptions): import("node:http").Server;
   privateRAG(
     collectionName?: string,
@@ -1648,7 +1679,10 @@ export class FlashCollection {
     options?: QueryOptions,
   ): Promise<Buffer[]>;
   findOne(queryEnvelope?: QueryEnvelope): Promise<Buffer | null>;
-  deleteOne(queryEnvelope?: QueryEnvelope): Promise<DeleteResult>;
+  deleteOne(
+    queryEnvelope?: QueryEnvelope,
+    options?: { skipTrash?: boolean; skipDeletionLog?: boolean },
+  ): Promise<DeleteResult>;
   flush(): Promise<FlashSSTable | null>;
   compact(): Promise<CompactionResult>;
   count(): Promise<number>;
@@ -1671,6 +1705,33 @@ export class FlashCollection {
 }
 
 // ============================================================================
+// Engine: FlashDeletionLog
+// ============================================================================
+
+export class FlashDeletionLog {
+  readonly filePath: string;
+  readonly enabled: boolean;
+  readonly byteSize: number;
+  constructor(filePath: string, options?: FlashDeletionLogOptions & { logSecret?: string | Buffer });
+  open(): Promise<void>;
+  close(): Promise<void>;
+  append(input: {
+    collection: string;
+    docId?: string;
+    action: FlashDeletionAction;
+    at?: number;
+    restorable?: boolean;
+  }): Promise<void>;
+  list(options?: {
+    limit?: number;
+    collection?: string;
+    action?: FlashDeletionAction;
+  }): Promise<FlashDeletionLogEntry[]>;
+  purge(): Promise<void>;
+  purgeCollection(collection: string): Promise<number>;
+}
+
+// ============================================================================
 // Engine: FlashTrashVault
 // ============================================================================
 
@@ -1681,7 +1742,10 @@ export class FlashTrashVault {
   readonly maxBytes: number;
   readonly maxAgeMs: number;
   readonly byteSize: number;
-  constructor(filePath: string, options?: FlashTrashOptions & { trashSecret?: string | Buffer });
+  constructor(
+    filePath: string,
+    options?: FlashTrashOptions & { trashSecret?: string | Buffer },
+  );
   open(): Promise<void>;
   close(): Promise<void>;
   archive(input: {
@@ -1691,7 +1755,10 @@ export class FlashTrashVault {
     buffer?: Buffer;
     deletedAt?: number;
   }): Promise<void>;
-  peek(docId: string, collection?: string): Promise<{
+  peek(
+    docId: string,
+    collection?: string,
+  ): Promise<{
     collection: string;
     docId: string;
     deletedAt: number;
@@ -1700,8 +1767,12 @@ export class FlashTrashVault {
     buffer?: Buffer;
   } | null>;
   remove(docId: string, collection?: string): Promise<void>;
-  list(options?: { limit?: number; collection?: string }): Promise<FlashTrashEntry[]>;
+  list(options?: {
+    limit?: number;
+    collection?: string;
+  }): Promise<FlashTrashEntry[]>;
   purge(): Promise<void>;
+  purgeCollection(collection: string): Promise<number>;
 }
 
 // ============================================================================
@@ -1715,6 +1786,8 @@ export class FlashDatabase {
   readonly engineOptions: FlashEngineOptions;
   readonly collections: Map<string, FlashCollection>;
   readonly trashVault: FlashTrashVault | null;
+  readonly deletionLog: FlashDeletionLog | null;
+  readonly mvcc: FlashMVCC;
   constructor(
     name?: string,
     options?: {
@@ -1726,7 +1799,19 @@ export class FlashDatabase {
   collection(name: string): FlashCollection;
   listCollections(): string[];
   dropCollection(name: string): Promise<void>;
+  recoverTransactions(options?: {
+    replay?: boolean;
+  }): Promise<FlashTransactionRecoveryResult>;
   close(): Promise<void>;
+}
+
+export interface FlashTransactionRecoveryResult {
+  pending: number;
+  recovered: Array<{
+    txId: string;
+    status: "pending" | "replayed";
+    operations: number;
+  }>;
 }
 
 // ============================================================================

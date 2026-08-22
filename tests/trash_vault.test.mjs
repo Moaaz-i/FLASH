@@ -87,3 +87,35 @@ test("raw collection delete archives buffer into shared trash file", async () =>
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test("dropCollection purges trash entries for that collection", async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flash-trash-drop-"));
+
+  try {
+    const client = new FlashClient({
+      secretKey: "trash_drop_collection_secret!",
+      storagePath: tmpDir,
+    });
+
+    const users = client.collection("users");
+    const orders = client.collection("orders");
+
+    await users.insertOne({ _id: "u1", name: "Ada" });
+    await orders.insertOne({ _id: "o1", total: 99 });
+
+    await users.deleteOne({ _id: "u1" });
+    await orders.deleteOne({ _id: "o1" });
+
+    assert.equal((await users.listTrash()).length, 1);
+    assert.equal((await orders.listTrash()).length, 1);
+
+    await client.db.dropCollection("users");
+
+    assert.equal((await users.listTrash()).length, 0);
+    assert.equal((await orders.listTrash()).length, 1);
+
+    await client.close();
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});

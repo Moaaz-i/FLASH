@@ -13,6 +13,7 @@ import {
   type EncryptedDocument,
   type FieldPolicyType,
   type FlashEngineOptions,
+  type FlashTransactionRecoveryResult,
   type QueryEnvelope,
   type TrapdoorToken,
 } from "flash-zk";
@@ -37,6 +38,10 @@ const client = new FlashClient({
 });
 
 void client.storageProfile;
+void client.db.dbName;
+void client.db.trashVault;
+void client.db.deletionLog;
+void client.db.mvcc;
 
 const db = new FlashDatabase("smoke_db", {
   inMemory: true,
@@ -80,6 +85,14 @@ async function exercise(): Promise<void> {
   const arc = new MemoryArc();
   await arc.close();
 
+  const recovered: FlashTransactionRecoveryResult =
+    await client.db.recoverTransactions({ replay: false });
+  void recovered.pending;
+
+  void client.listDeletions({ limit: 5 });
+  void client.purgeDeletionLog();
+
+  await client.db.dropCollection("temp");
   await client.close();
   await db.close();
 }

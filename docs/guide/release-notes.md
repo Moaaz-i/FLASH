@@ -2,7 +2,17 @@
 
 What changed in recent FLASH releases and how to adopt it in your apps.
 
-**Current version:** `1.0.1` · **Tests:** 158/158
+**Current version:** `1.0.2` · **Tests:** 164/164
+
+---
+
+## v1.0.2 — Optional deletion log + trash purge on drop
+
+- **`engineOptions.deletionLog`** — opt-in permanent metadata-only activity log (`.flash-deletion-log`, sealed + compressed); disabled by default.
+- **`listDeletions()` / `purgeDeletionLog()`** on client and collection.
+- **`dropCollection(name)`** now purges trash entries for that collection.
+
+See [Trash & Restore — Deletion activity log](/guide/trash-restore#deletion-activity-log-optional-permanent).
 
 ---
 

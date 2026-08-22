@@ -43,6 +43,7 @@ const users = client.collection("users", {
 | `restoreOne(docId)`                          | `Promise<FlashRestoreResult>`             | Restore a document from trash.                 |
 | `listTrash(options?)`                        | `Promise<FlashTrashEntry[]>`              | List recoverable deletions.                    |
 | `purgeTrash()`                               | `Promise<{ purged: boolean }>`            | Clear trash for this collection's vault.       |
+| `listDeletions(options?)`                    | `Promise<FlashDeletionLogEntry[]>`        | List permanent delete/restore log (opt-in).    |
 | `bulkWrite(operations, options?)`            | `Promise<BulkWriteResult>`                | Execute batch operations in one call.          |
 | `aggregate(pipeline)`                        | `Promise<object[]>`                       | Run aggregation pipeline.                      |
 | `count(filter?)`                             | `Promise<number>`                         | Count documents.                               |

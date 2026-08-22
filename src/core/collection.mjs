@@ -71,6 +71,7 @@ export class FlashCollection {
     this.compressionLevel = options.compressionLevel ?? 1;
     this.workerPool = options.workerPool || FlashWorkerPool.getDefault();
     this.trashVault = options.trashVault || null;
+    this.deletionLog = options.deletionLog || null;
   }
 
   _trackDocId(docId) {
@@ -790,6 +791,15 @@ export class FlashCollection {
         collection: this.name,
         docId,
         buffer: buf,
+      });
+    }
+
+    if (!options.skipDeletionLog && this.deletionLog) {
+      await this.deletionLog.append({
+        collection: this.name,
+        docId,
+        action: "delete",
+        restorable: Boolean(this.trashVault?.enabled),
       });
     }
 
