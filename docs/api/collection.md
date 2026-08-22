@@ -7,19 +7,19 @@ The `FlashClientCollection` class provides a fluent document DB interface for ex
 ## Getting a Collection
 
 ```javascript
-import { FlashClient } from 'flash-zk';
+import { FlashClient } from "flash-zk";
 
-const client = new FlashClient({ secretKey: 'master-key' });
+const client = new FlashClient({ secretKey: "master-key" });
 
 // Synchronous creation/access
-const collection = client.collection('collection_name');
+const collection = client.collection("collection_name");
 
 // With schema
-const users = client.collection('users', {
+const users = client.collection("users", {
   schema: {
-    name: { type: 'string', required: true, trim: true },
-    email: { type: 'string', required: true, unique: true }
-  }
+    name: { type: "string", required: true, trim: true },
+    email: { type: "string", required: true, unique: true },
+  },
 });
 ```
 
@@ -27,33 +27,36 @@ const users = client.collection('users', {
 
 ## Methods Summary
 
-| Method | Returns | Description |
-| :--- | :--- | :--- |
-| `insertOne(doc)` | `Promise<{ insertedId, merkleRoot }>` | Insert and encrypt a single document. |
-| `insertMany(docs)` | `Promise<{ insertedCount, insertedIds }>` | Batch insert multiple documents. |
-| `find(filter?, options?)` | `FlashQuery<T>` | Fluent query builder with chaining. |
-| `findOne(filter?)` | `Promise<T \| null>` | Return the first matching decrypted document. |
-| `findById(id)` | `Promise<T \| null>` | Find by document `_id`. |
-| `updateOne(filter, update, options?)` | `Promise<UpdateResult>` | Update one matching document. |
-| `updateMany(filter, update, options?)` | `Promise<UpdateResult>` | Update all matching documents. |
-| `findOneAndUpdate(filter, update, options?)` | `Promise<T \| null>` | Find and return updated document. |
-| `findByIdAndUpdate(id, update, options?)` | `Promise<T \| null>` | Find by ID, update, and return. |
-| `deleteOne(filter)` | `Promise<{ deletedCount }>` | Delete the first matching document. |
-| `deleteMany(filter)` | `Promise<DeleteResult>` | Delete all matching documents. |
-| `bulkWrite(operations, options?)` | `Promise<BulkWriteResult>` | Execute batch operations in one call. |
-| `aggregate(pipeline)` | `Promise<object[]>` | Run aggregation pipeline. |
-| `count(filter?)` | `Promise<number>` | Count documents. |
-| `createIndex(keySpec, options?)` | `string` | Create a secondary index. |
-| `listIndexes()` | `IndexInfo[]` | List all indexes. |
-| `dropIndex(name)` | `boolean` | Drop an index. |
-| `watch(filter?)` | `FlashChangeStream` | Watch for real-time change events. |
-| `vectorSearch(params)` | `Promise<(T & { _score: number })[]>` | Semantic vector search. |
-| `verifyRecordIntegrity(docId)` | `Promise<MerkleProofResult>` | Validate Merkle proof. |
-| `setSchema(schema, options?)` | `this` | Set or update collection schema. |
-| `ask(prompt, options?)` | `Promise<(T & { _interpretedQuery? })[]>` | Natural language query. |
-| `timeSeriesBucket(...)` | `Promise<object[]>` | Time-series bucketing. |
-| `spatialNear(field, nearSpec)` | `Promise<object[]>` | Geospatial nearest-neighbor query. |
-| `paginate(filter?, opts?)` | `Promise<FlashPaginationResult<T>>` | Cursor-based pagination. |
+| Method                                       | Returns                                   | Description                                    |
+| :------------------------------------------- | :---------------------------------------- | :--------------------------------------------- |
+| `insertOne(doc)`                             | `Promise<{ insertedId, merkleRoot }>`     | Insert and encrypt a single document.          |
+| `insertMany(docs)`                           | `Promise<{ insertedCount, insertedIds }>` | Batch insert multiple documents.               |
+| `find(filter?, options?)`                    | `FlashQuery<T>`                           | Fluent query builder with chaining.            |
+| `findOne(filter?)`                           | `Promise<T \| null>`                      | Return the first matching decrypted document.  |
+| `findById(id)`                               | `Promise<T \| null>`                      | Find by document `_id`.                        |
+| `updateOne(filter, update, options?)`        | `Promise<UpdateResult>`                   | Update one matching document.                  |
+| `updateMany(filter, update, options?)`       | `Promise<UpdateResult>`                   | Update all matching documents.                 |
+| `findOneAndUpdate(filter, update, options?)` | `Promise<T \| null>`                      | Find and return updated document.              |
+| `findByIdAndUpdate(id, update, options?)`    | `Promise<T \| null>`                      | Find by ID, update, and return.                |
+| `deleteOne(filter)`                          | `Promise<{ deletedCount }>`               | Delete and archive to `.flash-trash` for undo. |
+| `deleteMany(filter)`                         | `Promise<DeleteResult>`                   | Delete all matching documents (each archived). |
+| `restoreOne(docId)`                          | `Promise<FlashRestoreResult>`             | Restore a document from trash.                 |
+| `listTrash(options?)`                        | `Promise<FlashTrashEntry[]>`              | List recoverable deletions.                    |
+| `purgeTrash()`                               | `Promise<{ purged: boolean }>`            | Clear trash for this collection's vault.       |
+| `bulkWrite(operations, options?)`            | `Promise<BulkWriteResult>`                | Execute batch operations in one call.          |
+| `aggregate(pipeline)`                        | `Promise<object[]>`                       | Run aggregation pipeline.                      |
+| `count(filter?)`                             | `Promise<number>`                         | Count documents.                               |
+| `createIndex(keySpec, options?)`             | `string`                                  | Create a secondary index.                      |
+| `listIndexes()`                              | `IndexInfo[]`                             | List all indexes.                              |
+| `dropIndex(name)`                            | `boolean`                                 | Drop an index.                                 |
+| `watch(filter?)`                             | `FlashChangeStream`                       | Watch for real-time change events.             |
+| `vectorSearch(params)`                       | `Promise<(T & { _score: number })[]>`     | Semantic vector search.                        |
+| `verifyRecordIntegrity(docId)`               | `Promise<MerkleProofResult>`              | Validate Merkle proof.                         |
+| `setSchema(schema, options?)`                | `this`                                    | Set or update collection schema.               |
+| `ask(prompt, options?)`                      | `Promise<(T & { _interpretedQuery? })[]>` | Natural language query.                        |
+| `timeSeriesBucket(...)`                      | `Promise<object[]>`                       | Time-series bucketing.                         |
+| `spatialNear(field, nearSpec)`               | `Promise<object[]>`                       | Geospatial nearest-neighbor query.             |
+| `paginate(filter?, opts?)`                   | `Promise<FlashPaginationResult<T>>`       | Cursor-based pagination.                       |
 
 ### Low-level engine access (`collection.raw`)
 
@@ -61,7 +64,7 @@ const users = client.collection('users', {
 
 ```javascript
 const raw = collection.raw;
-await raw.insertOne(client.encryptToBuffer({ _id: '1', name: 'Ada' }));
+await raw.insertOne(client.encryptToBuffer({ _id: "1", name: "Ada" }));
 
 const buffers = await raw.find({});
 const doc = client.decryptFromBuffer(buffers[0]);
@@ -79,9 +82,9 @@ Encrypts fields with `AES-256-GCM` (with AAD binding), generates HMAC Blind Inde
 
 ```js
 const res = await collection.insertOne({
-  title: 'Quantum Computing',
+  title: "Quantum Computing",
   views: 1540,
-  published: true
+  published: true,
 });
 // res => { insertedId: 'uuid-...', merkleRoot: '33465733...' }
 ```
@@ -90,8 +93,8 @@ const res = await collection.insertOne({
 
 ```js
 const res = await collection.insertMany([
-  { title: 'Post A', views: 100 },
-  { title: 'Post B', views: 200 }
+  { title: "Post A", views: 100 },
+  { title: "Post B", views: 200 },
 ]);
 // res => { insertedCount: 2, insertedIds: ['...', '...'] }
 ```
@@ -116,7 +119,7 @@ const results = await collection
 // Field-level operators
 const filtered = await collection.find({
   views: { $gte: 100, $lte: 500 },
-  status: { $in: ['active', 'published'] }
+  status: { $in: ["active", "published"] },
 });
 ```
 
@@ -126,16 +129,16 @@ const filtered = await collection.find({
 
 ```js
 const result = await collection.updateOne(
-  { email: 'alice@example.com' },
-  { $set: { name: 'Alice Updated' }, $inc: { loginCount: 1 } }
+  { email: "alice@example.com" },
+  { $set: { name: "Alice Updated" }, $inc: { loginCount: 1 } },
 );
 // result => { matchedCount: 1, modifiedCount: 1 }
 
 // Upsert
 await collection.updateOne(
-  { email: 'new@example.com' },
-  { $setOnInsert: { name: 'New User', createdAt: new Date() } },
-  { upsert: true }
+  { email: "new@example.com" },
+  { $setOnInsert: { name: "New User", createdAt: new Date() } },
+  { upsert: true },
 );
 ```
 
@@ -145,8 +148,8 @@ await collection.updateOne(
 
 ```js
 const result = await collection.updateMany(
-  { status: 'draft' },
-  { $set: { status: 'published' }, $inc: { version: 1 } }
+  { status: "draft" },
+  { $set: { status: "published" }, $inc: { version: 1 } },
 );
 ```
 
@@ -154,9 +157,9 @@ const result = await collection.updateMany(
 
 ```js
 const doc = await collection.findOneAndUpdate(
-  { email: 'alice@example.com' },
+  { email: "alice@example.com" },
   { $inc: { loginCount: 1 } },
-  { new: true }  // return the updated document
+  { new: true }, // return the updated document
 );
 ```
 
@@ -165,11 +168,19 @@ const doc = await collection.findOneAndUpdate(
 Execute multiple operations in a single call:
 
 ```js
-const result = await collection.bulkWrite([
-  { insertOne: { document: { name: 'Alice', email: 'alice@x.com' } } },
-  { updateOne: { filter: { email: 'bob@x.com' }, update: { $set: { active: true } } } },
-  { deleteMany: { filter: { status: 'archived' } } }
-], { ordered: false });
+const result = await collection.bulkWrite(
+  [
+    { insertOne: { document: { name: "Alice", email: "alice@x.com" } } },
+    {
+      updateOne: {
+        filter: { email: "bob@x.com" },
+        update: { $set: { active: true } },
+      },
+    },
+    { deleteMany: { filter: { status: "archived" } } },
+  ],
+  { ordered: false },
+);
 ```
 
 ### `aggregate(pipeline)`
@@ -179,14 +190,14 @@ const summary = await collection.aggregate([
   { $match: { views: { $gte: 100 } } },
   {
     $group: {
-      _id: '$published',
-      totalViews: { $sum: '$views' },
-      avgViews: { $avg: '$views' },
-      articleCount: { $count: 1 }
-    }
+      _id: "$published",
+      totalViews: { $sum: "$views" },
+      avgViews: { $avg: "$views" },
+      articleCount: { $count: 1 },
+    },
   },
   { $sort: { totalViews: -1 } },
-  { $limit: 10 }
+  { $limit: 10 },
 ]);
 ```
 
@@ -211,8 +222,8 @@ Natural language query using the AI query engine:
 
 ```js
 const results = await collection.ask(
-  'show me users who signed up in the last week and have more than 100 points',
-  { limit: 20 }
+  "show me users who signed up in the last week and have more than 100 points",
+  { limit: 20 },
 );
 ```
 
@@ -221,8 +232,8 @@ const results = await collection.ask(
 Watch for real-time change events:
 
 ```js
-const stream = collection.watch({ status: 'completed' });
-stream.on('change', (event) => {
+const stream = collection.watch({ status: "completed" });
+stream.on("change", (event) => {
   console.log(event.operationType, event.doc);
 });
 ```
@@ -232,10 +243,13 @@ stream.on('change', (event) => {
 Set or update collection schema with optional TTL:
 
 ```js
-collection.setSchema({
-  name: { type: 'string', required: true },
-  email: { type: 'string', required: true, unique: true }
-}, { expireAfterSeconds: 86400, ttlField: 'createdAt' });
+collection.setSchema(
+  {
+    name: { type: "string", required: true },
+    email: { type: "string", required: true, unique: true },
+  },
+  { expireAfterSeconds: 86400, ttlField: "createdAt" },
+);
 ```
 
 ### `verifyRecordIntegrity(docId)`
@@ -243,9 +257,9 @@ collection.setSchema({
 Validates cryptographic Merkle Tree proof:
 
 ```js
-const result = await collection.verifyRecordIntegrity('doc_uuid');
+const result = await collection.verifyRecordIntegrity("doc_uuid");
 if (result.isValid) {
-  console.log('Record is authentic and untampered!');
+  console.log("Record is authentic and untampered!");
 }
 ```
 

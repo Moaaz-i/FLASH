@@ -28,6 +28,35 @@ export interface FlashEngineOptions {
   compressionLevel?: number;
   /** Passed from client storageProfile — affects SSTable compression default */
   storageProfile?: "standard" | "compact";
+  /** Bounded compressed trash archive for undo (`.flash-trash`). @default enabled */
+  trash?: FlashTrashOptions;
+  /** Internal: derived from client secretKey — encrypts trash payloads */
+  trashSecret?: string | Buffer;
+}
+
+export interface FlashTrashOptions {
+  /** @default true */
+  enabled?: boolean;
+  /** Max deleted documents kept in trash. @default 500 */
+  maxEntries?: number;
+  /** Max compressed trash file size in bytes. @default 2097152 (2 MB) */
+  maxBytes?: number;
+  /** Drop trash entries older than this (ms). @default 604800000 (7 days) */
+  maxAgeMs?: number;
+}
+
+export interface FlashTrashEntry {
+  collection: string;
+  docId: string;
+  deletedAt: number;
+  kind: "json" | "buffer";
+  compressedBytes: number;
+}
+
+export interface FlashRestoreResult {
+  restored: boolean;
+  docId: string;
+  reason?: "document_exists" | "not_in_trash" | "empty_trash_entry";
 }
 
 export interface FlashClientOptions {
@@ -1117,6 +1146,9 @@ export class FlashClientCollection<
   ): Promise<T | null>;
   deleteOne(filter: Record<string, unknown>): Promise<DeleteResult>;
   deleteMany(filter: Record<string, unknown>): Promise<DeleteResult>;
+  restoreOne(docId: string): Promise<FlashRestoreResult>;
+  listTrash(options?: { limit?: number }): Promise<FlashTrashEntry[]>;
+  purgeTrash(): Promise<{ purged: boolean }>;
   bulkWrite(
     operations: BulkWriteOperation[],
     options?: { ordered?: boolean },
@@ -1490,6 +1522,7 @@ export class FlashClient {
   startSession(): FlashSession;
   backup(destinationPath: string): Promise<BackupResult>;
   restore(backupPath: string): Promise<RestoreResult>;
+  purgeTrash(): Promise<{ purged: boolean }>;
   openDashboard(options?: FlashDashboardOptions): import("node:http").Server;
   privateRAG(
     collectionName?: string,
@@ -1638,6 +1671,40 @@ export class FlashCollection {
 }
 
 // ============================================================================
+// Engine: FlashTrashVault
+// ============================================================================
+
+export class FlashTrashVault {
+  readonly filePath: string;
+  readonly enabled: boolean;
+  readonly maxEntries: number;
+  readonly maxBytes: number;
+  readonly maxAgeMs: number;
+  readonly byteSize: number;
+  constructor(filePath: string, options?: FlashTrashOptions & { trashSecret?: string | Buffer });
+  open(): Promise<void>;
+  close(): Promise<void>;
+  archive(input: {
+    collection: string;
+    docId: string;
+    doc?: Record<string, unknown>;
+    buffer?: Buffer;
+    deletedAt?: number;
+  }): Promise<void>;
+  peek(docId: string, collection?: string): Promise<{
+    collection: string;
+    docId: string;
+    deletedAt: number;
+    kind: "json" | "buffer";
+    doc?: Record<string, unknown>;
+    buffer?: Buffer;
+  } | null>;
+  remove(docId: string, collection?: string): Promise<void>;
+  list(options?: { limit?: number; collection?: string }): Promise<FlashTrashEntry[]>;
+  purge(): Promise<void>;
+}
+
+// ============================================================================
 // Core: FlashDatabase
 // ============================================================================
 
@@ -1647,6 +1714,7 @@ export class FlashDatabase {
   readonly inMemory: boolean;
   readonly engineOptions: FlashEngineOptions;
   readonly collections: Map<string, FlashCollection>;
+  readonly trashVault: FlashTrashVault | null;
   constructor(
     name?: string,
     options?: {

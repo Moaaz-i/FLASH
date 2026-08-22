@@ -212,12 +212,18 @@ const page2 = await users.find({}, { limit: 10, skip: 10 });
 
 ### 🗑️ 3. Deleting Documents (`deleteOne`)
 
-Removes the document from memory and active indexes, appends a tombstone frame to the WAL, and recalculates the Merkle root:
+Removes the document from the active LSM store and archives a copy to `.flash-trash` for undo:
 
 ```javascript
 const deleteResult = await users.deleteOne({ email: "alan@bletchley.gov.uk" });
 console.log("Deleted Count:", deleteResult.deletedCount); // 1
+
+// Undo (while still in trash — see Trash & Restore guide)
+const undo = await users.restoreOne("doc-id-here");
+console.log(undo.restored); // true
 ```
+
+See [Trash & Restore](/guide/trash-restore) for limits and configuration.
 
 ---
 

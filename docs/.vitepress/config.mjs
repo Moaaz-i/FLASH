@@ -25,6 +25,10 @@ export default defineConfig({
           { text: "ETL & Data Migration", link: "/guide/etl-data-migration" },
           { text: "Durability & Crash Recovery", link: "/guide/durability" },
           {
+            text: "Trash & Restore (Undo Delete)",
+            link: "/guide/trash-restore",
+          },
+          {
             text: "Observability & Metrics",
             link: "/guide/observability-metrics",
           },
@@ -158,6 +162,10 @@ export default defineConfig({
             { text: "Web GUI Dashboard", link: "/guide/gui-dashboard" },
             { text: "Bulk ETL & Migration", link: "/guide/etl-data-migration" },
             { text: "Durability & Crash Recovery", link: "/guide/durability" },
+            {
+              text: "Trash & Restore (Undo Delete)",
+              link: "/guide/trash-restore",
+            },
             {
               text: "Observability & Metrics",
               link: "/guide/observability-metrics",

@@ -110,4 +110,8 @@ const nlResults = await users.ask("show me users with balance over 30000", {
 
 // 5. Backup & Restore
 await client.backup("/backups/flash-daily");
+
+// 6. Undo recent delete (bounded .flash-trash — no full backup needed)
+await users.deleteOne({ _id: "u1" });
+await users.restoreOne("u1");
 ```

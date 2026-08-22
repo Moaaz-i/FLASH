@@ -87,6 +87,25 @@ engineOptions: {
 
 ---
 
+## Trash archive (undo delete)
+
+Bounded `.flash-trash` file — enabled by default on disk databases:
+
+```javascript
+engineOptions: {
+  trash: {
+    enabled: true,
+    maxEntries: 500,
+    maxBytes: 2 * 1024 * 1024,
+    maxAgeMs: 7 * 24 * 3600 * 1000,
+  },
+},
+```
+
+See [Trash & Restore](/guide/trash-restore) for `restoreOne`, `listTrash`, and eviction rules.
+
+---
+
 ## Low-Level API
 
 Direct `FlashArc` / `FlashOplog` usage:

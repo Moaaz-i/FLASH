@@ -4,6 +4,7 @@ import { FlashCollection } from './collection.mjs';
 import { FlashMVCC } from '../transactions/mvcc.mjs';
 import { FlashTxLog } from '../transactions/tx_log.mjs';
 import { FlashWorkerPool } from '../engine/worker_pool.mjs';
+import { FlashTrashVault, resolveTrashOptions } from '../engine/trash_vault.mjs';
 
 /**
  * FLASH Database Engine (FlashDatabase)
@@ -19,8 +20,20 @@ export class FlashDatabase {
     this.collections = new Map();
     this.mvcc = new FlashMVCC();
     this.engineOptions = options.engineOptions || {};
+    this.trashVault = null;
+
     if (!this.inMemory) {
       this._ensureDir();
+      const trashOpts = resolveTrashOptions(this.engineOptions);
+      if (trashOpts.enabled) {
+        this.trashVault = new FlashTrashVault(
+          path.join(this.storagePath, ".flash-trash"),
+          {
+            ...trashOpts,
+            trashSecret: this.engineOptions.trashSecret,
+          },
+        );
+      }
     }
   }
 
@@ -43,6 +56,7 @@ export class FlashDatabase {
     const col = new FlashCollection(name, this.storagePath, {
       mvcc: this.mvcc,
       inMemory: this.inMemory,
+      trashVault: this.trashVault,
       ...this.engineOptions,
     });
     this.collections.set(name, col);
@@ -88,6 +102,9 @@ export class FlashDatabase {
       await col.close();
     }
     this.collections.clear();
+    if (this.trashVault) {
+      await this.trashVault.close();
+    }
     if (FlashWorkerPool._defaultInstance) {
       await FlashWorkerPool._defaultInstance.shutdown();
     }

@@ -2,7 +2,25 @@
 
 What changed in recent FLASH releases and how to adopt it in your apps.
 
-**Current version:** `1.0.0` · **Tests:** 155/155
+**Current version:** `1.0.1` · **Tests:** 158/158
+
+---
+
+## v1.0.1 — Trash & Restore (undo delete)
+
+Every `deleteOne` / `deleteMany` archives the document into a **single compressed `.flash-trash` file** before hard delete. Restore without a full backup:
+
+```bash
+npm install flash-zk
+```
+
+```js
+await col.deleteOne({ _id: "n1" });
+await col.restoreOne("n1");
+await col.listTrash();
+```
+
+Configure limits via `engineOptions.trash` (`maxEntries`, `maxBytes`, `maxAgeMs`). See [Trash & Restore](/guide/trash-restore).
 
 ---
 

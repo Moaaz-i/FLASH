@@ -27,6 +27,7 @@ export {
 export { MemoryArc } from "./storage/memory_arc.mjs";
 export { MemoryOplog } from "./storage/memory_oplog.mjs";
 export { FlashStorageCompact } from "./engine/storage_compact.mjs";
+export { FlashTrashVault, resolveTrashOptions } from "./engine/trash_vault.mjs";
 export { FlashVectorIndex, FlashHNSWIndex } from "./vector/vector_index.mjs";
 export { FlashChangeStream } from "./reactive/change_stream.mjs";
 export { FlashEventHub } from "./reactive/event_hub.mjs";

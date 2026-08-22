@@ -70,6 +70,7 @@ export class FlashCollection {
     this.useWorkerFlush = options.useWorkerFlush !== false;
     this.compressionLevel = options.compressionLevel ?? 1;
     this.workerPool = options.workerPool || FlashWorkerPool.getDefault();
+    this.trashVault = options.trashVault || null;
   }
 
   _trackDocId(docId) {
@@ -778,11 +779,20 @@ export class FlashCollection {
     return results.length > 0 ? results[0] : null;
   }
 
-  async deleteOne(queryEnvelope) {
+  async deleteOne(queryEnvelope, options = {}) {
     const buf = await this.findOne(queryEnvelope);
     if (!buf) return { deletedCount: 0 };
 
     const docId = String(FlashBinary.getField(buf, "_id") ?? queryEnvelope._id);
+
+    if (!options.skipTrash && this.trashVault) {
+      await this.trashVault.archive({
+        collection: this.name,
+        docId,
+        buffer: buf,
+      });
+    }
+
     await this.wal.append(WAL_OP.DELETE, docId, Buffer.alloc(0));
     this.memtable.delete(docId);
     this.indexManager.removeDocument(docId);

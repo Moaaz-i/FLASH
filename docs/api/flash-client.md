@@ -7,24 +7,24 @@ The `FlashClient` class is the primary entry point for developers. It handles cl
 ## Constructor
 
 ```javascript
-import { FlashClient } from 'flash-zk';
+import { FlashClient } from "flash-zk";
 
 const client = new FlashClient(options);
 ```
 
 ### Options
 
-| Parameter | Type | Required | Default | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `secretKey` | `string \| Buffer` | **Yes** | — | 32-byte secret key or passphrase for AES/HMAC encryption. |
-| `dbName` | `string` | No | `'flash_db'` | Database cluster name. |
-| `storagePath` | `string` | No | `'./data'` | Directory path for persistent WAL and SSTables. |
-| `uri` | `string` | No | — | Flash Server URI (e.g., `flash://localhost:6742`). |
-| `authKey` | `string` | No | — | Authentication key for Flash Server connections. |
-| `pqcHardened` | `boolean` | No | `false` | Enable post-quantum hardened key derivation. |
-| `autoTimestamps` | `boolean` | No | `true` | Auto-set `createdAt` / `updatedAt` on insert/update. |
-| `engineOptions` | `FlashEngineOptions` | No | `{ durability: 'balanced' }` | Memtable, WAL sync, worker flush tuning. |
-| `fieldPolicy` | `Record<string, FieldPolicyType>` | No | `{}` | Custom per-field encryption policy mappings. |
+| Parameter        | Type                              | Required | Default                      | Description                                               |
+| :--------------- | :-------------------------------- | :------- | :--------------------------- | :-------------------------------------------------------- |
+| `secretKey`      | `string \| Buffer`                | **Yes**  | —                            | 32-byte secret key or passphrase for AES/HMAC encryption. |
+| `dbName`         | `string`                          | No       | `'flash_db'`                 | Database cluster name.                                    |
+| `storagePath`    | `string`                          | No       | `'./data'`                   | Directory path for persistent WAL and SSTables.           |
+| `uri`            | `string`                          | No       | —                            | Flash Server URI (e.g., `flash://localhost:6742`).        |
+| `authKey`        | `string`                          | No       | —                            | Authentication key for Flash Server connections.          |
+| `pqcHardened`    | `boolean`                         | No       | `false`                      | Enable post-quantum hardened key derivation.              |
+| `autoTimestamps` | `boolean`                         | No       | `true`                       | Auto-set `createdAt` / `updatedAt` on insert/update.      |
+| `engineOptions`  | `FlashEngineOptions`              | No       | `{ durability: 'balanced' }` | Memtable, WAL sync, worker flush tuning.                  |
+| `fieldPolicy`    | `Record<string, FieldPolicyType>` | No       | `{}`                         | Custom per-field encryption policy mappings.              |
 
 ---
 
@@ -32,13 +32,13 @@ const client = new FlashClient(options);
 
 ```javascript
 const client = new FlashClient({
-  secretKey: 'master-key',
+  secretKey: "master-key",
   fieldPolicy: {
-    email: 'searchable',     // Default: AES-256-GCM + Blind Exact/Ngram trapdoors
-    balance: 'counter',       // Additive homomorphic encryption ($sum/$inc)
-    status: 'plaintext',      // Unencrypted fast-path metadata
-    ssn: 'zk-secret'          // Pure randomized encryption without indexes
-  }
+    email: "searchable", // Default: AES-256-GCM + Blind Exact/Ngram trapdoors
+    balance: "counter", // Additive homomorphic encryption ($sum/$inc)
+    status: "plaintext", // Unencrypted fast-path metadata
+    ssn: "zk-secret", // Pure randomized encryption without indexes
+  },
 });
 ```
 
@@ -56,11 +56,11 @@ Initializes or opens a collection wrapper. Supports optional schema definition.
 - **Returns:** `FlashClientCollection<T>`
 
 ```javascript
-const users = client.collection('users', {
+const users = client.collection("users", {
   schema: {
-    name: { type: 'string', required: true, trim: true },
-    email: { type: 'string', required: true, unique: true }
-  }
+    name: { type: "string", required: true, trim: true },
+    email: { type: "string", required: true, unique: true },
+  },
 });
 ```
 
@@ -71,13 +71,13 @@ Create an ODM model for a collection.
 - **Returns:** `FlashModelInterface<T>`
 
 ```javascript
-const User = client.model('users', {
-  name: { type: 'string', required: true },
-  email: { type: 'string', required: true, unique: true }
+const User = client.model("users", {
+  name: { type: "string", required: true },
+  email: { type: "string", required: true, unique: true },
 });
 
-await User.create({ name: 'Alice', email: 'alice@example.com' });
-const user = await User.findOne({ email: 'alice@example.com' });
+await User.create({ name: "Alice", email: "alice@example.com" });
+const user = await User.findOne({ email: "alice@example.com" });
 ```
 
 ### `tenant(tenantId)`
@@ -89,8 +89,8 @@ Create a tenant-scoped client for multi-tenant isolation. Tenant key is derived 
 - **Returns:** `FlashClient`
 
 ```javascript
-const tenantClient = client.tenant('org-123');
-const collection = tenantClient.collection('users');
+const tenantClient = client.tenant("org-123");
+const collection = tenantClient.collection("users");
 // All data is encrypted with a tenant-specific key
 ```
 
@@ -104,7 +104,7 @@ Start a new transaction session with ACID guarantees.
 const session = client.startSession();
 session.startTransaction();
 try {
-  await users.insertOne({ name: 'Alice' });
+  await users.insertOne({ name: "Alice" });
   await session.commitTransaction();
 } catch (err) {
   await session.abortTransaction();
@@ -121,7 +121,7 @@ Create a backup of all collections.
 - **Returns:** `Promise<BackupResult>`
 
 ```javascript
-const result = await client.backup('/backups/flash-2024-01-15');
+const result = await client.backup("/backups/flash-2024-01-15");
 console.log(result);
 // { bytesWritten: 1048576, files: ['users.sst', 'orders.sst'], timestamp: '2024-01-15T10:00:00Z' }
 ```
@@ -135,9 +135,19 @@ Restore from a backup.
 - **Returns:** `Promise<RestoreResult>`
 
 ```javascript
-const result = await client.restore('/backups/flash-2024-01-15');
+const result = await client.restore("/backups/flash-2024-01-15");
 console.log(result);
 // { filesRestored: 2, destinationPath: './data' }
+```
+
+### `purgeTrash()`
+
+Clear the bounded undo archive (`.flash-trash`) for the whole database.
+
+- **Returns:** `Promise<{ purged: boolean }>`
+
+```javascript
+await client.purgeTrash();
 ```
 
 ### `listCollections()`
@@ -158,7 +168,11 @@ Encrypt a document with AAD binding (uses record `_id` as AAD). Returns an `Encr
 - **Returns:** `EncryptedDocument`
 
 ```javascript
-const encrypted = client.encryptDocument({ _id: 'doc-1', name: 'Alice', email: 'alice@example.com' });
+const encrypted = client.encryptDocument({
+  _id: "doc-1",
+  name: "Alice",
+  email: "alice@example.com",
+});
 // { _id: 'doc-1', _enc: { name: '...', email: '...' }, _blind: {...}, _homo: {...}, _plain: {...} }
 ```
 
@@ -175,15 +189,15 @@ const doc = client.decryptDocument(encrypted);
 const doc = client.decryptDocument(bufferFromEngine);
 ```
 
-### `encryptToBuffer(doc)` · `decryptFromBuffer(buf)` *(v1.3.2+)*
+### `encryptToBuffer(doc)` · `decryptFromBuffer(buf)` _(v1.3.2+)_
 
 Default performance path — encrypt/serialize once on write, partial decode on read.
 
 ```javascript
-const buf = client.encryptToBuffer({ name: 'Alice', email: 'a@b.com' });
+const buf = client.encryptToBuffer({ name: "Alice", email: "a@b.com" });
 await col.raw.insertOne(buf);
 
-const raw = await col.raw.findOne({ _id: '...' });
+const raw = await col.raw.findOne({ _id: "..." });
 const plain = client.decryptFromBuffer(raw);
 ```
 
@@ -196,7 +210,7 @@ Build a query envelope for encrypted queries.
 - **Returns:** `QueryEnvelope`
 
 ```javascript
-const envelope = client.buildQueryEnvelope({ status: 'active' });
+const envelope = client.buildQueryEnvelope({ status: "active" });
 // { $plain: { status: 'active' } } or { $exact: { status: '...' } } if blind-indexed
 ```
 
@@ -225,20 +239,20 @@ await client.close();
 
 ---
 
-## Universal Foundations *(v1.3.0+)*
+## Universal Foundations _(v1.3.0+)_
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `lifecycle(name, opts?)` | `FlashLifecycle` | TTL, max docs, archive |
-| `maintenance(opts?)` | `FlashMaintenance` | Background flush/compact/sweep |
-| `pipeline()` | `FlashPipeline` | NDJSON / collection ETL |
-| `events()` | `FlashEventHub` | Pub/sub on mutations |
-| `use(plugin)` | `FlashPluginHost` | `beforeInsert`, `beforeUpdate`, `afterInsert`, `afterUpdate` |
-| `eventLog(name, opts?)` | `FlashEventLog` | Append-only stream |
-| `counter(name, opts?)` | `FlashCounter` | Atomic counter |
-| `queue(name, opts?)` | `FlashQueue` | FIFO job queue |
-| `health()` | `Promise<object>` | Engine stats |
-| `snapshot()` | `FlashSnapshot` | `.flashpack` backup |
+| Method                   | Returns            | Description                                                  |
+| ------------------------ | ------------------ | ------------------------------------------------------------ |
+| `lifecycle(name, opts?)` | `FlashLifecycle`   | TTL, max docs, archive                                       |
+| `maintenance(opts?)`     | `FlashMaintenance` | Background flush/compact/sweep                               |
+| `pipeline()`             | `FlashPipeline`    | NDJSON / collection ETL                                      |
+| `events()`               | `FlashEventHub`    | Pub/sub on mutations                                         |
+| `use(plugin)`            | `FlashPluginHost`  | `beforeInsert`, `beforeUpdate`, `afterInsert`, `afterUpdate` |
+| `eventLog(name, opts?)`  | `FlashEventLog`    | Append-only stream                                           |
+| `counter(name, opts?)`   | `FlashCounter`     | Atomic counter                                               |
+| `queue(name, opts?)`     | `FlashQueue`       | FIFO job queue                                               |
+| `health()`               | `Promise<object>`  | Engine stats                                                 |
+| `snapshot()`             | `FlashSnapshot`    | `.flashpack` backup                                          |
 
 Full guide: [Universal Foundations](/guide/foundations) · [Release Notes](/guide/release-notes)
 
@@ -246,23 +260,23 @@ Full guide: [Universal Foundations](/guide/foundations) · [Release Notes](/guid
 
 ## FLASH-Exclusive Intelligence Methods
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `privateRAG(name, opts?)` | `FlashPrivateRAG` | Encrypted RAG pipeline |
-| `embeddingVault(name, opts?)` | `FlashEmbeddingVault` | Vectors on server, text client-side |
-| `agentMemory(namespace, opts?)` | `FlashAgentMemory` | AI agent episodic memory |
-| `sealedVault(name, opts?)` | `FlashSealedVault` | Passphrase vault + auto-lock |
-| `integrityProof(collection, opts?)` | `Promise<Proof>` | Signed Merkle manifest |
-| `portableBundle()` | `FlashPortableBundle` | `.flashpack` export/import |
-| `langChainAdapter(opts?)` | `FlashLangChainAdapter` | AI framework adapter |
-| `federatedQuery()` | `FlashFederatedQuery` | Multi-peer query merge |
-| `multiAgentSync(namespace)` | `FlashMultiAgentSync` | Shared agent memory |
-| `complianceExport()` | `FlashComplianceExport` | GDPR export/erase |
-| `timeSeal(path?)` | `FlashTimeSeal` | Tamper-evident timestamps |
-| `cloudSync(remoteDir)` | `FlashCloudSync` | Cloud folder sync |
-| `encryptedCRDT(name, nodeId)` | `FlashEncryptedCRDT` | Encrypted CRDT sync |
-| `browserVault()` | `FlashBrowserVault` | Browser encrypted KV |
-| `auditStream(collection)` | `FlashAuditStream` | Change stream + audit chain |
+| Method                              | Returns                 | Description                         |
+| ----------------------------------- | ----------------------- | ----------------------------------- |
+| `privateRAG(name, opts?)`           | `FlashPrivateRAG`       | Encrypted RAG pipeline              |
+| `embeddingVault(name, opts?)`       | `FlashEmbeddingVault`   | Vectors on server, text client-side |
+| `agentMemory(namespace, opts?)`     | `FlashAgentMemory`      | AI agent episodic memory            |
+| `sealedVault(name, opts?)`          | `FlashSealedVault`      | Passphrase vault + auto-lock        |
+| `integrityProof(collection, opts?)` | `Promise<Proof>`        | Signed Merkle manifest              |
+| `portableBundle()`                  | `FlashPortableBundle`   | `.flashpack` export/import          |
+| `langChainAdapter(opts?)`           | `FlashLangChainAdapter` | AI framework adapter                |
+| `federatedQuery()`                  | `FlashFederatedQuery`   | Multi-peer query merge              |
+| `multiAgentSync(namespace)`         | `FlashMultiAgentSync`   | Shared agent memory                 |
+| `complianceExport()`                | `FlashComplianceExport` | GDPR export/erase                   |
+| `timeSeal(path?)`                   | `FlashTimeSeal`         | Tamper-evident timestamps           |
+| `cloudSync(remoteDir)`              | `FlashCloudSync`        | Cloud folder sync                   |
+| `encryptedCRDT(name, nodeId)`       | `FlashEncryptedCRDT`    | Encrypted CRDT sync                 |
+| `browserVault()`                    | `FlashBrowserVault`     | Browser encrypted KV                |
+| `auditStream(collection)`           | `FlashAuditStream`      | Change stream + audit chain         |
 
 See [FLASH-Exclusive Stack](/guide/flash-exclusive) for full documentation.
 
@@ -281,8 +295,8 @@ FLASH DB v2 encrypts each field with AAD bound to the **record `_id`** and **fie
 
 ```js
 // AAD binding is automatic
-const users = client.collection('users');
-await users.insertOne({ _id: 'user-1', name: 'Alice' });
+const users = client.collection("users");
+await users.insertOne({ _id: "user-1", name: "Alice" });
 
 // Swapping ciphertext between records fails
 // The ciphertext for user-1's name won't decrypt in user-2's context

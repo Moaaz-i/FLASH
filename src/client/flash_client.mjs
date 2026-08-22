@@ -142,9 +142,14 @@ export class FlashClient {
       // Embedded In-Process Mode
       const inMemory =
         config.inMemory === true || config.storagePath === ":memory:";
+      const trashSecret = crypto
+        .createHash("sha256")
+        .update(`${config.secretKey}:flash-trash`)
+        .digest("hex");
       const engineOptions = resolveEngineOptions({
         ...(config.engineOptions || {}),
         storageProfile: this.storageProfile,
+        trashSecret,
       });
 
       this.db = new FlashDatabase(config.dbName || "flash_db", {
@@ -623,6 +628,12 @@ export class FlashClient {
     }
     await this.db.close();
   }
+
+  async purgeTrash() {
+    if (!this.db.trashVault) return { purged: false };
+    await this.db.trashVault.purge();
+    return { purged: true };
+  }
 }
 
 /**
@@ -1019,8 +1030,16 @@ export class FlashClientCollection {
     const docToDelete = await this.findOne(query);
     if (!docToDelete) return { deletedCount: 0 };
 
+    if (this.client.db.trashVault) {
+      await this.client.db.trashVault.archive({
+        collection: this.name,
+        docId: String(docToDelete._id),
+        doc: docToDelete,
+      });
+    }
+
     const envelope = this.client.buildQueryEnvelope(query);
-    const res = await this.raw.deleteOne(envelope);
+    const res = await this.raw.deleteOne(envelope, { skipTrash: true });
 
     if (res.deletedCount > 0) {
       this.vectorIndex.delete(String(docToDelete._id));
@@ -1042,6 +1061,51 @@ export class FlashClientCollection {
       deletedCount += res.deletedCount;
     }
     return { deletedCount };
+  }
+
+  async restoreOne(docId) {
+    if (!this.isReady) await this.init();
+    const vault = this.client.db.trashVault;
+    if (!vault) {
+      throw new Error("Trash vault is disabled for this database");
+    }
+
+    const id = String(docId);
+    const existing = await this.findOne({ _id: id });
+    if (existing) {
+      return { restored: false, docId: id, reason: "document_exists" };
+    }
+
+    const item = await vault.peek(id, this.name);
+    if (!item) {
+      return { restored: false, docId: id, reason: "not_in_trash" };
+    }
+
+    if (item.doc) {
+      await this.insertOne(item.doc);
+    } else if (item.buffer) {
+      const doc = FlashRecordCodec.decrypt(this.client, item.buffer);
+      await this.insertOne(doc);
+    } else {
+      return { restored: false, docId: id, reason: "empty_trash_entry" };
+    }
+
+    await vault.remove(id, this.name);
+    return { restored: true, docId: id };
+  }
+
+  async listTrash(options = {}) {
+    if (!this.isReady) await this.init();
+    const vault = this.client.db.trashVault;
+    if (!vault) return [];
+    return vault.list({ ...options, collection: this.name });
+  }
+
+  async purgeTrash() {
+    const vault = this.client.db.trashVault;
+    if (!vault) return { purged: false };
+    await vault.purge();
+    return { purged: true };
   }
 
   async bulkWrite(operations = [], options = {}) {
