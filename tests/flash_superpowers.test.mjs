@@ -23,9 +23,14 @@ import {
 test("Superpower: EmbeddingVault stores vectors only", async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flash-emb-vault-"));
   try {
-    const client = new FlashClient({ secretKey: "emb_vault_key", storagePath: tmpDir });
+    const client = new FlashClient({
+      secretKey: "emb_vault_key",
+      storagePath: tmpDir,
+    });
     const vault = client.embeddingVault("vectors");
-    await vault.ingest("Secret knowledge about quantum encryption", { title: "Q" });
+    await vault.ingest("Secret knowledge about quantum encryption", {
+      title: "Q",
+    });
 
     const raw = await client.collection("vectors").find({}).exec();
     assert.ok(raw[0].contentHash);
@@ -45,21 +50,48 @@ test("Superpower: PortableBundle export/import", async () => {
   const tmpB = fs.mkdtempSync(path.join(os.tmpdir(), "flash-pack-b-"));
   const bundleFile = path.join(tmpA, "data.flashpack");
   try {
-    const clientA = new FlashClient({ secretKey: "pack_key_shared", storagePath: tmpA });
+    const clientA = new FlashClient({
+      secretKey: "pack_key_shared",
+      storagePath: tmpA,
+    });
     await clientA.collection("docs").insertOne({ title: "Portable", v: 1 });
 
     const pack = clientA.portableBundle();
     await pack.exportToFile(["docs"], bundleFile, { note: "test" });
 
-    const clientB = new FlashClient({ secretKey: "pack_key_shared", storagePath: tmpB });
-    const manifest = await FlashPortableBundle.importFromFile(bundleFile, clientB);
+    const clientB = new FlashClient({
+      secretKey: "pack_key_shared",
+      storagePath: tmpB,
+    });
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const { FlashCipher, FlashBlindIndex, FlashHomomorphic } =
+      await import("../src/index.mjs");
+    fs.mkdirSync(path.join(tmpB, clientB.db.dbName), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmpB, clientB.db.dbName, ".flash-salt"),
+      clientA.db.salt,
+      "utf8",
+    );
+
+    // Re-initialize clientB now that the salt is physically on disk in its target path
+    await clientB.close();
+    const clientB2 = new FlashClient({
+      secretKey: "pack_key_shared",
+      storagePath: tmpB,
+    });
+
+    const manifest = await FlashPortableBundle.importFromFile(
+      bundleFile,
+      clientB2,
+    );
     assert.equal(manifest.engine, "FLASH");
 
-    const docs = await clientB.collection("docs").find({}).exec();
+    const docs = await clientB2.collection("docs").find({}).exec();
     assert.equal(docs.length, 1);
     assert.equal(docs[0].title, "Portable");
     await clientA.close();
-    await clientB.close();
+    await clientB2.close();
   } finally {
     fs.rmSync(tmpA, { recursive: true, force: true });
     fs.rmSync(tmpB, { recursive: true, force: true });
@@ -69,11 +101,17 @@ test("Superpower: PortableBundle export/import", async () => {
 test("Superpower: LangChain adapter vector store + memory", async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flash-lc-"));
   try {
-    const client = new FlashClient({ secretKey: "lc_key", storagePath: tmpDir });
+    const client = new FlashClient({
+      secretKey: "lc_key",
+      storagePath: tmpDir,
+    });
     const lc = client.langChainAdapter();
     const vs = lc.asVectorStore();
     await vs.addDocuments([
-      { pageContent: "FLASH is server-blind encrypted intelligence storage", metadata: { title: "FLASH" } },
+      {
+        pageContent: "FLASH is server-blind encrypted intelligence storage",
+        metadata: { title: "FLASH" },
+      },
     ]);
     const hits = await vs.similaritySearch("server blind encryption", 2);
     assert.ok(hits.length >= 1);
@@ -92,8 +130,16 @@ test("Superpower: FederatedQuery merges peers", async () => {
   const tmp1 = fs.mkdtempSync(path.join(os.tmpdir(), "flash-fed-1-"));
   const tmp2 = fs.mkdtempSync(path.join(os.tmpdir(), "flash-fed-2-"));
   try {
-    const c1 = new FlashClient({ secretKey: "fed_key", storagePath: tmp1, dbName: "n1" });
-    const c2 = new FlashClient({ secretKey: "fed_key", storagePath: tmp2, dbName: "n2" });
+    const c1 = new FlashClient({
+      secretKey: "fed_key",
+      storagePath: tmp1,
+      dbName: "n1",
+    });
+    const c2 = new FlashClient({
+      secretKey: "fed_key",
+      storagePath: tmp2,
+      dbName: "n2",
+    });
     await c1.collection("items").insertOne({ region: "eu", v: 1 });
     await c2.collection("items").insertOne({ region: "us", v: 2 });
 
@@ -117,7 +163,9 @@ test("Superpower: DifferentialPrivacy noisy aggregates", () => {
 });
 
 test("Superpower: PromptFirewall redacts PII", () => {
-  const scan = FlashPromptFirewall.scan("Contact me at test@email.com or sk-123456789012345678901234");
+  const scan = FlashPromptFirewall.scan(
+    "Contact me at test@email.com or sk-123456789012345678901234",
+  );
   assert.equal(scan.safe, false);
   assert.ok(scan.violations.includes("email"));
   assert.match(scan.redacted, /REDACTED/);
@@ -126,7 +174,10 @@ test("Superpower: PromptFirewall redacts PII", () => {
 test("Superpower: MultiAgentSync shared memory", async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flash-mas-"));
   try {
-    const client = new FlashClient({ secretKey: "mas_key", storagePath: tmpDir });
+    const client = new FlashClient({
+      secretKey: "mas_key",
+      storagePath: tmpDir,
+    });
     const sync = client.multiAgentSync("team");
     sync.registerAgent("researcher");
     sync.registerAgent("writer");
@@ -142,10 +193,19 @@ test("Superpower: MultiAgentSync shared memory", async () => {
 test("Superpower: ComplianceExport GDPR erase attestation", async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flash-gdpr-"));
   try {
-    const client = new FlashClient({ secretKey: "gdpr_key", storagePath: tmpDir });
-    await client.collection("users").insertOne({ email: "a@test.com", name: "A" });
+    const client = new FlashClient({
+      secretKey: "gdpr_key",
+      storagePath: tmpDir,
+    });
+    await client
+      .collection("users")
+      .insertOne({ email: "a@test.com", name: "A" });
     const compliance = client.complianceExport();
-    const att = await compliance.eraseSubjectData("users", { email: "a@test.com" }, "dpo");
+    const att = await compliance.eraseSubjectData(
+      "users",
+      { email: "a@test.com" },
+      "dpo",
+    );
     assert.equal(att.deletedCount, 1);
     assert.ok(att.signature);
     await client.close();

@@ -37,7 +37,7 @@ export class FlashPortableBundle {
       extras,
     };
 
-    const cipher = new FlashCipher(this.client.secretKey);
+    const cipher = new FlashCipher(this.client.secretKey, this.client.config.salt || "flash_db_default_salt_2026");
     const manifestEnc = cipher.encrypt(JSON.stringify(manifest), {
       aad: "flashpack:manifest",
     });
@@ -61,7 +61,7 @@ export class FlashPortableBundle {
     await this._unpackToDir(buf, tmpDir);
 
     const manifestEnc = await fs.readFile(path.join(tmpDir, "manifest.flashenc"), "utf-8");
-    const cipher = new FlashCipher(targetClient.secretKey);
+    const cipher = new FlashCipher(targetClient.secretKey, targetClient.config.salt || "flash_db_default_salt_2026");
     const manifestJson = cipher.decrypt(manifestEnc, {
       aad: "flashpack:manifest",
     });
@@ -93,9 +93,13 @@ export class FlashPortableBundle {
   }
 
   static async _unpackToDir(buf, dir) {
+    const resolvedDir = path.resolve(dir);
     const { entries } = JSON.parse(buf.toString("utf-8"));
     for (const e of entries) {
-      const out = path.join(dir, e.path);
+      const out = path.resolve(dir, e.path);
+      if (!out.startsWith(resolvedDir)) {
+        throw new Error(`Security Exception: Path traversal attempt blocked: ${e.path}`);
+      }
       await fs.mkdir(path.dirname(out), { recursive: true });
       await fs.writeFile(out, Buffer.from(e.data, "base64"));
     }

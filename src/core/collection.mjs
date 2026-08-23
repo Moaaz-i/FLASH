@@ -865,7 +865,11 @@ export class FlashCollection {
     for (const sst of this.sstables) {
       await sst.close();
     }
-    await this.oplog.close();
-    await this.wal.close();
+    if (this.oplog && typeof this.oplog.close === 'function') {
+      await this.oplog.close();
+    }
+    if (this.wal && typeof this.wal.close === 'function') {
+      await this.wal.close();
+    }
   }
 }

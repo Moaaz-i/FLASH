@@ -13,6 +13,7 @@ const CLIENT_ROOT_KEYS = new Set([
   "fieldPolicy",
   "storageProfile",
   "engineOptions",
+  "salt",
 ]);
 
 const DATABASE_OPTION_KEYS = new Set([
@@ -161,7 +162,9 @@ export function collectEngineOptionMistakes(engine, prefix = "engineOptions") {
 
   if (engine.trash != null) {
     if (!isPlainObject(engine.trash)) {
-      mistakes.push(mistake(`${prefix}.trash must be an object`, `${prefix}.trash`));
+      mistakes.push(
+        mistake(`${prefix}.trash must be an object`, `${prefix}.trash`),
+      );
     } else {
       for (const key of Object.keys(engine.trash)) {
         if (!TRASH_KEYS.has(key)) {
@@ -269,7 +272,12 @@ export function assertClientConfig(config = {}) {
   assertBoolean(config.inMemory, "inMemory", mistakes);
   assertBoolean(config.pqcHardened, "pqcHardened", mistakes);
   assertBoolean(config.autoTimestamps, "autoTimestamps", mistakes);
-  assertEnum(config.storageProfile, "storageProfile", STORAGE_PROFILES, mistakes);
+  assertEnum(
+    config.storageProfile,
+    "storageProfile",
+    STORAGE_PROFILES,
+    mistakes,
+  );
 
   if (config.fieldPolicy != null && !isPlainObject(config.fieldPolicy)) {
     mistakes.push(mistake("fieldPolicy must be an object", "fieldPolicy"));

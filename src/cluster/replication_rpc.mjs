@@ -1,4 +1,12 @@
 import net from "node:net";
+import crypto from "node:crypto";
+
+function timingSafeCompare(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const hashA = crypto.createHmac('sha256', 'safe-key-replication').update(a).digest();
+  const hashB = crypto.createHmac('sha256', 'safe-key-replication').update(b).digest();
+  return crypto.timingSafeEqual(hashA, hashB);
+}
 
 /**
  * TCP RPC for cross-process replica replication (oplog apply).
@@ -10,11 +18,13 @@ export class FlashReplicationServer {
    * @param {object} [options]
    * @param {number} [options.port=6750]
    * @param {string} [options.host='127.0.0.1']
+   * @param {string} [options.authKey]
    */
   constructor(db, options = {}) {
     this.db = db;
     this.port = options.port || 6750;
     this.host = options.host || "127.0.0.1";
+    this.authKey = options.authKey || null;
     this.server = null;
   }
 
@@ -45,7 +55,14 @@ export class FlashReplicationServer {
   }
 
   async _handle(req) {
-    const { action } = req;
+    const { action, authKey } = req;
+
+    if (this.authKey) {
+      if (!authKey || !timingSafeCompare(authKey, this.authKey)) {
+        throw new Error("Unauthorized: Invalid or missing replication authKey");
+      }
+    }
+
     if (action === "ping") return { pong: true };
 
     if (action === "applyInsert") {
@@ -101,15 +118,20 @@ export class FlashReplicationClient {
   /**
    * @param {string} host
    * @param {number} port
+   * @param {string} [authKey]
    */
-  constructor(host, port) {
+  constructor(host, port, authKey = null) {
     this.host = host;
     this.port = port;
+    this.authKey = authKey;
   }
 
   async call(payload) {
     return new Promise((resolve, reject) => {
       const socket = net.createConnection({ host: this.host, port: this.port }, () => {
+        if (this.authKey) {
+          payload.authKey = this.authKey;
+        }
         const body = Buffer.from(JSON.stringify(payload), "utf-8");
         const header = Buffer.allocUnsafe(4);
         header.writeUInt32BE(body.length, 0);

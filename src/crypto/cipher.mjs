@@ -25,8 +25,8 @@ export class FlashCipher {
       throw new Error("Master key is required for FlashCipher");
     }
 
-    if (typeof masterKey === "string" && masterKey.length !== 32) {
-      // Derive 256-bit key via HKDF / PBKDF2
+    if (typeof masterKey === "string") {
+      // Always derive a cryptographically strong 256-bit key from string passphrases
       this.key = crypto.pbkdf2Sync(masterKey, salt, 100000, 32, "sha256");
     } else if (Buffer.isBuffer(masterKey)) {
       this.key = masterKey;
@@ -184,7 +184,7 @@ export class FlashCipher {
   }
 
   /**
-   * Deterministic encryption using synthetic IV derived from HMAC (For exact match queries when needed)
+   * Deterministic encryption using synthetic IV derived from HMAC to prevent GCM nonce-reuse vulnerabilities
    * @param {string} plaintext
    * @param {Buffer} [domainKey]
    * @returns {string}
@@ -195,13 +195,32 @@ export class FlashCipher {
       .createHmac("sha256", domainKey)
       .update(data)
       .digest()
-      .subarray(0, 12);
-    const cipher = crypto.createCipheriv("aes-256-gcm", this.key, iv);
+      .subarray(0, 16);
+    const cipher = crypto.createCipheriv("aes-256-cbc", this.key, iv);
     const encrypted = Buffer.concat([
       cipher.update(data, "utf-8"),
       cipher.final(),
     ]);
-    const tag = cipher.getAuthTag();
-    return Buffer.concat([iv, tag, encrypted]).toString("base64");
+    return Buffer.concat([iv, encrypted]).toString("base64");
+  }
+
+  /**
+   * Decrypts a deterministic payload encrypted with encryptDeterministic
+   * @param {string} ciphertextBase64
+   * @param {Buffer} [domainKey]
+   * @returns {string}
+   */
+  decryptDeterministic(ciphertextBase64, domainKey = this.key) {
+    if (!ciphertextBase64) return "";
+    const buffer = Buffer.from(ciphertextBase64, "base64");
+    if (buffer.length < 16) throw new Error("Invalid deterministic payload size");
+    const iv = buffer.subarray(0, 16);
+    const ciphertext = buffer.subarray(16);
+    const decipher = crypto.createDecipheriv("aes-256-cbc", this.key, iv);
+    const decrypted = Buffer.concat([
+      decipher.update(ciphertext),
+      decipher.final(),
+    ]);
+    return decrypted.toString("utf-8");
   }
 }

@@ -1,5 +1,13 @@
 import net from 'node:net';
+import crypto from 'node:crypto';
 import { FlashBinary } from '../binary/flash_binary.mjs';
+
+function timingSafeCompare(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const hashA = crypto.createHmac('sha256', 'safe-key-grpc').update(a).digest();
+  const hashB = crypto.createHmac('sha256', 'safe-key-grpc').update(b).digest();
+  return crypto.timingSafeEqual(hashA, hashB);
+}
 
 /**
  * FLASH High-Performance gRPC & Binary Protocol Server (FlashGRPCServer)
@@ -10,10 +18,14 @@ export class FlashGRPCServer {
    * @param {import('../core/database.mjs').FlashDatabase} db
    * @param {object} [options]
    * @param {number} [options.port=6743]
+   * @param {string} [options.host='127.0.0.1']
+   * @param {string} [options.authKey]
    */
   constructor(db, options = {}) {
     this.db = db;
     this.port = options.port || 6743;
+    this.host = options.host || '127.0.0.1';
+    this.authKey = options.authKey || null;
     this.server = null;
   }
 
@@ -39,6 +51,14 @@ export class FlashGRPCServer {
 
             try {
               const req = JSON.parse(payloadBuf.toString('utf8'));
+              
+              // Validate authKey if server is configured with one
+              if (this.authKey) {
+                if (!req.authKey || !timingSafeCompare(req.authKey, this.authKey)) {
+                  throw new Error('Unauthorized: Invalid or missing authKey');
+                }
+              }
+
               const res = await this._handleRPC(req);
               const resBuf = Buffer.from(JSON.stringify(res), 'utf8');
 
@@ -55,7 +75,7 @@ export class FlashGRPCServer {
         });
       });
 
-      this.server.listen(this.port, () => {
+      this.server.listen(this.port, this.host, () => {
         resolve(this.server);
       });
     });

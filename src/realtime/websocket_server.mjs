@@ -1,6 +1,13 @@
 import crypto from 'node:crypto';
 import { EventEmitter } from 'node:events';
 
+function timingSafeCompare(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const hashA = crypto.createHmac('sha256', 'safe-key-ws').update(a).digest();
+  const hashB = crypto.createHmac('sha256', 'safe-key-ws').update(b).digest();
+  return crypto.timingSafeEqual(hashA, hashB);
+}
+
 const MAGIC_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 const OPCODE_TEXT = 0x01;
 const OPCODE_BINARY = 0x02;
@@ -36,7 +43,7 @@ function encodeFrame(opcode, payload, fin = true) {
   return Buffer.concat([header, data]);
 }
 
-function decodeFrame(buffer) {
+function decodeFrame(buffer, maxPayload = 1024 * 1024) {
   if (buffer.length < 2) return null;
 
   const firstByte = buffer[0];
@@ -54,6 +61,10 @@ function decodeFrame(buffer) {
     if (buffer.length < 10) return null;
     payloadLen = Number(buffer.readBigUInt64BE(2));
     offset = 10;
+  }
+
+  if (payloadLen > maxPayload) {
+    return 'TOO_LARGE';
   }
 
   if (masked) {
@@ -80,7 +91,7 @@ function decodeFrame(buffer) {
 }
 
 export class FlashWebSocket {
-  constructor(socket, id) {
+  constructor(socket, id, options = {}) {
     this.id = id;
     this.socket = socket;
     this.rooms = new Set();
@@ -88,6 +99,7 @@ export class FlashWebSocket {
     this._buffer = Buffer.alloc(0);
     this._headers = {};
     this._isAlive = true;
+    this._maxPayload = options.maxPayload || 1024 * 1024;
 
     socket.on('data', (chunk) => this._onData(chunk));
     socket.on('close', () => this._onClose());
@@ -95,9 +107,17 @@ export class FlashWebSocket {
   }
 
   _onData(chunk) {
+    if (this._buffer.length + chunk.length > this._maxPayload * 2) {
+      this.close(1009, 'Buffer overflow');
+      return;
+    }
     this._buffer = Buffer.concat([this._buffer, chunk]);
     while (this._buffer.length > 0) {
-      const frame = decodeFrame(this._buffer);
+      const frame = decodeFrame(this._buffer, this._maxPayload);
+      if (frame === 'TOO_LARGE') {
+        this.close(1009, 'Message too big');
+        return;
+      }
       if (!frame) break;
       this._buffer = this._buffer.slice(frame.totalLength);
       this._handleFrame(frame);
@@ -190,6 +210,7 @@ export class FlashWebSocketServer extends EventEmitter {
     this._path = options.path || '/ws';
     this._heartbeatInterval = options.heartbeatInterval || 30000;
     this._maxPayload = options.maxPayload || 1024 * 1024;
+    this._token = options.token || options.authKey || null;
     this._nextId = 1;
     this._pingTimer = null;
 
@@ -201,10 +222,43 @@ export class FlashWebSocketServer extends EventEmitter {
   }
 
   _handleUpgrade(req, socket, head) {
-    const url = new URL(req.url, `http://${req.headers.host}`);
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     if (url.pathname !== this._path) {
       socket.destroy();
       return;
+    }
+
+    // Verify Origin to prevent Cross-Site WebSocket Hijacking (CSWSH)
+    const origin = req.headers['origin'];
+    if (origin) {
+      try {
+        const originUrl = new URL(origin);
+        if (
+          originUrl.hostname !== 'localhost' &&
+          originUrl.hostname !== '127.0.0.1' &&
+          originUrl.hostname !== '[::1]' &&
+          originUrl.hostname !== req.headers.host &&
+          (req.headers.host ? !req.headers.host.includes(originUrl.hostname) : true)
+        ) {
+          socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+          socket.destroy();
+          return;
+        }
+      } catch {
+        socket.write('HTTP/1.1 400 Bad Request\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+    }
+
+    // Authenticate WebSocket Upgrade if token/authKey is configured
+    if (this._token) {
+      const token = req.headers['x-flash-token'] || req.headers['x-flash-server-key'] || url.searchParams.get('token') || url.searchParams.get('authKey');
+      if (!token || !timingSafeCompare(token, this._token)) {
+        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+        socket.destroy();
+        return;
+      }
     }
 
     const key = req.headers['sec-websocket-key'];
@@ -226,7 +280,7 @@ export class FlashWebSocketServer extends EventEmitter {
     socket.write(response);
 
     const id = String(this._nextId++);
-    const ws = new FlashWebSocket(socket, id);
+    const ws = new FlashWebSocket(socket, id, { maxPayload: this._maxPayload });
     ws._headers = req.headers;
     this.clients.set(id, ws);
 

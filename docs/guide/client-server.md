@@ -17,13 +17,20 @@ import { FlashServer } from "flash-zk";
 // Start high-performance Zero-Knowledge database server daemon
 const server = FlashServer.start({
   port: 6742, // Default FLASH port
-  host: "0.0.0.0",
+  host: "127.0.0.1", // Secure local-only default. Use a specific interface or firewall when exposing.
   storagePath: "/var/data/flash",
-  authKey: "my_cluster_secret_token", // Optional network authentication key
+  authKey: "my_cluster_secret_token", // Recommended strong network authentication key
 });
 
 console.log("⚡ FLASH Server daemon is live on port 6742");
 ```
+
+::: warning Security Best Practices
+- **Host Binding**: By default, `FlashServer` listens on `127.0.0.1` for local safety. When exposing on a public or LAN interface (like `0.0.0.0`), ensure you use a strong `authKey` and protect the port behind a strict firewall, mTLS proxy, or VPN.
+- **Timing-Safe Auth**: All connection authentication checks (including `authKey` validation) use timing-safe constant-time comparison algorithms to mitigate side-channel timing attacks.
+- **Secure CORS**: Remote connections strictly evaluate incoming `Origin` headers. Requests from unrecognized remote domains are rejected with `null` origins to mitigate Cross-Origin Exploitation.
+- **Resource Limits**: The HTTP daemon enforces a strict **10MB payload size limit** to protect the server from memory-exhaustion Denial of Service (DoS) attacks.
+:::
 
 ---
 

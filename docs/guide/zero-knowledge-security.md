@@ -11,7 +11,7 @@ The database engine and physical storage never receive unencrypted plaintext or 
 
 ### 1. Document & Field Encryption (`FlashCipher`)
 - **Algorithm:** Authenticated `AES-256-GCM` with 96-bit randomized Nonces (IVs) and 128-bit authentication tags.
-- **Key Derivation:** Master secret keys are expanded using `PBKDF2-HMAC-SHA256` with 100,000 rounds and domain-separated salts.
+- **Key Derivation:** Master secret keys are derived using `PBKDF2-HMAC-SHA256` with 100,000 rounds and a **dynamically generated unique database-specific salt** (stored securely in `.flash-salt` per-database). Master secret passphrases of any length are automatically hardened and derived, rather than being used directly as raw AES keys.
 - **Envelope Layout:** `[ IV (12 bytes) | AuthTag (16 bytes) | Ciphertext (N bytes) ]` encoded as Base64.
 
 ---
@@ -30,11 +30,19 @@ Trapdoor = HMAC-SHA256(SecretKey, "exact:" + FieldName + ":" + Value)
 - The server searches its in-memory Blind Index map for this hex token.
 - The server matches the record without ever knowing what value was searched for!
 
+::: security Deterministic Encryption
+For situations requiring exact matching where deterministic encryption is preferred, FLASH utilizes **`AES-256-CBC` with synthetic HMAC-based IVs** rather than AES-GCM deterministic mode, eliminating any risks associated with GCM nonce-reuse (which would compromise the master key if a synthetic nonce ever collided).
+:::
+
 ### Substring & Regex Queries (`$regex`)
 For partial text search:
 1. The text is broken down into **3-Gram Substrings**.
 2. Each 3-gram is hashed into an HMAC token.
 3. The server computes the set intersection of matching documents.
+
+::: warning Regular Expression Sandboxing (ReDoS Prevention)
+To prevent Regular Expression Denial of Service (ReDoS) resource exhaustion attacks (where a malicious pattern causes exponential backtracking), `$regex` evaluations on the server are executed in a secure Node.js `vm` sandbox with a strict **50ms execution timeout**.
+:::
 
 ### Honey Padding (Defense Against Frequency Leakage)
 To prevent statistical frequency analysis attacks (where an attacker analyzes token repetition counts):

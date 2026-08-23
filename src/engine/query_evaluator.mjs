@@ -1,4 +1,17 @@
+import vm from 'node:vm';
 import { FlashFuzzyEngine } from '../crypto/fuzzy_search.mjs';
+
+function safeRegexTest(pattern, flags, value) {
+  try {
+    const rx = new RegExp(pattern, flags);
+    const sandbox = { rx, value, result: false };
+    vm.createContext(sandbox);
+    vm.runInContext('result = rx.test(value);', sandbox, { timeout: 50 });
+    return sandbox.result;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * FLASH Advanced Query Evaluator (FlashQueryEvaluator)
@@ -144,8 +157,7 @@ export class FlashQueryEvaluator {
 
         case '$regex':
           const flags = condition.$options || 'i';
-          const rx = new RegExp(opVal, flags);
-          if (!rx.test(String(val))) return false;
+          if (!safeRegexTest(opVal, flags, String(val))) return false;
           break;
 
         case '$mod':

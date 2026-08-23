@@ -85,6 +85,12 @@ ws.onmessage = (event) => {
 | `socket.send(data)` | Send to this client |
 | `socket.close()` | Disconnect this client |
 
+::: warning WebSocket Security & Rate Limiting
+- **Cross-Site WebSocket Hijacking (CSWSH) Protection**: The WebSocket server automatically parses and validates incoming `Origin` headers. Upgrades originating from domains outside the permitted list (e.g. unknown public origins attempting to upgrade to your private socket) are rejected with a `403 Forbidden` response.
+- **Timing-Safe Token Authentication**: You can secure the WebSocket upgrades by passing a `token` or `authKey` to the `FlashWebSocketServer` constructor options. The server will verify the presence of the token in request headers (`x-flash-token`, `x-flash-server-key`) or query parameters (`token`, `authKey`) using timing-safe comparisons to prevent token-guessing attacks.
+- **Frame Buffer Capping**: The WebSocket server strictly enforces options like `maxPayload` (default: `1MB`) to cap the size of individual incoming frames. In addition, the socket's data accumulator automatically destroys the socket under code `1009` (Message too big) if cumulative payloads exceed limits, mitigating memory exhaustion Denial of Service (DoS) attacks.
+:::
+
 ---
 
 ## Presence Service

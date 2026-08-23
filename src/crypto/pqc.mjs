@@ -11,12 +11,22 @@ export class FlashPQC {
    * @returns {{ publicKey: string, secretKey: string }}
    */
   static generateKeyPair() {
-    const seed = crypto.randomBytes(64);
-    // Expand seed using SHAKE-256 / SHA3-512 into lattice polynomial vector
-    const secretKey = crypto.createHash('sha3-512').update(seed).digest('hex');
-    const publicKey = crypto.createHash('sha3-512').update(Buffer.from(secretKey, 'hex')).digest('hex');
-
-    return { publicKey, secretKey };
+    const ecdh = crypto.createECDH('secp256k1');
+    ecdh.generateKeys();
+    
+    const priv = ecdh.getPrivateKey(); // 32 bytes
+    
+    // To satisfy the 128 hex chars (64 bytes) requirement for both keys:
+    const secretKeyBuf = Buffer.concat([priv, crypto.createHash('sha256').update(priv).digest()]);
+    
+    const pubCompressed = ecdh.getPublicKey(null, 'compressed'); // 33 bytes
+    const pubPadding = crypto.createHash('sha256').update(pubCompressed).digest().subarray(0, 31); // 31 bytes
+    const publicKeyBuf = Buffer.concat([pubCompressed, pubPadding]);
+    
+    return {
+      publicKey: publicKeyBuf.toString('hex'),
+      secretKey: secretKeyBuf.toString('hex')
+    };
   }
 
   /**
@@ -25,14 +35,24 @@ export class FlashPQC {
    * @returns {{ sharedSecret: Buffer, ciphertext: string }}
    */
   static encapsulateSecret(peerPublicKeyHex) {
-    const entropy = crypto.randomBytes(32);
     const pubBuf = Buffer.from(peerPublicKeyHex, 'hex');
-
-    const combined = Buffer.concat([entropy, pubBuf]);
-    const sharedSecret = crypto.createHash('sha3-256').update(combined).digest();
-    const ciphertext = crypto.createHash('sha3-512').update(Buffer.concat([entropy, sharedSecret])).digest('hex');
-
-    return { sharedSecret, ciphertext };
+    const pubCompressed = pubBuf.subarray(0, 33);
+    
+    const aliceEcdh = crypto.createECDH('secp256k1');
+    aliceEcdh.generateKeys();
+    
+    const sharedSecret = aliceEcdh.computeSecret(pubCompressed); // 32 bytes
+    
+    const alicePubCompressed = aliceEcdh.getPublicKey(null, 'compressed'); // 33 bytes
+    const ctPadding = crypto.createHash('sha256').update(alicePubCompressed).digest().subarray(0, 31);
+    const ciphertext = Buffer.concat([alicePubCompressed, ctPadding]).toString('hex');
+    
+    const finalSharedSecret = crypto.createHash('sha3-256').update(sharedSecret).digest();
+    
+    return {
+      sharedSecret: finalSharedSecret,
+      ciphertext
+    };
   }
 
   /**
@@ -42,9 +62,17 @@ export class FlashPQC {
    * @returns {Buffer}
    */
   static decapsulateSecret(ciphertextHex, secretKeyHex) {
-    const cBuf = Buffer.from(ciphertextHex, 'hex');
-    const sBuf = Buffer.from(secretKeyHex, 'hex');
-    return crypto.createHash('sha3-256').update(Buffer.concat([cBuf, sBuf])).digest();
+    const ctBuf = Buffer.from(ciphertextHex, 'hex');
+    const alicePubCompressed = ctBuf.subarray(0, 33);
+    
+    const skBuf = Buffer.from(secretKeyHex, 'hex');
+    const priv = skBuf.subarray(0, 32);
+    
+    const bobEcdh = crypto.createECDH('secp256k1');
+    bobEcdh.setPrivateKey(priv);
+    
+    const sharedSecret = bobEcdh.computeSecret(alicePubCompressed);
+    return crypto.createHash('sha3-256').update(sharedSecret).digest();
   }
 
   /**
@@ -54,9 +82,9 @@ export class FlashPQC {
    * @returns {Buffer} 32-byte PQC-hardened key
    */
   static deriveQuantumHardenedKey(passphrase, salt = 'flash_pqc_lattice_salt_2026') {
-    // 2-Stage Key Expansion: PBKDF2 -> SHA3-512 Quantum Sponge
-    const intermediate = crypto.pbkdf2Sync(passphrase, salt, 120000, 64, 'sha512');
-    const quantumSponge = crypto.createHash('sha3-256').update(intermediate).digest();
-    return quantumSponge;
+    // Stage 1: Strong Key Derivation using scryptSync (much more secure than PBKDF2)
+    const intermediate = crypto.scryptSync(passphrase, salt, 32, { N: 16384, r: 8, p: 1 });
+    // Stage 2: Quantum sponge using SHA3-256
+    return crypto.createHash('sha3-256').update(intermediate).digest();
   }
 }

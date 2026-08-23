@@ -1,10 +1,18 @@
 import http from 'node:http';
+import crypto from 'node:crypto';
 import { FlashDatabase } from '../core/database.mjs';
 import { FlashMetrics } from './metrics.mjs';
 import { logger } from '../core/logger.mjs';
 import { FlashRecordCodec } from '../client/record_codec.mjs';
 import { assertServerOptions } from '../client/config_guard.mjs';
 import { reportError } from '../core/report_error.mjs';
+
+function timingSafeCompare(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const hashA = crypto.createHmac('sha256', 'safe-key-server').update(a).digest();
+  const hashB = crypto.createHmac('sha256', 'safe-key-server').update(b).digest();
+  return crypto.timingSafeEqual(hashA, hashB);
+}
 
 /**
  * FLASH Standalone Server Daemon (FlashServer)
@@ -15,7 +23,7 @@ export class FlashServer {
   /**
    * @param {object} [options]
    * @param {number} [options.port=6742]
-   * @param {string} [options.host='0.0.0.0']
+   * @param {string} [options.host='127.0.0.1']
    * @param {string} [options.storagePath='./flash_server_data']
    * @param {string} [options.authKey]
    */
@@ -43,7 +51,7 @@ export class FlashServer {
 
    * @param {object} options
    * @param {number} [options.port=6742] - Default FLASH port (6742)
-   * @param {string} [options.host='0.0.0.0']
+   * @param {string} [options.host='127.0.0.1']
    * @param {string} [options.storagePath='./flash_server_data']
    * @param {string} [options.authKey] - Optional server connection secret
    * @returns {http.Server}
@@ -52,7 +60,7 @@ export class FlashServer {
     reportError.watch();
     assertServerOptions(options);
     const port = options.port || 6742;
-    const host = options.host || '0.0.0.0';
+    const host = options.host || '127.0.0.1';
     const storagePath = options.storagePath || './flash_server_data';
     const dbName = options.dbName || 'flash_server_db';
     const authKey = options.authKey || null;
@@ -62,8 +70,22 @@ export class FlashServer {
     const metrics = new FlashMetrics();
 
     const server = http.createServer(async (req, res) => {
-      // Enable CORS
-      res.setHeader('Access-Control-Allow-Origin', '*');
+      // Secure CORS headers
+      const origin = req.headers.origin;
+      if (origin) {
+        try {
+          const originUrl = new URL(origin);
+          if (originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1' || originUrl.hostname === '[::1]') {
+            res.setHeader('Access-Control-Allow-Origin', origin);
+          } else {
+            res.setHeader('Access-Control-Allow-Origin', 'null');
+          }
+        } catch {
+          res.setHeader('Access-Control-Allow-Origin', 'null');
+        }
+      } else {
+        res.setHeader('Access-Control-Allow-Origin', 'null');
+      }
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-flash-server-key');
 
@@ -74,7 +96,22 @@ export class FlashServer {
 
       const url = new URL(req.url, `http://${host}:${port}`);
 
-      // Prometheus Telemetry Endpoint
+      // Public health check route
+      if (url.pathname === '/health' && req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ status: 'HEALTHY', engine: 'FLASH Zero-Knowledge Server', version: '1.0.0' }));
+      }
+
+      // Server Authentication Verification
+      if (authKey) {
+        const clientKey = req.headers['x-flash-server-key'];
+        if (!clientKey || !timingSafeCompare(clientKey, authKey)) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ error: 'Unauthorized: Invalid server authKey' }));
+        }
+      }
+
+      // Prometheus Telemetry Endpoint (Protected)
       if (url.pathname === '/metrics' && req.method === 'GET') {
         // Compute storage-level gauges on every metrics pull
         for (const colName of db.listCollections()) {
@@ -90,18 +127,18 @@ export class FlashServer {
         return res.end(metrics.toPrometheus());
       }
 
-      // Server Authentication Verification
-      if (authKey) {
-        const clientKey = req.headers['x-flash-server-key'] || url.searchParams.get('authKey');
-        if (clientKey !== authKey) {
-          res.writeHead(401, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({ error: 'Unauthorized: Invalid server authKey' }));
-        }
-      }
-
-      const readBody = () => new Promise((resolve, reject) => {
+      const readBody = (limitBytes = 10 * 1024 * 1024) => new Promise((resolve, reject) => {
         let body = '';
-        req.on('data', chunk => { body += chunk; });
+        let bytesRead = 0;
+        req.on('data', chunk => {
+          bytesRead += chunk.length;
+          if (bytesRead > limitBytes) {
+            req.destroy();
+            reject(new Error('Payload too large'));
+            return;
+          }
+          body += chunk;
+        });
         req.on('end', () => {
           try {
             resolve(body ? JSON.parse(body) : {});
@@ -111,12 +148,6 @@ export class FlashServer {
         });
         req.on('error', reject);
       });
-
-      // Health Check & Server Info
-      if (url.pathname === '/health' && req.method === 'GET') {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify({ status: 'HEALTHY', engine: 'FLASH Zero-Knowledge Server', version: '1.0.0' }));
-      }
 
       // List Collections
       if (url.pathname === '/api/v1/collections' && req.method === 'GET') {
@@ -147,7 +178,8 @@ export class FlashServer {
           metrics.recordError('find');
           logger.error('FlashServer', 'find failed', { collection: colName, error: err.message });
           res.writeHead(500, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({ error: err.message }));
+          const isClientError = err.message.includes('Invalid or dangerous collection name');
+          return res.end(JSON.stringify({ error: isClientError ? err.message : 'Internal Server Error' }));
         }
       }
 
@@ -169,7 +201,8 @@ export class FlashServer {
           metrics.recordError('insert');
           logger.error('FlashServer', 'insert failed', { collection: colName, error: err.message });
           res.writeHead(500, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({ error: err.message }));
+          const isClientError = err.message.includes('Invalid or dangerous collection name');
+          return res.end(JSON.stringify({ error: isClientError ? err.message : 'Internal Server Error' }));
         }
       }
 
@@ -197,7 +230,8 @@ export class FlashServer {
           metrics.recordError('insertMany');
           logger.error('FlashServer', 'insertMany failed', { collection: colName, error: err.message });
           res.writeHead(500, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({ error: err.message }));
+          const isClientError = err.message.includes('Invalid or dangerous collection name');
+          return res.end(JSON.stringify({ error: isClientError ? err.message : 'Internal Server Error' }));
         }
       }
 
@@ -218,7 +252,8 @@ export class FlashServer {
           metrics.recordError('delete');
           logger.error('FlashServer', 'delete failed', { collection: colName, error: err.message });
           res.writeHead(500, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({ error: err.message }));
+          const isClientError = err.message.includes('Invalid or dangerous collection name');
+          return res.end(JSON.stringify({ error: isClientError ? err.message : 'Internal Server Error' }));
         }
       }
 
@@ -237,7 +272,8 @@ export class FlashServer {
           metrics.recordError('flush');
           logger.error('FlashServer', 'flush failed', { collection: colName, error: err.message });
           res.writeHead(500, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({ error: err.message }));
+          const isClientError = err.message.includes('Invalid or dangerous collection name');
+          return res.end(JSON.stringify({ error: isClientError ? err.message : 'Internal Server Error' }));
         }
       }
 

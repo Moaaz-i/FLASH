@@ -12,6 +12,13 @@ When running `FlashServer`, the `/metrics` endpoint is automatically exposed on 
 curl http://localhost:6742/metrics
 ```
 
+::: warning Telemetry Security
+To prevent unauthenticated users from scanning the network to gather telemetry (such as collection names, document counts, or memtable storage bytes), access to the `/metrics` endpoint is **strictly protected** if an `authKey` is configured on the server. You must pass your authentication key via the `x-flash-server-key` header to pull telemetry:
+```bash
+curl -H "x-flash-server-key: my_cluster_secret_token" http://localhost:6742/metrics
+```
+:::
+
 ### Example Exposition Output
 
 ```text

@@ -1,8 +1,16 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { handleIntelligenceApi } from "./intelligence_api.mjs";
+
+function timingSafeCompare(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const hashA = crypto.createHmac('sha256', 'safe-key-dashboard').update(a).digest();
+  const hashB = crypto.createHmac('sha256', 'safe-key-dashboard').update(b).digest();
+  return crypto.timingSafeEqual(hashA, hashB);
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const STATIC_DIR = path.join(__dirname, "static");
@@ -14,10 +22,17 @@ const STATIC_FILES = {
   "/console.js": "console.js",
 };
 
-function readBody(req) {
+function readBody(req, limitBytes = 10 * 1024 * 1024) {
   return new Promise((resolve, reject) => {
     let body = "";
+    let bytesRead = 0;
     req.on("data", (chunk) => {
+      bytesRead += chunk.length;
+      if (bytesRead > limitBytes) {
+        req.destroy();
+        reject(new Error("Payload too large"));
+        return;
+      }
       body += chunk;
     });
     req.on("end", () => {
@@ -72,17 +87,32 @@ export class FlashDashboard {
    * @param {import('../client/flash_client.mjs').FlashClient} client
    * @param {object} [options]
    * @param {number} [options.port=3456]
-   * @param {string} [options.host='0.0.0.0']
+   * @param {string} [options.host='127.0.0.1']
    * @param {string} [options.token]
    * @returns {http.Server}
    */
   static start(client, options = {}) {
     const port = options.port || 3456;
-    const host = options.host || "0.0.0.0";
+    const host = options.host || "127.0.0.1";
     const requiredToken = options.token || null;
 
     const server = http.createServer(async (req, res) => {
-      res.setHeader("Access-Control-Allow-Origin", "*");
+      // Secure CORS headers
+      const origin = req.headers.origin;
+      if (origin) {
+        try {
+          const originUrl = new URL(origin);
+          if (originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1' || originUrl.hostname === '[::1]') {
+            res.setHeader('Access-Control-Allow-Origin', origin);
+          } else {
+            res.setHeader('Access-Control-Allow-Origin', 'null');
+          }
+        } catch {
+          res.setHeader('Access-Control-Allow-Origin', 'null');
+        }
+      } else {
+        res.setHeader('Access-Control-Allow-Origin', 'null');
+      }
       res.setHeader(
         "Access-Control-Allow-Methods",
         "GET, POST, PUT, DELETE, OPTIONS",
@@ -100,9 +130,8 @@ export class FlashDashboard {
       const url = new URL(req.url, `http://localhost:${port}`);
 
       if (requiredToken && url.pathname.startsWith("/api/")) {
-        const clientToken =
-          req.headers["x-flash-token"] || url.searchParams.get("token");
-        if (clientToken !== requiredToken) {
+        const clientToken = req.headers["x-flash-token"];
+        if (!clientToken || !timingSafeCompare(clientToken, requiredToken)) {
           return json(res, 401, {
             error: "Unauthorized: Invalid or missing dashboard token",
           });

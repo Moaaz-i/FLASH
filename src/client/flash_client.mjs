@@ -98,17 +98,8 @@ export class FlashClient {
     }
     assertClientConfig(config);
 
-    this.secretKey = config.pqcHardened
-      ? FlashPQC.deriveQuantumHardenedKey(config.secretKey)
-      : config.secretKey;
+    let dbSalt = config.salt || "flash_db_default_salt_2026";
 
-    this.cipher = new FlashCipher(this.secretKey);
-    this.blindIndex = new FlashBlindIndex(this.secretKey);
-    this.homomorphic = new FlashHomomorphic(this.secretKey);
-    this.fieldPolicy = config.fieldPolicy || {};
-    this.storageProfile =
-      config.storageProfile === "compact" ? "compact" : "standard";
-    this._useBinaryCiphertext = this.storageProfile === "compact";
     this.uri = config.uri || config.url || null;
     this.authKey = config.authKey || null;
     this.config = config;
@@ -117,7 +108,6 @@ export class FlashClient {
     this.models = new Map();
 
     this.mvcc = new FlashMVCC();
-    this._activeSession = null;
     this.eventHub = new FlashEventHub();
     this.plugins = new FlashPluginHost(this);
     this._lifecycles = new Map();
@@ -126,7 +116,11 @@ export class FlashClient {
 
     if (this.uri) {
       // Remote Client-Server Mode
-      const normalizedUrl = this.uri.replace(/^flash:\/\//i, "http://");
+      const hostMatch = this.uri.match(/^flash:\/\/([^:/]+)/i);
+      const hostName = hostMatch ? hostMatch[1] : '';
+      const isLocal = hostName === 'localhost' || hostName === '127.0.0.1' || hostName === '[::1]';
+      const defaultProto = isLocal ? 'http://' : 'https://';
+      const normalizedUrl = this.uri.replace(/^flash:\/\//i, defaultProto);
       this.remoteBaseUrl = normalizedUrl.endsWith("/")
         ? normalizedUrl.slice(0, -1)
         : normalizedUrl;
@@ -186,7 +180,23 @@ export class FlashClient {
         inMemory,
         engineOptions,
       });
+      if (this.db.salt) {
+        dbSalt = this.db.salt;
+      }
     }
+
+    this.secretKey = config.pqcHardened
+      ? FlashPQC.deriveQuantumHardenedKey(config.secretKey, dbSalt)
+      : config.secretKey;
+
+    this.cipher = new FlashCipher(this.secretKey, dbSalt);
+    this.blindIndex = new FlashBlindIndex(this.secretKey);
+    this.homomorphic = new FlashHomomorphic(this.secretKey);
+    this.fieldPolicy = config.fieldPolicy || {};
+    this.storageProfile =
+      config.storageProfile === "compact" ? "compact" : "standard";
+    this._useBinaryCiphertext = this.storageProfile === "compact";
+    this._activeSession = null;
 
     if (config.autoTimestamps !== false) {
       this.use({

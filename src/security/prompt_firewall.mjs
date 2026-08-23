@@ -6,8 +6,12 @@ const PII_PATTERNS = [
   { name: "credit_card", re: /\b(?:\d{4}[- ]?){3}\d{4}\b/g },
 ];
 
+const INJECTION_PATTERNS = [
+  { name: "prompt_injection", re: /\b(ignore\s+previous\s+instructions|system\s+prompt|ignore\s+original\s+prompt|bypass\s+restrictions|reveal\s+system\s+instructions|you\s+are\s+now\s+an\s+assistant|you\s+are\s+now\s+a\s+different)\b/ig },
+];
+
 /**
- * Scans prompts/responses for PII and secrets before LLM egress.
+ * Scans prompts/responses for PII, secrets, and injection attacks before LLM egress.
  */
 export class FlashPromptFirewall {
   /**
@@ -27,6 +31,17 @@ export class FlashPromptFirewall {
         if (redact) {
           re.lastIndex = 0;
           redacted = redacted.replace(re, `[REDACTED_${name.toUpperCase()}]`);
+        }
+      }
+    }
+
+    for (const { name, re } of INJECTION_PATTERNS) {
+      re.lastIndex = 0;
+      if (re.test(redacted)) {
+        violations.push(name);
+        if (redact) {
+          re.lastIndex = 0;
+          redacted = redacted.replace(re, `[REDACTED_INJECTION_ATTEMPT]`);
         }
       }
     }
