@@ -60,6 +60,13 @@ import { FlashHealth } from "../core/health.mjs";
 import { FlashSnapshot } from "../tools/snapshot.mjs";
 import { FlashRecordCodec } from "./record_codec.mjs";
 import { resolveEngineOptions } from "../engine/perf_profiles.mjs";
+import {
+  assertClientConfig,
+  mistake,
+  requireDeletionLog,
+  requireTrashVault,
+} from "./config_guard.mjs";
+import { reportError } from "../core/report_error.mjs";
 
 /**
  * FLASH Zero-Knowledge Client SDK (FlashClient)
@@ -80,9 +87,16 @@ export class FlashClient {
    * @param {'standard'|'compact'} [config.storageProfile='standard'] - compact = minimal on-disk footprint
    */
   constructor(config = {}) {
+    reportError.watch();
     if (!config.secretKey) {
-      throw new Error("Secret key is required to initialize FlashClient SDK");
+      throw reportError(
+        mistake(
+          "Secret key is required to initialize FlashClient SDK",
+          "secretKey",
+        ),
+      );
     }
+    assertClientConfig(config);
 
     this.secretKey = config.pqcHardened
       ? FlashPQC.deriveQuantumHardenedKey(config.secretKey)
@@ -120,19 +134,29 @@ export class FlashClient {
         dbName: config.dbName || "flash_remote_db",
         storagePath: config.storagePath || "./data",
         listCollections: async () => {
+          const headers = { "Content-Type": "application/json" };
+          if (this.authKey) headers["x-flash-server-key"] = this.authKey;
+          let res;
           try {
-            const headers = { "Content-Type": "application/json" };
-            if (this.authKey) headers["x-flash-server-key"] = this.authKey;
-            const res = await fetch(
-              `${this.remoteBaseUrl}/api/v1/collections`,
-              { headers },
+            res = await fetch(`${this.remoteBaseUrl}/api/v1/collections`, {
+              headers,
+            });
+          } catch (err) {
+            throw reportError(
+              err instanceof Error
+                ? err
+                : new Error("Remote FlashServer listCollections failed"),
             );
-            if (res.ok) {
-              const data = await res.json();
-              return data.collections || [];
-            }
-          } catch (e) {}
-          return [];
+          }
+          if (!res.ok) {
+            throw reportError(
+              new Error(
+                `Remote FlashServer listCollections failed: ${res.status}`,
+              ),
+            );
+          }
+          const data = await res.json();
+          return data.collections || [];
         },
         collection: (name) =>
           new RemoteCollectionDriver(name, this.remoteBaseUrl, this.authKey),
@@ -635,19 +659,18 @@ export class FlashClient {
   }
 
   async purgeTrash() {
-    if (!this.db.trashVault) return { purged: false };
-    await this.db.trashVault.purge();
+    const vault = requireTrashVault(this.db);
+    await vault.purge();
     return { purged: true };
   }
 
   async listDeletions(options = {}) {
-    if (!this.db.deletionLog) return [];
-    return this.db.deletionLog.list(options);
+    return requireDeletionLog(this.db).list(options);
   }
 
   async purgeDeletionLog() {
-    if (!this.db.deletionLog) return { purged: false };
-    await this.db.deletionLog.purge();
+    const log = requireDeletionLog(this.db);
+    await log.purge();
     return { purged: true };
   }
 }
@@ -1092,10 +1115,7 @@ export class FlashClientCollection {
 
   async restoreOne(docId) {
     if (!this.isReady) await this.init();
-    const vault = this.client.db.trashVault;
-    if (!vault) {
-      throw new Error("Trash vault is disabled for this database");
-    }
+    const vault = requireTrashVault(this.client.db);
 
     const id = String(docId);
     const existing = await this.findOne({ _id: id });
@@ -1133,21 +1153,22 @@ export class FlashClientCollection {
 
   async listDeletions(options = {}) {
     if (!this.isReady) await this.init();
-    const log = this.client.db.deletionLog;
-    if (!log) return [];
-    return log.list({ ...options, collection: this.name });
+    return requireDeletionLog(this.client.db).list({
+      ...options,
+      collection: this.name,
+    });
   }
 
   async listTrash(options = {}) {
     if (!this.isReady) await this.init();
-    const vault = this.client.db.trashVault;
-    if (!vault) return [];
-    return vault.list({ ...options, collection: this.name });
+    return requireTrashVault(this.client.db).list({
+      ...options,
+      collection: this.name,
+    });
   }
 
   async purgeTrash() {
-    const vault = this.client.db.trashVault;
-    if (!vault) return { purged: false };
+    const vault = requireTrashVault(this.client.db);
     await vault.purge();
     return { purged: true };
   }

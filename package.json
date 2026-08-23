@@ -1,6 +1,6 @@
 {
   "name": "flash-zk",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Zero-knowledge encrypted intelligence database — local-first, AI-native, server-blind document engine",
   "type": "module",
   "main": "src/index.mjs",

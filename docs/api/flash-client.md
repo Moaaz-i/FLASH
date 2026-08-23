@@ -12,6 +12,33 @@ import { FlashClient } from "flash-zk";
 const client = new FlashClient(options);
 ```
 
+### Clear errors (`reportError`)
+
+The same guard is injected into `FlashClient`, `FlashDatabase`, and `FlashServer`. `reportError` prints one line with the **exact bad-option file, line, and column** (not `new FlashClient`, not FLASH internals):
+
+```
+FLASH ERROR: unknown FlashClient option: enabled @ /Users/…/generate_1gb_knowledge.mjs:8:3
+```
+
+```javascript
+import { reportError, FlashClient } from "flash-zk";
+
+// Automatic: bad FlashClient options print, then throw.
+// Manual: print any error yourself, then rethrow if needed.
+try {
+  await col.restoreOne(id);
+} catch (err) {
+  throw reportError(err);
+}
+
+// Print a whole chain (cause + AggregateError) — no error left out:
+reportError(err);
+reportError.all([errA, errB, errC]);
+
+// Catch every wild process error (uncaught + unhandled rejection):
+reportError.watch();
+```
+
 ### Options
 
 | Parameter        | Type                              | Required | Default                      | Description                                               |

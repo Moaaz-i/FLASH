@@ -72,9 +72,26 @@ FLASH is **not** trying to replace your general-purpose database. It owns **priv
 ## Identity Map
 
 ```
-MongoDB  →  "Your default document database"
-FLASH    →  "Your private AI data layer"
+MongoDB  →  "Your shared / cloud document database"
+FLASH    →  "Your local encrypted vault beside it — not a replacement"
 ```
+
+FLASH does **not** compete with MongoDB. It is a **free companion**: the device-side, server-blind layer. MongoDB holds what may be shared, replicated, and operated as a fleet. FLASH holds what must stay readable offline and must never leave the machine as plaintext.
+
+### Companion contract
+
+| Lives in FLASH (this process / disk) | Lives in MongoDB (server / Atlas) |
+| ------------------------------------ | --------------------------------- |
+| Secrets, local drafts, agent memory  | Accounts, public indexes, analytics |
+| Documents that must work offline     | Data needed by more than one device |
+| Local trash / user-undo              | Fleet backup and PITR               |
+| Encryption under a key that is never sent | Data the server is allowed to see or aggregate |
+
+**One source of truth per field.** Do not copy a secret into MongoDB “just in case.” Either FLASH is origin and MongoDB receives a summary or ciphertext, or MongoDB is origin and FLASH is a working copy.
+
+Never send `secretKey` to MongoDB. Version every synced document (`flashDocId`, `rev`, `updatedAt`). Conflict policy in v1 is one-way: last local write wins, or the server rejects stale revs — no silent merge.
+
+See the [MongoDB companion example](https://github.com/Moaaz-i/FLASH/tree/main/examples/mongo-companion).
 
 ---
 

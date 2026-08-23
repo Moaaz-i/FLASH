@@ -92,6 +92,16 @@ export interface FlashClientOptions {
   /** `compact` minimizes disk: binary ciphertext, optional blind index, deflate L6 */
   storageProfile?: "standard" | "compact";
   engineOptions?: FlashEngineOptions;
+  /**
+   * Not valid here — must be `engineOptions.deletionLog`.
+   * Passing it on the client root throws.
+   */
+  deletionLog?: never;
+  /**
+   * Not valid here — must be `engineOptions.trash`.
+   * Passing it on the client root throws.
+   */
+  trash?: never;
 }
 
 export interface FlashLifecycleOptions {
@@ -1712,7 +1722,10 @@ export class FlashDeletionLog {
   readonly filePath: string;
   readonly enabled: boolean;
   readonly byteSize: number;
-  constructor(filePath: string, options?: FlashDeletionLogOptions & { logSecret?: string | Buffer });
+  constructor(
+    filePath: string,
+    options?: FlashDeletionLogOptions & { logSecret?: string | Buffer },
+  );
   open(): Promise<void>;
   close(): Promise<void>;
   append(input: {
@@ -1851,6 +1864,37 @@ export class FlashMetrics {
 // ============================================================================
 
 export const logger: FlashLoggerInterface;
+
+export interface FlashReportedError {
+  at: string;
+  name: string;
+  message: string;
+  atFile: string;
+}
+
+/**
+ * Print the error as one line:
+ * `FLASH ERROR: message @ /abs/path/file.mjs:line:column`
+ * Site is the bad option in the caller file, not `new FlashClient` or FLASH internals.
+ * Causes joined with `|`.
+ */
+export function reportError(error: unknown): Error;
+export function flattenErrors(error: unknown): Error[];
+export function exactSite(stack?: string): string;
+export function pinpoint(site: string, keyPath?: string): string;
+export function assertClientConfig(config?: object): void;
+export function assertDatabaseOptions(options?: object): void;
+export function assertEngineOptions(engine?: object): void;
+export function assertServerOptions(options?: object): void;
+export namespace reportError {
+  /** Print many errors as one numbered series. */
+  function all(errors: unknown[]): Error;
+  /** Catch uncaught exceptions and unhandled rejections (cannot be hidden). */
+  function watch(): typeof reportError;
+  /** Snapshot of every error already printed this process. */
+  function list(): FlashReportedError[];
+  function clear(): void;
+}
 
 // ============================================================================
 // Vector: FlashVectorIndex & FlashHNSWIndex

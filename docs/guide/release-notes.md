@@ -2,7 +2,17 @@
 
 What changed in recent FLASH releases and how to adopt it in your apps.
 
-**Current version:** `1.0.2` · **Tests:** 164/164
+**Current version:** `1.0.3` · **Tests:** 185/185
+
+---
+
+## v1.0.3 — Companion foundation (honest config)
+
+- `trash` and `deletionLog` on the `FlashClient` **root throw**. They only work under `engineOptions`.
+- The same guard reads **FlashClient**, **FlashDatabase**, **FlashServer**, and `engineOptions` values (types, enums, nested keys).
+- `listTrash` / `listDeletions` / `purge*` **throw** when the feature is disabled — they no longer return `[]`.
+- `FlashClient.uri` rejects `mongodb://` (FLASH server URL only).
+- Positioning: FLASH is a **local vault beside MongoDB**, not a replacement. See [Positioning](/guide/positioning) and `examples/mongo-companion`.
 
 ---
 

@@ -28,7 +28,10 @@ export { MemoryArc } from "./storage/memory_arc.mjs";
 export { MemoryOplog } from "./storage/memory_oplog.mjs";
 export { FlashStorageCompact } from "./engine/storage_compact.mjs";
 export { FlashTrashVault, resolveTrashOptions } from "./engine/trash_vault.mjs";
-export { FlashDeletionLog, resolveDeletionLogOptions } from "./engine/deletion_log.mjs";
+export {
+  FlashDeletionLog,
+  resolveDeletionLogOptions,
+} from "./engine/deletion_log.mjs";
 export { FlashVectorIndex, FlashHNSWIndex } from "./vector/vector_index.mjs";
 export { FlashChangeStream } from "./reactive/change_stream.mjs";
 export { FlashEventHub } from "./reactive/event_hub.mjs";
@@ -106,6 +109,18 @@ export { FlashFederation } from "./scaling/federation.mjs";
 export { FlashFaker } from "./tools/faker.mjs";
 export { FlashOnlineIndexer } from "./engine/online_indexer.mjs";
 export { logger } from "./core/logger.mjs";
+export {
+  reportError,
+  flattenErrors,
+  exactSite,
+  pinpoint,
+} from "./core/report_error.mjs";
+export {
+  assertClientConfig,
+  assertDatabaseOptions,
+  assertEngineOptions,
+  assertServerOptions,
+} from "./client/config_guard.mjs";
 
 // Modular Plugins
 export { FlashSpatialPlugin } from "./plugins/spatial_plugin.mjs";

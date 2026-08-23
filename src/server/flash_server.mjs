@@ -3,6 +3,8 @@ import { FlashDatabase } from '../core/database.mjs';
 import { FlashMetrics } from './metrics.mjs';
 import { logger } from '../core/logger.mjs';
 import { FlashRecordCodec } from '../client/record_codec.mjs';
+import { assertServerOptions } from '../client/config_guard.mjs';
+import { reportError } from '../core/report_error.mjs';
 
 /**
  * FLASH Standalone Server Daemon (FlashServer)
@@ -18,6 +20,8 @@ export class FlashServer {
    * @param {string} [options.authKey]
    */
   constructor(options = {}) {
+    reportError.watch();
+    assertServerOptions(options);
     this.options = options;
     this.server = null;
   }
@@ -45,6 +49,8 @@ export class FlashServer {
    * @returns {http.Server}
    */
   static start(options = {}) {
+    reportError.watch();
+    assertServerOptions(options);
     const port = options.port || 6742;
     const host = options.host || '0.0.0.0';
     const storagePath = options.storagePath || './flash_server_data';

@@ -6,12 +6,16 @@ import { FlashTxLog } from '../transactions/tx_log.mjs';
 import { FlashWorkerPool } from '../engine/worker_pool.mjs';
 import { FlashTrashVault, resolveTrashOptions } from '../engine/trash_vault.mjs';
 import { FlashDeletionLog, resolveDeletionLogOptions } from '../engine/deletion_log.mjs';
+import { assertDatabaseOptions } from '../client/config_guard.mjs';
+import { reportError } from './report_error.mjs';
 
 /**
  * FLASH Database Engine (FlashDatabase)
  */
 export class FlashDatabase {
   constructor(dbName = 'flash_db', options = {}) {
+    reportError.watch();
+    assertDatabaseOptions(options);
     this.dbName = dbName;
     this.inMemory =
       options.inMemory === true || options.storagePath === ':memory:';

@@ -87,6 +87,10 @@ engineOptions: {
 
 ---
 
+::: warning Honest config
+Unknown, misplaced, or mistyped options **throw** on `FlashClient`, `FlashDatabase`, and `FlashServer` — they are not silently ignored. `listTrash` / `listDeletions` also throw if that feature is disabled.
+:::
+
 ## Trash archive (undo delete)
 
 Bounded `.flash-trash` file — enabled by default on disk databases:

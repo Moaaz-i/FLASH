@@ -21,8 +21,10 @@ test("FlashDeletionLog is disabled by default", async () => {
     await col.insertOne({ _id: "n1", title: "x" });
     await col.deleteOne({ _id: "n1" });
 
-    const entries = await client.listDeletions();
-    assert.deepEqual(entries, []);
+    await assert.rejects(
+      () => client.listDeletions(),
+      /engineOptions\.deletionLog is disabled/,
+    );
 
     await client.close();
   } finally {
