@@ -10,6 +10,7 @@ The database engine and physical storage never receive unencrypted plaintext or 
 ## The Cryptographic Primitives
 
 ### 1. Document & Field Encryption (`FlashCipher`)
+
 - **Algorithm:** Authenticated `AES-256-GCM` with 96-bit randomized Nonces (IVs) and 128-bit authentication tags.
 - **Key Derivation:** Master secret keys are derived using `PBKDF2-HMAC-SHA256` with 100,000 rounds and a **dynamically generated unique database-specific salt** (stored securely in `.flash-salt` per-database). Master secret passphrases of any length are automatically hardened and derived, rather than being used directly as raw AES keys.
 - **Envelope Layout:** `[ IV (12 bytes) | AuthTag (16 bytes) | Ciphertext (N bytes) ]` encoded as Base64.
@@ -23,9 +24,11 @@ How can a database find records if it cannot decrypt the data?
 FLASH DB implements **Searchable Symmetric Encryption (SSE)** using salted HMAC cryptographic trapdoors:
 
 ### Exact Matches (`$eq`, `$in`)
+
 ```
 Trapdoor = HMAC-SHA256(SecretKey, "exact:" + FieldName + ":" + Value)
 ```
+
 - The client hashes the search value into a 64-character hex token.
 - The server searches its in-memory Blind Index map for this hex token.
 - The server matches the record without ever knowing what value was searched for!
@@ -35,7 +38,9 @@ For situations requiring exact matching where deterministic encryption is prefer
 :::
 
 ### Substring & Regex Queries (`$regex`)
+
 For partial text search:
+
 1. The text is broken down into **3-Gram Substrings**.
 2. Each 3-gram is hashed into an HMAC token.
 3. The server computes the set intersection of matching documents.
@@ -45,7 +50,9 @@ To prevent Regular Expression Denial of Service (ReDoS) resource exhaustion atta
 :::
 
 ### Honey Padding (Defense Against Frequency Leakage)
+
 To prevent statistical frequency analysis attacks (where an attacker analyzes token repetition counts):
+
 - FLASH injects randomized, pseudo-deterministic dummy noise tokens (**Honey Padding**).
 - This masks the token distribution and document length profiles from attackers.
 
@@ -61,6 +68,7 @@ BucketToken = HMAC-SHA256(SecretKey, "bucket:" + FieldName + ":" + BucketIndex)
 ```
 
 When querying `{ balance: { $gte: 1000, $lte: 5000 } }`:
+
 - The client SDK computes the tokens covering buckets from index `100` to `500`.
 - The server returns the union of matching candidate documents.
 - The client SDK decrypts and performs the final sub-bucket precision filter.
@@ -107,13 +115,14 @@ TenantKey = HMAC-SHA256(MasterKey, dbName + tenantId + version)
 ```
 
 This ensures that:
+
 - Each tenant's data is encrypted with a **unique key**
 - A compromised tenant key cannot decrypt other tenants' data
 - Key rotation is supported per-tenant
 
 ```js
-const orgA = client.tenant('org-a');
-const orgB = client.tenant('org-b');
+const orgA = client.tenant("org-a");
+const orgB = client.tenant("org-b");
 
 // org-a's key cannot decrypt org-b's data, and vice versa
 ```
@@ -124,7 +133,7 @@ Enable PQC-hardened key derivation for post-quantum protection:
 
 ```js
 const client = new FlashClient({
-  secretKey: 'master-key',
-  pqcHardened: true  // Uses FlashPQC.deriveQuantumHardenedKey()
+  secretKey: "master-key",
+  pqcHardened: true, // Uses FlashPQC.deriveQuantumHardenedKey()
 });
 ```

@@ -4,6 +4,15 @@ FLASH DB ships **FLASH Intelligence Console** — a local web UI for encrypted i
 
 > Full reference: [Intelligence Console](/guide/intelligence-console)
 
+## Console Preview 🎥
+
+<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 2rem 0; width: 100%;">
+  <video width="100%" style="max-width: 800px; border-radius: 12px; border: 1px solid var(--vp-c-divider); box-shadow: 0 8px 24px rgba(0,0,0,0.1); outline: none;" controls autoplay muted loop playsinline>
+    <source src="/FLASH_DB.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+</div>
+
 ---
 
 ## Launch

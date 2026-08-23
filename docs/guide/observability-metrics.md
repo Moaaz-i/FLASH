@@ -14,9 +14,11 @@ curl http://localhost:6742/metrics
 
 ::: warning Telemetry Security
 To prevent unauthenticated users from scanning the network to gather telemetry (such as collection names, document counts, or memtable storage bytes), access to the `/metrics` endpoint is **strictly protected** if an `authKey` is configured on the server. You must pass your authentication key via the `x-flash-server-key` header to pull telemetry:
+
 ```bash
 curl -H "x-flash-server-key: my_cluster_secret_token" http://localhost:6742/metrics
 ```
+
 :::
 
 ### Example Exposition Output
@@ -60,35 +62,35 @@ flash_db_collection_size_bytes{name="users"} 1048576
 
 ## `FlashMetrics` API
 
-| Method | Description |
-|--------|-------------|
-| `recordOp(op, durationMs)` | Record operation latency (find, insert, update, delete, flush, compact) |
-| `recordError(op)` | Record an error for an operation type |
-| `setGauge(name, value)` | Set a custom gauge (e.g., collection document counts, storage size) |
-| `toPrometheus()` | Export all metrics in Prometheus exposition format (including histograms) |
+| Method                     | Description                                                               |
+| -------------------------- | ------------------------------------------------------------------------- |
+| `recordOp(op, durationMs)` | Record operation latency (find, insert, update, delete, flush, compact)   |
+| `recordError(op)`          | Record an error for an operation type                                     |
+| `setGauge(name, value)`    | Set a custom gauge (e.g., collection document counts, storage size)       |
+| `toPrometheus()`           | Export all metrics in Prometheus exposition format (including histograms) |
 
 ### Latency Histograms
 
 Every operation type gets its own latency histogram with configurable buckets (default: 0.5, 1, 5, 10, 25, 50, 100, 250, 500, 1000 ms):
 
 ```js
-import { FlashMetrics } from 'flash-zk';
+import { FlashMetrics } from "flash-zk";
 
 const metrics = new FlashMetrics({
-  latencyBuckets: [0.5, 1, 5, 10, 25, 50, 100, 250, 500, 1000]
+  latencyBuckets: [0.5, 1, 5, 10, 25, 50, 100, 250, 500, 1000],
 });
 
 // Record operation latencies
-metrics.recordOp('find', 2.3);
-metrics.recordOp('insert', 15.7);
-metrics.recordOp('flush', 45.2);
+metrics.recordOp("find", 2.3);
+metrics.recordOp("insert", 15.7);
+metrics.recordOp("flush", 45.2);
 
 // Record errors
-metrics.recordError('insert');
+metrics.recordError("insert");
 
 // Custom gauges
-metrics.setGauge('collection_users_count', 1523);
-metrics.setGauge('collection_users_size_bytes', 1048576);
+metrics.setGauge("collection_users_count", 1523);
+metrics.setGauge("collection_users_size_bytes", 1048576);
 
 // Export for Prometheus (includes histograms + error counters + gauges)
 const prometheusOutput = metrics.toPrometheus();
@@ -99,18 +101,18 @@ const prometheusOutput = metrics.toPrometheus();
 You can also integrate `FlashMetrics` into custom Express, Fastify, or Velociradix servers:
 
 ```javascript
-import { FlashMetrics } from 'flash-zk';
+import { FlashMetrics } from "flash-zk";
 
 const metrics = new FlashMetrics();
 
 // Record operation duration
 const start = Date.now();
 // ... execute database write ...
-metrics.recordOp('insert', Date.now() - start);
+metrics.recordOp("insert", Date.now() - start);
 
 // Expose on custom HTTP route
-app.get('/metrics', (req, res) => {
-  res.setHeader('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+app.get("/metrics", (req, res) => {
+  res.setHeader("Content-Type", "text/plain; version=0.0.4; charset=utf-8");
   res.send(metrics.toPrometheus());
 });
 ```
@@ -122,25 +124,40 @@ app.get('/metrics', (req, res) => {
 FLASH DB includes a structured JSON logger for production observability:
 
 ```js
-import { logger } from 'flash-zk';
+import { logger } from "flash-zk";
 
 // Info: general events
-logger.info('server', 'Flash DB started', { port: 3000, version: '2.1.0' });
+logger.info("server", "Flash DB started", { port: 3000, version: "2.1.0" });
 
 // Warning: recoverable issues
-logger.warn('engine', 'Corrupt SSTable skipped', { file: 'data.arc', reason: 'truncated' });
+logger.warn("engine", "Corrupt SSTable skipped", {
+  file: "data.arc",
+  reason: "truncated",
+});
 
 // Error: failures requiring attention
-logger.error('client', 'Encryption failed', { error: 'Invalid key', collection: 'users' });
+logger.error("client", "Encryption failed", {
+  error: "Invalid key",
+  collection: "users",
+});
 
 // Debug: detailed internals
-logger.debug('query', 'Evaluating filter', { filter: { status: 'active' }, results: 42 });
+logger.debug("query", "Evaluating filter", {
+  filter: { status: "active" },
+  results: 42,
+});
 ```
 
 **Output format:** Single-line JSON to stderr, compatible with ELK, Datadog, Grafana Loki, CloudWatch, and `jq`.
 
 ```json
-{"timestamp":"2025-01-15T10:30:00.000Z","level":"info","module":"server","message":"Flash DB started","port":3000}
+{
+  "timestamp": "2025-01-15T10:30:00.000Z",
+  "level": "info",
+  "module": "server",
+  "message": "Flash DB started",
+  "port": 3000
+}
 ```
 
 **Log levels:** `debug` | `info` | `warn` | `error` — set via `FLASH_LOG_LEVEL` env var.

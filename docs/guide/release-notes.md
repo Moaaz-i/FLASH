@@ -2,9 +2,32 @@
 
 What changed in recent FLASH releases and how to adopt it in your apps.
 
-**Current version:** `1.0.3` · **Tests:** 185/185
+**Current version:** `1.0.4` · **Tests:** 185/185
 
 ---
+
+## v1.0.4 — Zero-Knowledge Security & Robust Hardening (Security Release)
+
+A major security release addressing 21 critical, high, and medium-severity vulnerabilities.
+
+### 🛡️ Network and Authentication Hardening
+- **Local-First Default Host**: Changed default host binding for `FlashServer`, `FlashDashboard`, `FlashGRPCServer`, and `FlashReplicationServer` to `127.0.0.1` (localhost) instead of `0.0.0.0` (all interfaces) to prevent accidental public exposure.
+- **Timing-Safe Credential Verification**: Replaced basic string comparison with a cryptographically secure `timingSafeCompare` using HMAC and constant-time equality checks for `authKey` in `FlashServer`, `FlashGRPCServer`, replication, and `FlashWebSocketServer`, as well as `token` in `FlashDashboard`.
+- **CORS Protection**: Hardened CORS validation in `FlashServer` and `FlashDashboard` to restrict access strictly to trusted local origins (e.g., `localhost`, `127.0.0.1`), blocking wildcards `*` or untrusted cross-origin requests.
+- **WebSocket CSWSH Defense**: Implemented strict `Origin` header validation in upgrade requests to protect against Cross-Site WebSocket Hijacking (CSWSH).
+- **DoS Payload Capping**: Enforced a strict **10MB limit** on raw HTTP request bodies (`readBody`) in `FlashServer` and `FlashDashboard` and frame-level `maxPayload` buffers in `FlashWebSocketServer` to prevent memory-exhaustion Denial of Service (DoS) attacks.
+
+### 🔐 Cryptographic Robustness & Zero-Knowledge Gaps
+- **Authentic Post-Quantum Cryptography (PQC)**: Replaced the mock SHA3-based lattice key exchange in `FlashPQC` with real, production-ready ECDH (`secp256k1`) with SHA3-256 final shared secret encapsulation/decapsulation.
+- **Hardened Key Expansion & PBKDF2**: Enforced PBKDF2-HMAC-SHA256 key expansion for any passphrase master key of any length in `FlashCipher`, completely avoiding the bypass where 32-character keys were used directly.
+- **Dynamic Database Salts**: Replaced the static, hardcoded default salt (`flash_db_default_salt_2026`) with a cryptographically secure dynamic salt (`crypto.randomBytes(32)`) generated per-database and stored locally in a secure `.flash-salt` file.
+- **Nonce Reuse & Deterministic Encryption**: Upgraded deterministic encryption in `FlashCipher` to use **AES-256-CBC** with HMAC-SHA256-derived IVs (derived from both key and plaintext) to eliminate the risk of GCM nonce-reuse and decryption tag collision.
+
+### 🛡️ Logic Flows & Input Sanitization
+- **Path Traversal & Zip Slip Prevention**: Enhanced `portable_bundle` extraction in `FlashPortableBundle` by resolving paths with `path.resolve` and enforcing strict boundary checks to prevent directory traversal / Zip Slip attacks.
+- **Regex Query Sandboxing (ReDoS Protection)**: Wrapped all `$regex` evaluations in a secure `node:vm` sandbox with an absolute execution timeout of **50ms** to completely block Regular Expression Denial of Service (ReDoS) CPU exhaustion.
+- **AI Prompt Firewall Injection Filters**: Upgraded `FlashPromptFirewall` to scan and redact prompt injection payloads (e.g., system instructions bypass) alongside PII patterns to secure local LLM agent workloads.
+- **Safer Resource Lifecycle Management**: Updated `FlashCollection.close()` to close WAL and oplog file descriptors conditionally and gracefully. Resolved macOS directory deletion locks with a retry mechanism under transient `ENOTEMPTY` conditions.
 
 ## v1.0.3 — Companion foundation (honest config)
 

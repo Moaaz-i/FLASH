@@ -67,6 +67,18 @@ features:
     details: Integrity proofs, GDPR export/erase, prompt firewall, key ceremony, time seal, and differential privacy.
 ---
 
+## FLASH DB in Action 🎥
+
+<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 2.5rem 0; width: 100%;">
+  <video width="100%" style="max-width: 800px; border-radius: 12px; border: 1px solid var(--vp-c-divider); box-shadow: 0 12px 32px rgba(0,0,0,0.15); outline: none;" controls autoplay muted loop playsinline>
+    <source src="/FLASH_DB.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+  <p style="margin-top: 1rem; font-style: italic; font-size: 0.9rem; color: var(--vp-c-text-2); text-align: center;">
+    Watch FLASH DB Zero-Knowledge Encrypted Intelligence & Dashboard in action.
+  </p>
+</div>
+
 ## Quick Example
 
 ```javascript
