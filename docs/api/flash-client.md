@@ -59,7 +59,7 @@ reportError.watch();
 
 ```javascript
 const client = new FlashClient({
-  secretKey: "master-key",
+  secretKey: "your-long-random-passphrase",
   fieldPolicy: {
     email: "searchable", // Default: AES-256-GCM + Blind Exact/Ngram trapdoors
     balance: "counter", // Additive homomorphic encryption ($sum/$inc)
@@ -271,12 +271,15 @@ const envelope = client.buildQueryEnvelope({ status: "active" });
 Open the Flash Dashboard GUI server.
 
 - **Parameters:**
-  - `options?: { port?: number }`
-- **Returns:** Dashboard server instance
+  - `options: { port?: number, host?: string, token: string, allowDataExplorer?: boolean }`
+- **Returns:** Dashboard HTTP server
 
 ```javascript
-client.openDashboard({ port: 6742 });
-// Dashboard available at http://localhost:6742
+client.openDashboard({
+  port: 6742,
+  token: "console-token-at-least-16",
+});
+// Console at http://localhost:6742 — send x-flash-token on /api routes
 ```
 
 ### `close()`

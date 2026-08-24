@@ -16,7 +16,8 @@ test('FlashClient - Full Integration: CRUD, Blind Index Search, Aggregation, and
       fieldPolicy: {
         status: 'plaintext',
         balance: 'counter'
-      }
+      },
+      allowPlaintextFields: true,
     });
 
     const users = await client.collection('users');

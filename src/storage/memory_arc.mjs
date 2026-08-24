@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { ARC_OP } from "../engine/arc.mjs";
+import { frameCrc32 } from "../engine/frame_crc.mjs";
 
 /**
  * In-memory append-only WAL — same frame layout as FlashArc, no filesystem.
@@ -25,14 +26,9 @@ export class MemoryArc {
     dataBuf.copy(payload, 2 + keyBuf.length);
 
     const frame = Buffer.allocUnsafe(13 + payload.length);
-    frame.write("FARC", 0, 4, "ascii");
+    frame.write("FAR2", 0, 4, "ascii");
     frame.writeUInt32LE(payload.length, 4);
-    const checksum = crypto
-      .createHash("sha256")
-      .update(payload)
-      .digest()
-      .readUInt32LE(0);
-    frame.writeUInt32LE(checksum, 8);
+    frame.writeUInt32LE(frameCrc32(payload), 8);
     frame.writeUInt8(opCode, 12);
     payload.copy(frame, 13);
     return frame;
@@ -57,7 +53,7 @@ export class MemoryArc {
       let offset = 0;
       while (offset + 13 <= fileBuffer.length) {
         const magic = fileBuffer.toString("ascii", offset, offset + 4);
-        if (magic !== "FARC") break;
+        if (magic !== "FAR2" && magic !== "FARC") break;
 
         const payloadLen = fileBuffer.readUInt32LE(offset + 4);
         const checksum = fileBuffer.readUInt32LE(offset + 8);
@@ -66,11 +62,14 @@ export class MemoryArc {
         if (offset + 13 + payloadLen > fileBuffer.length) break;
 
         const payload = fileBuffer.subarray(offset + 13, offset + 13 + payloadLen);
-        const actualChecksum = crypto
-          .createHash("sha256")
-          .update(payload)
-          .digest()
-          .readUInt32LE(0);
+        const actualChecksum =
+          magic === "FAR2"
+            ? frameCrc32(payload)
+            : crypto
+                .createHash("sha256")
+                .update(payload)
+                .digest()
+                .readUInt32LE(0);
 
         if (actualChecksum === checksum) {
           const keyLen = payload.readUInt16LE(0);

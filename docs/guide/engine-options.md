@@ -10,7 +10,7 @@ FLASH v1.2.5+ exposes **`engineOptions`** on `FlashClient` and `FlashDatabase` f
 import { FlashClient } from "flash-zk";
 
 const client = new FlashClient({
-  secretKey: "your-master-key",
+  secretKey: "your-long-random-passphrase",
   storagePath: "./flash_data",
   engineOptions: {
     durability: "balanced", // strict | balanced | throughput
@@ -45,6 +45,9 @@ engineOptions: {
 
 ::: tip
 Always call `await client.close()` (or `collection.close()`) before exit — all modes flush pending WAL data on close.
+
+Writes append **FAR2** frames with CRC-32 for corruption detection (payloads remain AES-GCM sealed). Older **FARC** files still recover. Passphrase stretching is still PBKDF2 100k; the derived key is cached in-process so extra `FlashCipher` instances are not paid again.
+
 :::
 
 ---

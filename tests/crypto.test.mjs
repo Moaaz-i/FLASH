@@ -73,3 +73,12 @@ test('FlashMerkle - Tree root and Tamper-Proof Cryptographic Verification', () =
   const isTampered = FlashMerkle.verifyProof(FlashMerkle.hash('fake_record').toString('hex'), proof, root);
   assert.strictEqual(isTampered, false, 'Tampered data must fail verification');
 });
+
+test('FlashCipher - same passphrase reuses PBKDF2-derived key', () => {
+  const secret = 'kdf_cache_passphrase_16b';
+  const a = new FlashCipher(secret);
+  const b = new FlashCipher(secret);
+  assert.ok(a.key.equals(b.key));
+  const payload = a.encrypt('hello-cache', { aad: 't:f' });
+  assert.strictEqual(b.decrypt(payload, { aad: 't:f' }), 'hello-cache');
+});

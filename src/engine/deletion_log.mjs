@@ -34,10 +34,17 @@ export class FlashDeletionLog {
     this.filePath = filePath;
     this.enabled = options.enabled === true;
     this.logSecret = options.logSecret ?? null;
-    this._cipher = this.logSecret ? new FlashCipher(this.logSecret) : null;
+    this._cipher = null;
     /** @type {Array<{ collection: string, docId: string, action: DeletionLogAction, at: number, restorable: boolean }>} */
     this._entries = [];
     this._ready = false;
+  }
+
+  _ensureCipher() {
+    if (!this._cipher && this.logSecret) {
+      this._cipher = new FlashCipher(this.logSecret);
+    }
+    return this._cipher;
   }
 
   get byteSize() {
@@ -65,6 +72,7 @@ export class FlashDeletionLog {
 
       const version = buf.readUInt32LE(4);
       if (version === VERSION_SEALED) {
+        this._ensureCipher();
         if (!this._cipher) {
           logger.warn(
             "FlashDeletionLog",
@@ -237,6 +245,7 @@ export class FlashDeletionLog {
 
   async _persist() {
     if (!this.enabled) return;
+    this._ensureCipher();
     if (!this._cipher) {
       throw new Error(
         "FlashDeletionLog requires logSecret (derived from secretKey via FlashClient)",

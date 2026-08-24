@@ -13,6 +13,9 @@ hero:
       text: Get Started
       link: /guide/getting-started
     - theme: alt
+      text: What's New in 1.2.0
+      link: /guide/whats-new
+    - theme: alt
       text: Why FLASH?
       link: /guide/positioning
     - theme: alt
@@ -26,6 +29,9 @@ hero:
       link: /api/benchmarks
 
 features:
+  - icon: 🔐
+    title: Fail-Closed by Default (1.2.0)
+    details: Daemons require authKey. The console requires a token. Weak secrets and accidental plaintext fields are rejected. Public bind is opt-in.
   - icon: 🧱
     title: Universal Foundations
     details: Cross-domain primitives — eventLog, counter, queue, lifecycle, pagination, health, snapshot — one API for apps, chat, games, AI, and jobs.
@@ -78,6 +84,17 @@ features:
     Watch FLASH DB Zero-Knowledge Encrypted Intelligence & Dashboard in action.
   </p>
 </div>
+
+## What's new in 1.2.0
+
+FLASH now **fails closed**. Insecure setups that used to start anyway are rejected.
+
+- Daemons (`FlashServer`, gRPC, replication) require a strong **`authKey`**. Public bind (`0.0.0.0`) also requires **`allowPublicBind`**.
+- Remote clients need **`authKey`**. The Intelligence Console needs a **`token`**. Document explorer is off unless you opt in.
+- Weak or short secrets are rejected. Storing a field as plaintext needs **`allowPlaintextFields`**.
+- From **1.1.0**: `FlashZKKernel` keeps plaintext off the server; SQL and GraphQL run only through `FlashClient`.
+
+[Read the 1.2.0 announcement](/guide/whats-new) · [Full release notes](/guide/release-notes)
 
 ## Quick Example
 

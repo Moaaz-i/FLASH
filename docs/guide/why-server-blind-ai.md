@@ -77,8 +77,8 @@ await vault.put("openai_key", { value: "sk-..." });
 ## What FLASH Is Not
 
 - Not a chatbot — `flashsh ask` retrieves encrypted chunks, it does not call OpenAI
-- Not a MongoDB replacement — different category entirely
-- Not “encryption optional” — zero-knowledge is architectural
+- Not “encryption optional” — zero-knowledge envelopes are architectural
+- Not a plugin for another database — FLASH is a standalone engine
 
 ---
 

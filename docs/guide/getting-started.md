@@ -4,7 +4,7 @@
 
 It is **not** a generic document store with encryption added later. Every layer — storage (`.farc`, `FlashBinary`), indexing (blind trapdoors, ORE), and query — assumes the engine never sees plaintext.
 
-> New here? Read [Positioning](/guide/positioning), [Release Notes](/guide/release-notes), and [Why Server-Blind AI Storage](/guide/why-server-blind-ai).
+> **Latest: [What's new in 1.2.0](/guide/whats-new)** — fail-closed `authKey` / `token`, no weak secrets, plaintext fields opt-in. Full log: [Release Notes](/guide/release-notes). Also: [Positioning](/guide/positioning) and [Why Server-Blind AI Storage](/guide/why-server-blind-ai).
 
 ---
 
@@ -50,7 +50,7 @@ flashsh ingest ./notes.txt            # add to private RAG
 flashsh ask "what did I ingest?"      # semantic retrieval
 ```
 
-**Web UI:** `npx flash-console` → [Intelligence Console](/guide/intelligence-console)
+**Web UI:** `FLASH_MASTER_KEY=... npx flash-console` → [Intelligence Console](/guide/intelligence-console) (a dashboard token is printed; send it as `x-flash-token`).
 
 ---
 

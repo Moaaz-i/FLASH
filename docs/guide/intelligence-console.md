@@ -7,8 +7,8 @@ The **Intelligence Console** is a local web UI focused on FLASH-exclusive capabi
 ## Launch
 
 ```bash
-npx flash-console
-# → http://127.0.0.1:3456
+FLASH_MASTER_KEY="your-long-random-passphrase" npx flash-console
+# → http://127.0.0.1:3456  (prints x-flash-token)
 ```
 
 Or programmatically:
@@ -17,11 +17,11 @@ Or programmatically:
 import { FlashClient } from "flash-zk";
 
 const client = new FlashClient({
-  secretKey: "master-key",
+  secretKey: "your-long-random-passphrase",
   storagePath: "./flash_data",
 });
 
-client.openDashboard({ port: 3456, token: "optional-secret" });
+client.openDashboard({ port: 3456, token: "console-token-at-least-16" });
 // → http://localhost:3456
 ```
 

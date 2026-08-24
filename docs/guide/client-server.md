@@ -16,10 +16,12 @@ import { FlashServer } from "flash-zk";
 
 // Start high-performance Zero-Knowledge database server daemon
 const server = FlashServer.start({
-  port: 6742, // Default FLASH port
-  host: "127.0.0.1", // Secure local-only default. Use a specific interface or firewall when exposing.
+  port: 6742,
+  host: "127.0.0.1",
   storagePath: "/var/data/flash",
-  authKey: "my_cluster_secret_token", // Recommended strong network authentication key
+  authKey: "my_cluster_secret_token",
+  // Optional: authorize operations without the server reading plaintext
+  // rbac: myFlashRBAC,
 });
 
 console.log("⚡ FLASH Server daemon is live on port 6742");
@@ -27,6 +29,10 @@ console.log("⚡ FLASH Server daemon is live on port 6742");
 
 ::: warning Security Best Practices
 
+- **Zero-Knowledge Kernel**: `FlashServer` rejects plaintext records and plaintext query fields. It never accepts `secretKey`.
+- **Mandatory `authKey`**: The daemon will not start without one. Send `x-flash-server-key` on every route except `/health`.
+- **Public bind**: `0.0.0.0` requires `allowPublicBind: true` plus `authKey`.
+- **Rate limit**: 200 requests / 10 seconds per client IP.
 - **Host Binding**: By default, `FlashServer` listens on `127.0.0.1` for local safety. When exposing on a public or LAN interface (like `0.0.0.0`), ensure you use a strong `authKey` and protect the port behind a strict firewall, mTLS proxy, or VPN.
 - **Timing-Safe Auth**: All connection authentication checks (including `authKey` validation) use timing-safe constant-time comparison algorithms to mitigate side-channel timing attacks.
 - **Secure CORS**: Remote connections strictly evaluate incoming `Origin` headers. Requests from unrecognized remote domains are rejected with `null` origins to mitigate Cross-Origin Exploitation.

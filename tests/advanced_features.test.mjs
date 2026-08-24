@@ -132,7 +132,7 @@ test('Advanced - Built-In Web GUI Dashboard Server', async () => {
     const items = client.collection('items');
     await items.insertOne({ label: 'Item 1' });
 
-    const server = client.openDashboard({ port: 3987 });
+    const server = client.openDashboard({ port: 3987, token: "gui_dash_token_16b" });
     assert.ok(server);
 
     server.close();
@@ -158,10 +158,10 @@ test('FlashArc - .farc Format Verification and Durability', async () => {
     const farcPath = path.join(tmpDir, 'flash_db', 'vault', 'commit.farc');
     assert.ok(fs.existsSync(farcPath), 'commit.farc file must exist on disk');
 
-    // Verify 'FARC' magic bytes at the beginning of the file
+    // Verify FAR2 magic bytes at the beginning of the file
     const fileBytes = fs.readFileSync(farcPath);
     const magic = fileBytes.subarray(0, 4).toString('ascii');
-    assert.strictEqual(magic, 'FARC', 'Magic header of .farc must be "FARC"');
+    assert.strictEqual(magic, 'FAR2', 'Magic header of .farc must be "FAR2"');
 
     // Crash Recovery Test: Open second client pointing to same folder
     const client2 = new FlashClient({

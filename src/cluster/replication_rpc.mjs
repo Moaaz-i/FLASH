@@ -1,12 +1,6 @@
 import net from "node:net";
-import crypto from "node:crypto";
-
-function timingSafeCompare(a, b) {
-  if (typeof a !== 'string' || typeof b !== 'string') return false;
-  const hashA = crypto.createHmac('sha256', 'safe-key-replication').update(a).digest();
-  const hashB = crypto.createHmac('sha256', 'safe-key-replication').update(b).digest();
-  return crypto.timingSafeEqual(hashA, hashB);
-}
+import { FlashZKKernel } from "../crypto/zk_kernel.mjs";
+import { timingSafeCompare } from "../security/trust_guard.mjs";
 
 /**
  * TCP RPC for cross-process replica replication (oplog apply).
@@ -25,6 +19,9 @@ export class FlashReplicationServer {
     this.port = options.port || 6750;
     this.host = options.host || "127.0.0.1";
     this.authKey = options.authKey || null;
+    if (!this.authKey) {
+      throw new Error("FlashReplicationServer requires authKey");
+    }
     this.server = null;
   }
 
@@ -69,6 +66,10 @@ export class FlashReplicationServer {
       const col = this.db.collection(req.collection);
       await col.init();
       const raw = Buffer.from(req.rawBase64, "base64");
+      FlashZKKernel.assertSealedRecord(
+        raw,
+        "FlashReplicationServer.applyInsert",
+      );
       await col.applyRawInsert(req.docId, raw, null, { skipOplog: true });
       if (req.oplogEvent) {
         await col.oplog.append(
@@ -128,15 +129,18 @@ export class FlashReplicationClient {
 
   async call(payload) {
     return new Promise((resolve, reject) => {
-      const socket = net.createConnection({ host: this.host, port: this.port }, () => {
-        if (this.authKey) {
-          payload.authKey = this.authKey;
-        }
-        const body = Buffer.from(JSON.stringify(payload), "utf-8");
-        const header = Buffer.allocUnsafe(4);
-        header.writeUInt32BE(body.length, 0);
-        socket.write(Buffer.concat([header, body]));
-      });
+      const socket = net.createConnection(
+        { host: this.host, port: this.port },
+        () => {
+          if (this.authKey) {
+            payload.authKey = this.authKey;
+          }
+          const body = Buffer.from(JSON.stringify(payload), "utf-8");
+          const header = Buffer.allocUnsafe(4);
+          header.writeUInt32BE(body.length, 0);
+          socket.write(Buffer.concat([header, body]));
+        },
+      );
 
       let buffer = Buffer.alloc(0);
       socket.on("data", (chunk) => {

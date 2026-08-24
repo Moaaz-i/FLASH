@@ -5,6 +5,43 @@ import crypto from "node:crypto";
 // making accidental collision with legacy payloads vanishingly unlikely.
 const AAD_MAGIC = Buffer.from([0xf4, 0x4c, 0x45, 0x32]); // "FLE2"
 
+const KDF_CACHE_MAX = 32;
+/** @type {Map<string, Buffer>} */
+const derivedKeyCache = new Map();
+
+function cacheKeyForKdf(masterKey, salt) {
+  return crypto
+    .createHmac("sha256", "flash-kdf-cache-v1")
+    .update(masterKey)
+    .update("\0")
+    .update(String(salt))
+    .digest("hex");
+}
+
+/**
+ * PBKDF2-HMAC-SHA256, 100000 iterations — same stretching as before.
+ * Repeated (passphrase, salt) pairs reuse the derived 256-bit key in-process.
+ * @param {string} masterKey
+ * @param {string} salt
+ * @returns {Buffer}
+ */
+export function deriveCipherKey(masterKey, salt) {
+  const cacheKey = cacheKeyForKdf(masterKey, salt);
+  const cached = derivedKeyCache.get(cacheKey);
+  if (cached) {
+    derivedKeyCache.delete(cacheKey);
+    derivedKeyCache.set(cacheKey, cached);
+    return cached;
+  }
+  const key = crypto.pbkdf2Sync(masterKey, salt, 100000, 32, "sha256");
+  derivedKeyCache.set(cacheKey, key);
+  if (derivedKeyCache.size > KDF_CACHE_MAX) {
+    const oldest = derivedKeyCache.keys().next().value;
+    derivedKeyCache.delete(oldest);
+  }
+  return key;
+}
+
 /**
  * FLASH Cryptographic Engine (FlashCipher)
  * Military-grade Field-Level & Document Encryption using AES-256-GCM & ChaCha20-Poly1305
@@ -26,8 +63,7 @@ export class FlashCipher {
     }
 
     if (typeof masterKey === "string") {
-      // Always derive a cryptographically strong 256-bit key from string passphrases
-      this.key = crypto.pbkdf2Sync(masterKey, salt, 100000, 32, "sha256");
+      this.key = deriveCipherKey(masterKey, salt);
     } else if (Buffer.isBuffer(masterKey)) {
       this.key = masterKey;
     } else {

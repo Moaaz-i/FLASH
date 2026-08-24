@@ -92,6 +92,12 @@ export interface FlashClientOptions {
   /** `compact` minimizes disk: binary ciphertext, optional blind index, deflate L6 */
   storageProfile?: "standard" | "compact";
   engineOptions?: FlashEngineOptions;
+  /** Per-database salt. Usually loaded from `.flash-salt`. */
+  salt?: string;
+  /** Identity for FlashServer RBAC (`x-flash-user`). */
+  userId?: string;
+  /** Required to store any fieldPolicy value as plaintext. @default false */
+  allowPlaintextFields?: boolean;
   /**
    * Not valid here — must be `engineOptions.deletionLog`.
    * Passing it on the client root throws.
@@ -1235,7 +1241,10 @@ export class FlashClientCollection<
 export interface FlashDashboardOptions {
   port?: number;
   host?: string;
-  token?: string;
+  /** Required. Sent as x-flash-token on /api routes. */
+  token: string;
+  /** Decrypt and list documents over HTTP. Off by default. */
+  allowDataExplorer?: boolean;
 }
 
 export interface PrivateRAGIngestInput {
@@ -1835,9 +1844,22 @@ export interface FlashServerOptions {
   port?: number;
   host?: string;
   storagePath?: string;
-  authKey?: string;
+  /** Required. Authenticates every route except /health. */
+  authKey: string;
   dbName?: string;
   engineOptions?: FlashEngineOptions;
+  rbac?: FlashRBAC;
+  /** Required to bind 0.0.0.0 / :: together with authKey. */
+  allowPublicBind?: boolean;
+}
+
+export class FlashZKKernel {
+  static requireClient(target: unknown, apiName: string): FlashClient;
+  static isSealedBuffer(buf: Buffer): boolean;
+  static isSealedEnvelope(obj: object): boolean;
+  static assertSealedRecord(record: Buffer | object, context?: string): void;
+  static assertBlindQueryEnvelope(envelope?: object, context?: string): void;
+  static bufferContainsUtf8(buf: Buffer, needle: string): boolean;
 }
 
 export class FlashServer {
@@ -2254,7 +2276,15 @@ export class FlashRaft {
 // ============================================================================
 
 export class FlashGRPCServer {
-  constructor(db: FlashDatabase, options?: { port?: number });
+  constructor(
+    db: FlashDatabase,
+    options: {
+      port?: number;
+      host?: string;
+      authKey: string;
+      rbac?: FlashRBAC;
+    },
+  );
   start(): Promise<void>;
   stop(): void;
 }
@@ -2265,7 +2295,7 @@ export interface GraphQLResult {
 }
 
 export class FlashGraphQL {
-  constructor(db: FlashDatabase);
+  constructor(client: FlashClient);
   execute(queryStr: string): Promise<GraphQLResult>;
 }
 
@@ -2383,6 +2413,16 @@ export class FlashRBAC {
     action: "read" | "write" | "delete" | "admin",
   ): boolean;
 }
+
+export function timingSafeCompare(a: string, b: string): boolean;
+export function assertStrongSecret(
+  value: string | Buffer,
+  keyName?: string,
+): void;
+export function createIpRateLimiter(options?: {
+  windowMs?: number;
+  max?: number;
+}): (ip: string) => boolean;
 
 // ============================================================================
 // Spatial: FlashSpatialRTree & FlashSpatialPlugin
@@ -2568,7 +2608,7 @@ export class FlashTimeTravel {
 
 export class FlashSQL {
   static execute(
-    db: FlashDatabase,
+    client: FlashClient,
     sqlQuery: string,
   ): Promise<Array<Record<string, unknown>>>;
   static parse(sql: string): Record<string, unknown>;

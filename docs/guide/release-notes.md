@@ -2,7 +2,54 @@
 
 What changed in recent FLASH releases and how to adopt it in your apps.
 
-**Current version:** `1.0.4` · **Tests:** 185/185
+**Current version:** `1.2.0` · **Tests:** 194/194
+
+**[What's new in 1.2.0](/guide/whats-new)** — fail-closed auth, bind, console, and plaintext policy. If you are upgrading from 1.0.x, also read the 1.1.0 kernel changes below.
+
+---
+
+## v1.2.0 — Trust defaults (fail closed)
+
+Network and key handling now refuse insecure configurations instead of hoping the operator notices.
+
+- **`secretKey` strength**: at least 16 bytes in apps (8 in the test runner). Common weak strings are rejected.
+- **`FlashServer` requires `authKey`**. Binding `0.0.0.0` also requires `allowPublicBind: true`. `/health` stays public; everything else needs `x-flash-server-key`. Per-IP rate limit (200 / 10s).
+- **Remote `FlashClient.uri` requires `authKey`.**
+- **Intelligence Console requires `token`.** Document explorer (`GET /api/docs`) is off unless `allowDataExplorer: true`.
+- **`fieldPolicy: plaintext` requires `allowPlaintextFields: true`.**
+- **gRPC and replication daemons require `authKey`.** Replica sets generate a cluster key automatically.
+- **CLI**: `flash-server` defaults to `127.0.0.1` and exits without `FLASH_AUTH_KEY` / `--authKey`. `flash-console` requires `FLASH_MASTER_KEY` and prints a dashboard token.
+- Blind counters carry an HMAC tag so tampered hex is not mixed into sums blindly.
+- **Performance (crypto unchanged):** in-process PBKDF2 cache, lazy trash/deletion ciphers, `_enc` checks without JSON-parsing ciphertext, FAR2 CRC-32 WAL checksums (AES-GCM still authenticates records). Legacy FARC files still recover.
+
+This is still not a formal proof system or an external pentest. It is fail-closed engineering.
+
+---
+
+## v1.1.0 — Architectural zero-knowledge + independent identity
+
+FLASH is a **standalone** encrypted intelligence database. Companion framing to other document stores is removed.
+
+### Zero-knowledge kernel
+
+- **`FlashZKKernel`** — the engine and network daemons refuse unsealed plaintext records and plaintext query fields.
+- **`FlashServer` / `FlashGRPCServer` / replication** accept sealed envelopes and trapdoor queries only. `secretKey` never belongs on the server.
+- **`FlashSQL.execute(client, sql)`** and **`FlashGraphQL(client)`** require `FlashClient`. The storage engine does not evaluate SQL/GraphQL over plaintext.
+- **`FlashRBAC`** can be passed to `FlashServer` (`x-flash-user`). Operations are authorized without reading document contents.
+- Query responses include a **Merkle root** of sealed records so clients can verify inclusion without the server knowing values.
+
+### Identity
+
+- Positioning, examples, and docs no longer describe FLASH as a sidecar to another database.
+- `FlashClient.uri` accepts only FLASH URLs (`flash://`, `http://`, `https://`).
+- New example: `examples/standalone-vault`.
+
+### Honesty
+
+- Key agreement is **ECDH + SHA3**, not ML-KEM/Kyber. `pqcHardened` is scrypt + SHA3 passphrase stretching.
+- Additive counters remain **masked group sums**, not Paillier/BFV. See [Homomorphic Math](/guide/homomorphic-math).
+
+**Breaking:** `FlashSQL.execute` and `FlashGraphQL` no longer take `FlashDatabase`. Pass `FlashClient`.
 
 ---
 
@@ -11,6 +58,7 @@ What changed in recent FLASH releases and how to adopt it in your apps.
 A major security release addressing 21 critical, high, and medium-severity vulnerabilities.
 
 ### 🛡️ Network and Authentication Hardening
+
 - **Local-First Default Host**: Changed default host binding for `FlashServer`, `FlashDashboard`, `FlashGRPCServer`, and `FlashReplicationServer` to `127.0.0.1` (localhost) instead of `0.0.0.0` (all interfaces) to prevent accidental public exposure.
 - **Timing-Safe Credential Verification**: Replaced basic string comparison with a cryptographically secure `timingSafeCompare` using HMAC and constant-time equality checks for `authKey` in `FlashServer`, `FlashGRPCServer`, replication, and `FlashWebSocketServer`, as well as `token` in `FlashDashboard`.
 - **CORS Protection**: Hardened CORS validation in `FlashServer` and `FlashDashboard` to restrict access strictly to trusted local origins (e.g., `localhost`, `127.0.0.1`), blocking wildcards `*` or untrusted cross-origin requests.
@@ -18,12 +66,14 @@ A major security release addressing 21 critical, high, and medium-severity vulne
 - **DoS Payload Capping**: Enforced a strict **10MB limit** on raw HTTP request bodies (`readBody`) in `FlashServer` and `FlashDashboard` and frame-level `maxPayload` buffers in `FlashWebSocketServer` to prevent memory-exhaustion Denial of Service (DoS) attacks.
 
 ### 🔐 Cryptographic Robustness & Zero-Knowledge Gaps
+
 - **Authentic Post-Quantum Cryptography (PQC)**: Replaced the mock SHA3-based lattice key exchange in `FlashPQC` with real, production-ready ECDH (`secp256k1`) with SHA3-256 final shared secret encapsulation/decapsulation.
 - **Hardened Key Expansion & PBKDF2**: Enforced PBKDF2-HMAC-SHA256 key expansion for any passphrase master key of any length in `FlashCipher`, completely avoiding the bypass where 32-character keys were used directly.
 - **Dynamic Database Salts**: Replaced the static, hardcoded default salt (`flash_db_default_salt_2026`) with a cryptographically secure dynamic salt (`crypto.randomBytes(32)`) generated per-database and stored locally in a secure `.flash-salt` file.
 - **Nonce Reuse & Deterministic Encryption**: Upgraded deterministic encryption in `FlashCipher` to use **AES-256-CBC** with HMAC-SHA256-derived IVs (derived from both key and plaintext) to eliminate the risk of GCM nonce-reuse and decryption tag collision.
 
 ### 🛡️ Logic Flows & Input Sanitization
+
 - **Path Traversal & Zip Slip Prevention**: Enhanced `portable_bundle` extraction in `FlashPortableBundle` by resolving paths with `path.resolve` and enforcing strict boundary checks to prevent directory traversal / Zip Slip attacks.
 - **Regex Query Sandboxing (ReDoS Protection)**: Wrapped all `$regex` evaluations in a secure `node:vm` sandbox with an absolute execution timeout of **50ms** to completely block Regular Expression Denial of Service (ReDoS) CPU exhaustion.
 - **AI Prompt Firewall Injection Filters**: Upgraded `FlashPromptFirewall` to scan and redact prompt injection payloads (e.g., system instructions bypass) alongside PII patterns to secure local LLM agent workloads.
@@ -34,8 +84,8 @@ A major security release addressing 21 critical, high, and medium-severity vulne
 - `trash` and `deletionLog` on the `FlashClient` **root throw**. They only work under `engineOptions`.
 - The same guard reads **FlashClient**, **FlashDatabase**, **FlashServer**, and `engineOptions` values (types, enums, nested keys).
 - `listTrash` / `listDeletions` / `purge*` **throw** when the feature is disabled — they no longer return `[]`.
-- `FlashClient.uri` rejects `mongodb://` (FLASH server URL only).
-- Positioning: FLASH is a **local vault beside MongoDB**, not a replacement. See [Positioning](/guide/positioning) and `examples/mongo-companion`.
+- `FlashClient.uri` rejects foreign database URLs (FLASH `flash://` / HTTP only).
+- Config guard on FlashClient, FlashDatabase, FlashServer, and `engineOptions`.
 
 ---
 

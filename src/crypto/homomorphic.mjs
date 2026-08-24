@@ -45,11 +45,17 @@ export class FlashHomomorphic {
     const v = BigInt(Math.round(Number(value) * 100)); // Scaled to 2 decimal points
     const mask = this._deriveMask(recordId, fieldName);
     const encryptedVal = (v + mask) % this.modulus;
-    
+    const ciphertext = encryptedVal.toString(16);
+    const tag = crypto
+      .createHmac("sha256", this.key)
+      .update(`homo-tag:${recordId}:${fieldName}:${ciphertext}`)
+      .digest("hex")
+      .slice(0, 32);
+
     return {
-      ciphertext: encryptedVal.toString(16),
+      ciphertext: `${ciphertext}.${tag}`,
       recordId,
-      fieldName
+      fieldName,
     };
   }
 
@@ -58,11 +64,19 @@ export class FlashHomomorphic {
    * @param {string[]} ciphertexts - Hex strings of encrypted values
    * @returns {string} Hex string of the aggregated ciphertext
    */
+  _splitCiphertext(c) {
+    const s = String(c);
+    const dot = s.lastIndexOf(".");
+    if (dot === -1) return { body: s, tag: null };
+    return { body: s.slice(0, dot), tag: s.slice(dot + 1) };
+  }
+
   aggregateSum(ciphertexts) {
     let sum = 0n;
     for (const c of ciphertexts) {
-      if (typeof c === 'string') {
-        const val = BigInt('0x' + c);
+      if (typeof c === "string") {
+        const { body } = this._splitCiphertext(c);
+        const val = BigInt("0x" + body);
         sum = (sum + val) % this.modulus;
       }
     }

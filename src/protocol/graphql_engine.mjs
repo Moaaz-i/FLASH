@@ -1,15 +1,15 @@
 /**
  * FLASH Zero-Knowledge GraphQL Engine (FlashGraphQL)
- * Lightweight schema generator and query executor over encrypted collections.
+ * Executes GraphQL-shaped queries through FlashClient so the engine never sees plaintext.
  */
-import { FlashBinary } from "../binary/flash_binary.mjs";
+import { FlashZKKernel } from "../crypto/zk_kernel.mjs";
 
 export class FlashGraphQL {
   /**
-   * @param {import('../core/database.mjs').FlashDatabase} db
+   * @param {import('../client/flash_client.mjs').FlashClient} client
    */
-  constructor(db) {
-    this.db = db;
+  constructor(client) {
+    this.client = FlashZKKernel.requireClient(client, "FlashGraphQL");
   }
 
   /**
@@ -22,19 +22,14 @@ export class FlashGraphQL {
     const data = {};
 
     for (const req of parsed) {
-      const col = this.db.collection(req.collection);
-      await col.init();
+      let cursor = this.client
+        .collection(req.collection)
+        .find(req.filter || {});
+      if (req.limit) cursor = cursor.limit(req.limit);
+      const docs = await cursor;
 
-      const options = {};
-      if (req.limit) options.limit = req.limit;
-
-      const docs = FlashBinary.decodeRecords(
-        await col.find(req.filter || {}, options),
-      );
-
-      // Project fields
-      data[req.alias || req.collection] = docs.map(doc => {
-        if (req.fields.length === 0 || req.fields.includes('*')) return doc;
+      data[req.alias || req.collection] = docs.map((doc) => {
+        if (req.fields.length === 0 || req.fields.includes("*")) return doc;
         const out = {};
         for (const f of req.fields) {
           if (doc[f] !== undefined) out[f] = doc[f];
@@ -47,10 +42,9 @@ export class FlashGraphQL {
   }
 
   _parse(queryStr) {
-    const clean = queryStr.replace(/\s+/g, ' ').trim();
+    const clean = queryStr.replace(/\s+/g, " ").trim();
     const reqs = [];
 
-    // Simple GraphQL field matching: collectionName(arg: val) { f1 f2 }
     const regex = /([a-zA-Z0-9_]+)(?:\(([^)]+)\))?\s*\{([^}]+)\}/g;
     let match;
 

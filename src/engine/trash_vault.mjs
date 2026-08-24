@@ -27,7 +27,7 @@ export class FlashTrashVault {
     this.maxBytes = options.maxBytes ?? 2 * 1024 * 1024;
     this.maxAgeMs = options.maxAgeMs ?? 7 * 24 * 3600 * 1000;
     this.trashSecret = options.trashSecret ?? null;
-    this._cipher = this.trashSecret ? new FlashCipher(this.trashSecret) : null;
+    this._cipher = null;
     /** @type {Array<{ collection: string, docId: string, deletedAt: number, kind: 'json'|'buffer', payload: Buffer }>} */
     this._entries = [];
     this._ready = false;
@@ -101,6 +101,13 @@ export class FlashTrashVault {
     this._ready = true;
   }
 
+  _ensureCipher() {
+    if (!this._cipher && this.trashSecret) {
+      this._cipher = new FlashCipher(this.trashSecret);
+    }
+    return this._cipher;
+  }
+
   async close() {
     await this._persist();
     this._ready = false;
@@ -132,8 +139,9 @@ export class FlashTrashVault {
     }
 
     let payload = await FlashCompressor.compressBlock(raw, 9);
-    if (this._cipher) {
-      payload = this._cipher.encrypt(payload, {
+    const cipher = this._ensureCipher();
+    if (cipher) {
+      payload = cipher.encrypt(payload, {
         binary: true,
         aad: `${collection}:${docId}`,
       });
@@ -252,8 +260,9 @@ export class FlashTrashVault {
 
   async _decodeEntry(entry) {
     let payload = entry.payload;
-    if (this._cipher) {
-      const decrypted = this._cipher.decrypt(payload, {
+    const cipher = this._ensureCipher();
+    if (cipher) {
+      const decrypted = cipher.decrypt(payload, {
         binary: true,
         aad: `${entry.collection}:${entry.docId}`,
       });

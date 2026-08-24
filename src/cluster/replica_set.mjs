@@ -1,5 +1,6 @@
 import path from "node:path";
 import fs from "node:fs";
+import crypto from "node:crypto";
 import { FlashDatabase } from "../core/database.mjs";
 import { FlashRaft } from "../consensus/raft_cluster.mjs";
 import {
@@ -26,6 +27,8 @@ export class FlashReplicaSet {
     this.leaderId = null;
     this.writeConcern = options.writeConcern || "majority";
     this.network = options.network === true;
+    this.replicationAuthKey =
+      options.authKey || crypto.randomBytes(24).toString("hex");
   }
 
   /**
@@ -61,6 +64,7 @@ export class FlashReplicaSet {
       node.rpc = new FlashReplicationServer(node.db, {
         host: node.host,
         port: node.port,
+        authKey: this.replicationAuthKey,
       });
       await node.rpc.start();
     }
@@ -105,7 +109,11 @@ export class FlashReplicaSet {
     if (!raw) return false;
 
     if (this.network && followerNode.port) {
-      const client = new FlashReplicationClient(followerNode.host, followerNode.port);
+      const client = new FlashReplicationClient(
+        followerNode.host,
+        followerNode.port,
+        this.replicationAuthKey,
+      );
       await client.applyInsert(collectionName, docId, raw, lastEvent
         ? {
             operationType: lastEvent.operationType,

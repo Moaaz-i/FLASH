@@ -27,7 +27,7 @@ const client = new FlashClient({
 
 client.openDashboard({
   port: 3456,
-  token: "my_admin_passcode_2026", // optional
+  token: "console-token-at-least-16",
 });
 
 console.log("⚡ Console: http://localhost:3456");

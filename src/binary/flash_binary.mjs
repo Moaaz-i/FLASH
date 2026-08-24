@@ -157,6 +157,35 @@ export class FlashBinary {
    * @param {string} targetKey
    * @returns {*} Value or undefined
    */
+  /**
+   * True when `targetKey` exists with a non-empty payload. Does not decode values
+   * and does not JSON-parse non-FlashBinary buffers (those are treated as unsealed).
+   */
+  static hasField(buffer, targetKey) {
+    if (!buffer || buffer.length < 10) return false;
+    if (buffer.readUInt32LE(0) !== MAGIC_HEADER) return false;
+
+    const fieldCount = buffer.readUInt16LE(4);
+    const targetHash = FlashBinary.hashKey(targetKey);
+    let cursor = 10;
+    for (let i = 0; i < fieldCount; i++) {
+      if (cursor + 14 > buffer.length) return false;
+      const keyHash = buffer.readUInt32LE(cursor);
+      const valLen = buffer.readUInt32LE(cursor + 9);
+      const keyLen = buffer.readUInt8(cursor + 13);
+      if (keyHash === targetHash) {
+        const keyName = buffer.toString(
+          "utf-8",
+          cursor + 14,
+          cursor + 14 + keyLen,
+        );
+        if (keyName === targetKey) return valLen > 0;
+      }
+      cursor += 14 + keyLen;
+    }
+    return false;
+  }
+
   static getField(buffer, targetKey) {
     if (!buffer || buffer.length < 10) return undefined;
     if (buffer.readUInt32LE(0) !== MAGIC_HEADER) {

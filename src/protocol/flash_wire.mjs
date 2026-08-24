@@ -2,6 +2,8 @@ import net from "node:net";
 import crypto from "node:crypto";
 import { FlashBSON } from "./bson.mjs";
 import { FlashBinary } from "../binary/flash_binary.mjs";
+import { FlashRecordCodec } from "../client/record_codec.mjs";
+import { FlashZKKernel } from "../crypto/zk_kernel.mjs";
 
 const OP_MSG = 2013;
 const OP_COMPRESSED = 2012;
@@ -156,9 +158,12 @@ export class FlashWireServer {
       const col = this.db.collection(cmd.count);
       await col.init();
       const filter = cmd.query || {};
-      const docs = FlashBinary.decodeRecords(await col.find({}));
-      const matched = docs.filter((d) => this._matchesFilter(d, filter));
-      return { ok: 1, n: matched.length };
+      FlashZKKernel.assertBlindQueryEnvelope(
+        this._idOnlyEnvelope(filter),
+        "FlashWire.count",
+      );
+      const docs = await col.find(this._idOnlyEnvelope(filter));
+      return { ok: 1, n: docs.length };
     }
 
     if (cmd.createIndexes !== undefined) {
@@ -191,6 +196,12 @@ export class FlashWireServer {
       let docs = FlashBinary.decodeRecords(await col.find({}));
       for (const stage of cmd.pipeline || []) {
         if (stage.$match) {
+          const keys = Object.keys(stage.$match);
+          if (keys.some((k) => k !== "_id")) {
+            throw new Error(
+              "Zero-knowledge violation (FlashWire.aggregate): $match may only use _id. Field predicates belong on FlashClient.",
+            );
+          }
           docs = docs.filter((d) => this._matchesFilter(d, stage.$match));
         }
         if (stage.$limit) docs = docs.slice(0, stage.$limit);
@@ -198,7 +209,7 @@ export class FlashWireServer {
           docs = docs.map((d) => {
             const out = {};
             for (const [k, v] of Object.entries(stage.$project)) {
-              if (v) out[k] = d[k];
+              if (v && (k === "_id" || k.startsWith("_"))) out[k] = d[k];
             }
             return out;
           });
@@ -246,10 +257,12 @@ export class FlashWireServer {
     const col = this.db.collection(cmd.find);
     await col.init();
     const filter = cmd.filter || {};
+    const envelope = this._idOnlyEnvelope(filter);
+    FlashZKKernel.assertBlindQueryEnvelope(envelope, "FlashWire.find");
     const limit = cmd.limit ?? 101;
     const skip = cmd.skip ?? 0;
-    const docs = FlashBinary.decodeRecords(await col.find({}));
-    let matched = docs.filter((d) => this._matchesFilter(d, filter));
+    const records = await col.find(envelope);
+    let matched = FlashBinary.decodeRecords(records);
     matched = matched.slice(skip, skip + limit);
 
     const cursorId = this._nextCursorId();
@@ -278,26 +291,18 @@ export class FlashWireServer {
     const docs = cmd.documents || [];
     let n = 0;
     for (const doc of docs) {
-      await col.insertOne(doc);
+      FlashZKKernel.assertSealedRecord(doc, "FlashWire.insert");
+      const buf = FlashRecordCodec.decodeFromWire(doc);
+      await col.insertOne(buf);
       n++;
     }
     return { ok: 1, n };
   }
 
   async _handleUpdate(dbName, cmd) {
-    const col = this.db.collection(cmd.update);
-    await col.init();
-    const updates = cmd.updates || [];
-    let nModified = 0;
-    for (const u of updates) {
-      const existing = await this._findOneDoc(col, u.q || {});
-      if (!existing) continue;
-      const merged = { ...existing, ...(u.u?.$set || u.u || {}) };
-      await col.deleteOne({ _id: existing._id });
-      await col.insertOne(merged);
-      nModified++;
-    }
-    return { ok: 1, n: nModified, nModified };
+    throw new Error(
+      "Zero-knowledge violation (FlashWire.update): the server cannot merge plaintext. Send a sealed replacement via insert after client-side delete.",
+    );
   }
 
   async _handleDelete(dbName, cmd) {
@@ -306,27 +311,24 @@ export class FlashWireServer {
     const deletes = cmd.deletes || [];
     let n = 0;
     for (const d of deletes) {
-      const doc = await this._findOneDoc(col, d.q || {});
-      if (!doc) continue;
-      const res = await col.deleteOne({ _id: doc._id });
+      const envelope = this._idOnlyEnvelope(d.q || {});
+      FlashZKKernel.assertBlindQueryEnvelope(envelope, "FlashWire.delete");
+      const res = await col.deleteOne(envelope);
       n += res.deletedCount;
     }
     return { ok: 1, n };
   }
 
-  async _findOneDoc(col, filter) {
-    const docs = FlashBinary.decodeRecords(await col.find({}));
-    return docs.find((d) => this._matchesFilter(d, filter)) || null;
-  }
-
-  _filterToEnvelope(filter) {
+  _idOnlyEnvelope(filter = {}) {
     const envelope = {};
     for (const [k, v] of Object.entries(filter)) {
-      if (k === "_id") envelope._id = this._oidToString(v);
-      else if (typeof v !== "object" || v === null) {
-        envelope.$plain = envelope.$plain || {};
-        envelope.$plain[k] = v;
+      if (k === "_id") {
+        envelope._id = this._oidToString(v);
+        continue;
       }
+      throw new Error(
+        `Zero-knowledge violation (FlashWire): plaintext query field "${k}" is not allowed; filter by _id or use FlashClient trapdoors`,
+      );
     }
     return envelope;
   }

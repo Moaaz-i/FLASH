@@ -9,7 +9,7 @@ The `FlashClientCollection` class provides a fluent document DB interface for ex
 ```javascript
 import { FlashClient } from "flash-zk";
 
-const client = new FlashClient({ secretKey: "master-key" });
+const client = new FlashClient({ secretKey: "your-long-random-passphrase" });
 
 // Synchronous creation/access
 const collection = client.collection("collection_name");

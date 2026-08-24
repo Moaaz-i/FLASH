@@ -10,7 +10,7 @@ FLASH ships **cross-domain primitives** on top of the core database. Use the sam
 import { FlashClient } from "flash-zk";
 
 const client = new FlashClient({
-  secretKey: "your-master-key",
+  secretKey: "your-long-random-passphrase",
   storagePath: "./data",
   engineOptions: { durability: "balanced" },
 });

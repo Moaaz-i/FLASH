@@ -9,6 +9,7 @@ import {
   FlashBlobStore,
   FlashBrowserAdapter,
   FlashCDC,
+  FlashClient,
   FlashConnectionPool,
   FlashCostOptimizer,
   FlashDataMasker,
@@ -36,10 +37,6 @@ import {
   FlashLLMAdapter,
   FlashAIDatabase,
 } from "../src/index.mjs";
-
-
-
-
 
 test("1. FlashSemanticCache - Fast AI/LLM Response Caching", () => {
   const cache = new FlashSemanticCache({ similarityThreshold: 0.9 });
@@ -86,26 +83,33 @@ test("2. FlashTimeTravel - Historical Point-In-Time Querying", () => {
 });
 
 test("3. FlashSQL - SQL Query Parsing and Execution", async () => {
-  const tmpDir = path.join(os.tmpdir(), `flash_sql_test_${Date.now()}`);
-  const db = new FlashDatabase("ecommerce", { storagePath: tmpDir });
-  const col = db.collection("customers");
-  await col.init();
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flash_sql_test_"));
+  const client = new FlashClient({
+    secretKey: "sql_zk_client_key_32_chars!!!!",
+    storagePath: tmpDir,
+    autoTimestamps: false,
+  });
+  try {
+    const col = client.collection("customers");
+    await col.insertMany([
+      { _id: "c1", name: "Alice", age: 30, score: 95 },
+      { _id: "c2", name: "Bob", age: 20, score: 80 },
+      { _id: "c3", name: "Charlie", age: 35, score: 90 },
+    ]);
 
-  await col.insertMany([
-    { _id: "c1", name: "Alice", age: 30, score: 95 },
-    { _id: "c2", name: "Bob", age: 20, score: 80 },
-    { _id: "c3", name: "Charlie", age: 35, score: 90 },
-  ]);
+    const results = await FlashSQL.execute(
+      client,
+      "SELECT name, score FROM customers WHERE age >= 25 ORDER BY score DESC LIMIT 2",
+    );
 
-  const results = await FlashSQL.execute(
-    db,
-    "SELECT name, score FROM customers WHERE age >= 25 ORDER BY score DESC LIMIT 2",
-  );
-
-  assert.equal(results.length, 2);
-  assert.equal(results[0].name, "Alice");
-  assert.equal(results[1].name, "Charlie");
-  assert.equal(results[0].age, undefined); // Projected out!
+    assert.equal(results.length, 2);
+    assert.equal(results[0].name, "Alice");
+    assert.equal(results[1].name, "Charlie");
+    assert.equal(results[0].age, undefined);
+  } finally {
+    await client.close();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
 });
 
 test("4. FlashRaft - High-Availability Consensus Leader Election", () => {
@@ -119,22 +123,29 @@ test("4. FlashRaft - High-Availability Consensus Leader Election", () => {
 });
 
 test("5. FlashGraphQL - Lightweight GraphQL Querying", async () => {
-  const tmpDir = path.join(os.tmpdir(), `flash_gql_test_${Date.now()}`);
-  const db = new FlashDatabase("gql_db", { storagePath: tmpDir });
-  const col = db.collection("users");
-  await col.init();
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flash_gql_test_"));
+  const client = new FlashClient({
+    secretKey: "gql_zk_client_key_32_chars!!!!",
+    storagePath: tmpDir,
+    autoTimestamps: false,
+  });
+  try {
+    const col = client.collection("users");
+    await col.insertMany([
+      { _id: "u1", username: "alex", email: "alex@io", role: "admin" },
+      { _id: "u2", username: "bob", email: "bob@io", role: "viewer" },
+    ]);
 
-  await col.insertMany([
-    { _id: "u1", username: "alex", email: "alex@io", role: "admin" },
-    { _id: "u2", username: "bob", email: "bob@io", role: "viewer" },
-  ]);
-
-  const gql = new FlashGraphQL(db);
-  const res = await gql.execute("{ users(limit: 1) { username email } }");
-  assert.ok(res.data.users);
-  assert.equal(res.data.users.length, 1);
-  assert.equal(res.data.users[0].username, "alex");
-  assert.equal(res.data.users[0].role, undefined);
+    const gql = new FlashGraphQL(client);
+    const res = await gql.execute("{ users(limit: 1) { username email } }");
+    assert.ok(res.data.users);
+    assert.equal(res.data.users.length, 1);
+    assert.equal(res.data.users[0].username, "alex");
+    assert.equal(res.data.users[0].role, undefined);
+  } finally {
+    await client.close();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
 });
 
 test("6. FlashBrowserAdapter - Local-First Storage Adapter", async () => {
@@ -259,12 +270,17 @@ test("15. FlashConnectionPool, DataMasker & CostOptimizer", () => {
 
   // Data Masker
   const masked = FlashDataMasker.maskDocument(
-    { name: 'John Doe', email: 'john.doe@company.com', card: '4111222233334444' },
-    { email: 'email', card: 'card' }
+    {
+      name: "John Doe",
+      email: "john.doe@company.com",
+      card: "4111222233334444",
+    },
+    { email: "email", card: "card" },
   );
-  assert.equal(masked.card, '****-****-****-4444');
-  assert.ok(masked.email.includes('*') && masked.email.includes('@company.com'));
-
+  assert.equal(masked.card, "****-****-****-4444");
+  assert.ok(
+    masked.email.includes("*") && masked.email.includes("@company.com"),
+  );
 
   // Cost Optimizer
   const plan = FlashCostOptimizer.planQuery(
@@ -347,18 +363,27 @@ test("17. FlashFederation, FlashFaker & FlashOnlineIndexer", async () => {
 
 test("18. FlashLLMAdapter - Large Language Model Adapter Suite", async () => {
   const { FlashLLMAdapter } = await import("../src/index.mjs");
-  const adapter = new FlashLLMAdapter({ provider: "auto", model: "Xenova/Qwen1.5-0.5B-Chat" });
+  const adapter = new FlashLLMAdapter({
+    provider: "auto",
+    model: "Xenova/Qwen1.5-0.5B-Chat",
+  });
 
-  const res = await adapter.generate("Hello, explain database indexing in one sentence", { maxTokens: 25 });
+  const res = await adapter.generate(
+    "Hello, explain database indexing in one sentence",
+    { maxTokens: 25 },
+  );
   assert.ok(typeof res.latencyMs === "string");
   assert.ok(typeof res.provider === "string");
 });
 
-
-
 test("19. FlashAIDatabase - Official AI & ChatGPT Sovereign Database Suite", async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "chatgpt_app_db_"));
-  const aiDb = new FlashAIDatabase({ name: "chatgpt_app_db", storagePath: tmpDir, dimensions: 64, similarityThreshold: 0.85 });
+  const aiDb = new FlashAIDatabase({
+    name: "chatgpt_app_db",
+    storagePath: tmpDir,
+    dimensions: 64,
+    similarityThreshold: 0.85,
+  });
 
   // 1. Cached Prompt & Token Saving
   let llmCalls = 0;
@@ -378,8 +403,14 @@ test("19. FlashAIDatabase - Official AI & ChatGPT Sovereign Database Suite", asy
   assert.ok(r2.savedTokensEstimate > 0);
 
   // 2. Remember & Recall Knowledge Context (RAG)
-  await aiDb.remember("تشفير Kyber معتمد من NIST FIPS 203 للحماية ضد الحواسيب الكمية", { tag: "crypto" });
-  await aiDb.remember("هيكل LSM-Tree يحول الكتابة العشوائية إلى تسلسلية فائقة السرعة", { tag: "storage" });
+  await aiDb.remember(
+    "تشفير Kyber معتمد من NIST FIPS 203 للحماية ضد الحواسيب الكمية",
+    { tag: "crypto" },
+  );
+  await aiDb.remember(
+    "هيكل LSM-Tree يحول الكتابة العشوائية إلى تسلسلية فائقة السرعة",
+    { tag: "storage" },
+  );
 
   const context = await aiDb.recallContext("معيار NIST لتشفير الكم");
   assert.ok(context.length > 0);
@@ -388,7 +419,7 @@ test("19. FlashAIDatabase - Official AI & ChatGPT Sovereign Database Suite", asy
   // 3. Encrypted Chat Sessions (Zero-Knowledge)
   const sessionData = [
     { role: "user", content: "مرحباً يا بوت" },
-    { role: "assistant", content: "أهلاً بك! كيف أساعدك اليوم؟" }
+    { role: "assistant", content: "أهلاً بك! كيف أساعدك اليوم؟" },
   ];
   await aiDb.saveChatSession("sess_user_99", sessionData);
   const retrieved = await aiDb.getChatHistory("sess_user_99");
@@ -396,10 +427,11 @@ test("19. FlashAIDatabase - Official AI & ChatGPT Sovereign Database Suite", asy
   assert.equal(retrieved[0].content, "مرحباً يا بوت");
 
   // 4. Built-in Multi-Turn Generative Response
-  const gen = await aiDb.generateResponse("كيف حالك يا جميل", { sessionId: "sess_user_99" });
+  const gen = await aiDb.generateResponse("كيف حالك يا جميل", {
+    sessionId: "sess_user_99",
+  });
   assert.ok(typeof gen.text === "string");
   assert.ok(gen.historyLength >= 2);
-
 
   // 5. Metrics & Analytics
   const metrics = aiDb.getMetrics();
@@ -417,7 +449,10 @@ test("20. FlashLLMAdapter & Ready-Made Large Language Model Integration", async 
   });
 
   // Test System Prompt Configuration
-  assert.equal(adapter.systemPrompt, "تحدث مع المستخدمين بكل لطف واحترام وركز على أمان البيانات");
+  assert.equal(
+    adapter.systemPrompt,
+    "تحدث مع المستخدمين بكل لطف واحترام وركز على أمان البيانات",
+  );
   adapter.setSystemPrompt("You are a helpful coding assistant.");
   assert.equal(adapter.systemPrompt, "You are a helpful coding assistant.");
 
@@ -436,8 +471,3 @@ test("20. FlashLLMAdapter & Ready-Made Large Language Model Integration", async 
   assert.ok(llmRes.latencyMs);
   assert.ok(llmRes.answer);
 });
-
-
-
-
-

@@ -1,14 +1,14 @@
 # FLASH Positioning
 
-**FLASH** is the **Zero-Knowledge Encrypted Intelligence Database** — a local-first, server-blind data layer for private AI.
+**FLASH** is a **standalone Zero-Knowledge Encrypted Intelligence Database** — local-first, server-blind, and built for private AI.
 
-> _The server never sees your keys, your queries, or your plaintext._
+> _The storage engine never receives your keys, your plaintext, or your raw query values._
 
 ---
 
 ## One Sentence
 
-**FLASH is the database that powers private AI — encrypted by architecture, intelligent by design.**
+**FLASH is its own database.** Encrypted by architecture. Intelligent by design. Independent of any other document store.
 
 ---
 
@@ -46,14 +46,14 @@ Traditional databases assume the engine can read your data. FLASH assumes the op
 
 ## When **Not** to Use FLASH
 
-| Scenario                                            | Better Alternative                      |
-| --------------------------------------------------- | --------------------------------------- |
-| General cloud document DB at massive scale          | Managed document databases              |
-| Shared multi-tenant SaaS with server-side analytics | Postgres + application-layer encryption |
-| Pure key-value cache                                | Redis / in-memory cache                 |
-| Team already standardized on one SQL stack          | Postgres with extensions                |
+| Scenario                                            | Better Alternative                                                |
+| --------------------------------------------------- | ----------------------------------------------------------------- |
+| General cloud document DB at massive scale          | A managed general-purpose database                                |
+| Shared multi-tenant SaaS with server-side analytics | Application-layer encryption on SQL                               |
+| Pure key-value cache                                | In-memory cache                                                   |
+| Team already standardized on one SQL stack          | That stack, with FLASH beside it only if you need a private vault |
 
-FLASH is **not** trying to replace your general-purpose database. It owns **private intelligence storage**.
+FLASH owns **private intelligence storage**. It is not a generic cloud document platform.
 
 ---
 
@@ -69,35 +69,29 @@ FLASH is **not** trying to replace your general-purpose database. It owns **priv
 
 ---
 
-## Identity Map
+## Identity
+
+FLASH is a complete product:
 
 ```
-MongoDB  →  "Your shared / cloud document database"
-FLASH    →  "Your local encrypted vault beside it — not a replacement"
+Your app  →  FlashClient (holds the key, encrypts, decrypts)
+                ↓ sealed envelopes + trapdoors only
+             Flash engine / FlashServer (zero knowledge of plaintext)
 ```
 
-FLASH does **not** compete with MongoDB. It is a **free companion**: the device-side, server-blind layer. MongoDB holds what may be shared, replicated, and operated as a fleet. FLASH holds what must stay readable offline and must never leave the machine as plaintext.
+- **FlashClient** is the only component that may decrypt.
+- **FlashServer**, gRPC, and replication accept sealed records and blind query envelopes — never `secretKey`, never plaintext fields.
+- **SQL and GraphQL** run on `FlashClient`, so evaluation happens after client-side decrypt.
+- The **Intelligence Console** is a local FlashClient UI (the keyholder), not a blind remote admin.
 
-### Companion contract
-
-| Lives in FLASH (this process / disk) | Lives in MongoDB (server / Atlas) |
-| ------------------------------------ | --------------------------------- |
-| Secrets, local drafts, agent memory  | Accounts, public indexes, analytics |
-| Documents that must work offline     | Data needed by more than one device |
-| Local trash / user-undo              | Fleet backup and PITR               |
-| Encryption under a key that is never sent | Data the server is allowed to see or aggregate |
-
-**One source of truth per field.** Do not copy a secret into MongoDB “just in case.” Either FLASH is origin and MongoDB receives a summary or ciphertext, or MongoDB is origin and FLASH is a working copy.
-
-Never send `secretKey` to MongoDB. Version every synced document (`flashDocId`, `rev`, `updatedAt`). Conflict policy in v1 is one-way: last local write wins, or the server rejects stale revs — no silent merge.
-
-See the [MongoDB companion example](https://github.com/Moaaz-i/FLASH/tree/main/examples/mongo-companion).
+See the [standalone vault example](https://github.com/Moaaz-i/FLASH/tree/main/examples/standalone-vault).
 
 ---
 
 ## Next Steps
 
 - [5-Minute Intelligence Quick Start](/guide/getting-started#intelligence-in-5-minutes)
+- [Zero-Knowledge Security](/guide/zero-knowledge-security)
 - [FLASH-Exclusive Stack](/guide/flash-exclusive)
 - [Engine Options & Durability](/guide/engine-options)
 - [Why Server-Blind AI Storage](/guide/why-server-blind-ai)

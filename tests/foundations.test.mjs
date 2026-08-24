@@ -261,6 +261,7 @@ test("foundations: TTL manager purges from SSTable-backed data", async () => {
     secretKey: "foundations_ttl_key_32chars!!!!!!",
     storagePath: tmpDir,
     fieldPolicy: { createdAt: "plaintext" },
+    allowPlaintextFields: true,
     autoTimestamps: false,
   });
 

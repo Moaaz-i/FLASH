@@ -75,14 +75,14 @@ test("FlashClient throws if deletionLog is a boolean instead of an object", () =
   );
 });
 
-test("FlashClient throws if uri is a MongoDB connection string", () => {
+test("FlashClient throws if uri is not a FLASH server URL", () => {
   assert.throws(
     () =>
       new FlashClient({
-        secretKey: "foundation_mongo_uri_reject!!",
+        secretKey: "foundation_foreign_uri_reject!",
         uri: "mongodb://localhost:27017/app",
       }),
-    /not a MongoDB connection string/,
+    /must be a FLASH server URL/,
   );
 });
 
@@ -108,7 +108,9 @@ test("FlashServer throws on unknown options", () => {
 });
 
 test("listDeletions and listTrash throw when the feature is disabled", async () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flash-foundation-off-"));
+  const tmpDir = fs.mkdtempSync(
+    path.join(os.tmpdir(), "flash-foundation-off-"),
+  );
   try {
     const client = new FlashClient({
       secretKey: "foundation_features_off_key!!",

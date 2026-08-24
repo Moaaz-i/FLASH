@@ -33,7 +33,11 @@ test("Intelligence Console: serves static assets with correct types", async () =
       secretKey: "console_static_key",
       storagePath: tmpDir,
     });
-    const server = client.openDashboard({ port, host: "127.0.0.1" });
+    const server = client.openDashboard({
+      port,
+      host: "127.0.0.1",
+      token: "console_static_token16",
+    });
     await new Promise((r) => setTimeout(r, 50));
 
     const base = `http://127.0.0.1:${port}`;
@@ -66,16 +70,20 @@ test("Intelligence Console: RAG ingest + ask API", async () => {
 
   try {
     const client = new FlashClient({
-      secretKey: "console_rag_key",
+      secretKey: "console_rag_key!!!!",
       storagePath: tmpDir,
     });
-    const server = client.openDashboard({ port, host: "127.0.0.1" });
+    const token = "console_rag_token_16";
+    const server = client.openDashboard({ port, host: "127.0.0.1", token });
     await new Promise((r) => setTimeout(r, 50));
 
     const base = `http://127.0.0.1:${port}`;
     const ingest = await fetchJson(`${base}/api/intelligence/rag/ingest`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-flash-token": token,
+      },
       body: JSON.stringify({
         collection: "knowledge",
         title: "Security",
@@ -88,7 +96,10 @@ test("Intelligence Console: RAG ingest + ask API", async () => {
 
     const ask = await fetchJson(`${base}/api/intelligence/rag/ask`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-flash-token": token,
+      },
       body: JSON.stringify({
         collection: "knowledge",
         question: "client-side encryption",

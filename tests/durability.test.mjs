@@ -3,6 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import crypto from 'node:crypto';
 import { FlashArc, ARC_OP } from '../src/engine/arc.mjs';
 import { FlashSSTable, fsyncDir } from '../src/engine/sstable.mjs';
 import { FlashDatabase } from '../src/core/database.mjs';
@@ -38,6 +39,42 @@ test('FlashArc - WAL recovery replays all valid frames after fsync', async () =>
     assert.strictEqual(recovered.length, 3, 'All 3 frames must be recovered');
     assert.strictEqual(recovered[0].key, 'doc1');
     assert.strictEqual(recovered[2].key, 'doc3');
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('FlashArc - recovers legacy FARC frames (truncated SHA-256 checksum)', async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flash-dur-legacy-'));
+  const arcPath = path.join(tmpDir, 'legacy.farc');
+  try {
+    const key = 'legacy-doc';
+    const data = Buffer.from('old-format');
+    const keyBuf = Buffer.from(key, 'utf-8');
+    const payload = Buffer.allocUnsafe(2 + keyBuf.length + data.length);
+    payload.writeUInt16LE(keyBuf.length, 0);
+    keyBuf.copy(payload, 2);
+    data.copy(payload, 2 + keyBuf.length);
+    const frame = Buffer.allocUnsafe(13 + payload.length);
+    frame.write('FARC', 0, 4, 'ascii');
+    frame.writeUInt32LE(payload.length, 4);
+    frame.writeUInt32LE(
+      crypto.createHash('sha256').update(payload).digest().readUInt32LE(0),
+      8,
+    );
+    frame.writeUInt8(ARC_OP.INSERT, 12);
+    payload.copy(frame, 13);
+    fs.writeFileSync(arcPath, frame);
+
+    const arc = new FlashArc(arcPath);
+    const recovered = [];
+    await arc.recover((op, k, buf) => {
+      recovered.push({ op, key: k, data: buf.toString() });
+    });
+    assert.strictEqual(recovered.length, 1);
+    assert.strictEqual(recovered[0].key, 'legacy-doc');
+    assert.strictEqual(recovered[0].data, 'old-format');
+    await arc.close();
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

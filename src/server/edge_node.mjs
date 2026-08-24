@@ -29,6 +29,7 @@ export class FlashEdgeNode {
       storagePath,
       dbName,
       authKey: this.options.authKey,
+      allowPublicBind: this.options.allowPublicBind,
     });
 
     this.db = new FlashDatabase(dbName, { storagePath });

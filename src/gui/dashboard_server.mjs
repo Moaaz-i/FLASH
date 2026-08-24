@@ -1,16 +1,13 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
-import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { handleIntelligenceApi } from "./intelligence_api.mjs";
-
-function timingSafeCompare(a, b) {
-  if (typeof a !== 'string' || typeof b !== 'string') return false;
-  const hashA = crypto.createHmac('sha256', 'safe-key-dashboard').update(a).digest();
-  const hashB = crypto.createHmac('sha256', 'safe-key-dashboard').update(b).digest();
-  return crypto.timingSafeEqual(hashA, hashB);
-}
+import {
+  assertStrongSecret,
+  setSecurityHeaders,
+  timingSafeCompare,
+} from "../security/trust_guard.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const STATIC_DIR = path.join(__dirname, "static");
@@ -94,24 +91,35 @@ export class FlashDashboard {
   static start(client, options = {}) {
     const port = options.port || 3456;
     const host = options.host || "127.0.0.1";
-    const requiredToken = options.token || null;
+    if (!options.token) {
+      throw new Error(
+        "FlashDashboard requires a strong token (the console holds decryption keys)",
+      );
+    }
+    assertStrongSecret(options.token, "token");
+    const requiredToken = options.token;
+    const allowDataExplorer = options.allowDataExplorer === true;
 
     const server = http.createServer(async (req, res) => {
-      // Secure CORS headers
+      setSecurityHeaders(res);
       const origin = req.headers.origin;
       if (origin) {
         try {
           const originUrl = new URL(origin);
-          if (originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1' || originUrl.hostname === '[::1]') {
-            res.setHeader('Access-Control-Allow-Origin', origin);
+          if (
+            originUrl.hostname === "localhost" ||
+            originUrl.hostname === "127.0.0.1" ||
+            originUrl.hostname === "[::1]"
+          ) {
+            res.setHeader("Access-Control-Allow-Origin", origin);
           } else {
-            res.setHeader('Access-Control-Allow-Origin', 'null');
+            res.setHeader("Access-Control-Allow-Origin", "null");
           }
         } catch {
-          res.setHeader('Access-Control-Allow-Origin', 'null');
+          res.setHeader("Access-Control-Allow-Origin", "null");
         }
       } else {
-        res.setHeader('Access-Control-Allow-Origin', 'null');
+        res.setHeader("Access-Control-Allow-Origin", "null");
       }
       res.setHeader(
         "Access-Control-Allow-Methods",
@@ -129,7 +137,7 @@ export class FlashDashboard {
 
       const url = new URL(req.url, `http://localhost:${port}`);
 
-      if (requiredToken && url.pathname.startsWith("/api/")) {
+      if (url.pathname.startsWith("/api/")) {
         const clientToken = req.headers["x-flash-token"];
         if (!clientToken || !timingSafeCompare(clientToken, requiredToken)) {
           return json(res, 401, {
@@ -177,6 +185,11 @@ export class FlashDashboard {
         }
 
         if (url.pathname.startsWith("/api/docs/") && req.method === "GET") {
+          if (!allowDataExplorer) {
+            return json(res, 403, {
+              error: "Data explorer is disabled. Pass allowDataExplorer: true only on a trusted local machine.",
+            });
+          }
           const colName = decodeURIComponent(
             url.pathname.replace("/api/docs/", ""),
           );
@@ -228,7 +241,7 @@ export class FlashDashboard {
 
         serveStatic(url.pathname, res);
       } catch (err) {
-        json(res, 500, { error: err.message });
+        json(res, 500, { error: "Internal Server Error" });
       }
     });
 

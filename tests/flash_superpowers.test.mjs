@@ -102,7 +102,7 @@ test("Superpower: LangChain adapter vector store + memory", async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flash-lc-"));
   try {
     const client = new FlashClient({
-      secretKey: "lc_key",
+      secretKey: "lc_key_16bytes!!",
       storagePath: tmpDir,
     });
     const lc = client.langChainAdapter();
@@ -131,12 +131,12 @@ test("Superpower: FederatedQuery merges peers", async () => {
   const tmp2 = fs.mkdtempSync(path.join(os.tmpdir(), "flash-fed-2-"));
   try {
     const c1 = new FlashClient({
-      secretKey: "fed_key",
+      secretKey: "fed_key_16bytes!",
       storagePath: tmp1,
       dbName: "n1",
     });
     const c2 = new FlashClient({
-      secretKey: "fed_key",
+      secretKey: "fed_key_16bytes!",
       storagePath: tmp2,
       dbName: "n2",
     });
@@ -175,7 +175,7 @@ test("Superpower: MultiAgentSync shared memory", async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flash-mas-"));
   try {
     const client = new FlashClient({
-      secretKey: "mas_key",
+      secretKey: "mas_key_16bytes!",
       storagePath: tmpDir,
     });
     const sync = client.multiAgentSync("team");

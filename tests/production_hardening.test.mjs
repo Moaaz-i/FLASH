@@ -50,6 +50,7 @@ test("FLASH hardening: compound index + explain executionStats", async () => {
         status: "plaintext",
         name: "searchable",
       },
+      allowPlaintextFields: true,
     });
     const orders = client.collection("orders");
     orders.createIndex({ tenantId: 1, status: 1 }, { name: "tenant_status" });

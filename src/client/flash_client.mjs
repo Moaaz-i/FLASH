@@ -102,6 +102,7 @@ export class FlashClient {
 
     this.uri = config.uri || config.url || null;
     this.authKey = config.authKey || null;
+    this.userId = config.userId || null;
     this.config = config;
 
     // ODM Model registry (modelName -> FlashModel)
@@ -117,9 +118,12 @@ export class FlashClient {
     if (this.uri) {
       // Remote Client-Server Mode
       const hostMatch = this.uri.match(/^flash:\/\/([^:/]+)/i);
-      const hostName = hostMatch ? hostMatch[1] : '';
-      const isLocal = hostName === 'localhost' || hostName === '127.0.0.1' || hostName === '[::1]';
-      const defaultProto = isLocal ? 'http://' : 'https://';
+      const hostName = hostMatch ? hostMatch[1] : "";
+      const isLocal =
+        hostName === "localhost" ||
+        hostName === "127.0.0.1" ||
+        hostName === "[::1]";
+      const defaultProto = isLocal ? "http://" : "https://";
       const normalizedUrl = this.uri.replace(/^flash:\/\//i, defaultProto);
       this.remoteBaseUrl = normalizedUrl.endsWith("/")
         ? normalizedUrl.slice(0, -1)
@@ -130,6 +134,7 @@ export class FlashClient {
         listCollections: async () => {
           const headers = { "Content-Type": "application/json" };
           if (this.authKey) headers["x-flash-server-key"] = this.authKey;
+          if (this.userId) headers["x-flash-user"] = this.userId;
           let res;
           try {
             res = await fetch(`${this.remoteBaseUrl}/api/v1/collections`, {
@@ -153,7 +158,12 @@ export class FlashClient {
           return data.collections || [];
         },
         collection: (name) =>
-          new RemoteCollectionDriver(name, this.remoteBaseUrl, this.authKey),
+          new RemoteCollectionDriver(
+            name,
+            this.remoteBaseUrl,
+            this.authKey,
+            this.userId,
+          ),
         close: async () => {},
       };
     } else {
@@ -459,10 +469,6 @@ export class FlashClient {
 
   decryptFromBuffer(buf) {
     return FlashRecordCodec.decrypt(this, buf);
-  }
-
-  decryptFieldsFromBuffer(buf, fields = []) {
-    return FlashRecordCodec.decryptFields(this, buf, fields);
   }
 
   decryptFieldsFromBuffer(buf, fields = []) {
@@ -964,7 +970,7 @@ export class FlashClientCollection {
     }
 
     const envelope = this.client.buildQueryEnvelope(query);
-    if (Object.keys(equalityFields).length > 0) {
+    if (!this.client.remoteBaseUrl && Object.keys(equalityFields).length > 0) {
       envelope.$secondary = {
         ...(envelope.$secondary || {}),
         ...equalityFields,
@@ -1394,10 +1400,11 @@ export class FlashClientCollection {
  * Driver that routes encrypted operations over HTTP/REST to a remote FlashServer instance
  */
 class RemoteCollectionDriver {
-  constructor(name, baseUrl, authKey = null) {
+  constructor(name, baseUrl, authKey = null, userId = null) {
     this.name = name;
     this.baseUrl = baseUrl;
     this.authKey = authKey;
+    this.userId = userId;
     this.memtable = { byteSize: 0 };
     this.sstables = [];
   }
@@ -1405,6 +1412,7 @@ class RemoteCollectionDriver {
   _getHeaders() {
     const h = { "Content-Type": "application/json" };
     if (this.authKey) h["x-flash-server-key"] = this.authKey;
+    if (this.userId) h["x-flash-user"] = this.userId;
     return h;
   }
 

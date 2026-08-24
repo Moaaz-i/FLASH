@@ -8,29 +8,35 @@
 
 ## 1. High-Throughput Binary Protocol / gRPC (`FlashGRPCServer`)
 
-Runs a dedicated binary TCP socket listener with protobuf-like length-prefixed framing for Go, Python, and Rust client integration:
+Runs a dedicated binary TCP socket listener with length-prefixed framing. Inserts must be **sealed client envelopes**; finds accept **trapdoor envelopes only**. The daemon never decrypts.
 
 ```javascript
-import { FlashDatabase, FlashGRPCServer } from 'flash-zk';
+import { FlashDatabase, FlashGRPCServer } from "flash-zk";
 
-const db = new FlashDatabase('rpc_db', { storagePath: './data' });
-const grpcServer = new FlashGRPCServer(db, { port: 6743 });
+const db = new FlashDatabase("rpc_db", { storagePath: "./data" });
+const grpcServer = new FlashGRPCServer(db, {
+  port: 6743,
+  authKey: "cluster-secret",
+});
 
 await grpcServer.start();
-console.log('⚡ gRPC binary service running on port 6743');
+console.log("⚡ gRPC binary service running on port 6743");
 ```
 
 ---
 
 ## 2. Zero-Knowledge GraphQL Engine (`FlashGraphQL`)
 
-Execute standard GraphQL queries against collections with field projection and pagination:
+Execute GraphQL-shaped queries through **FlashClient**. The engine returns sealed records; the client decrypts and projects fields.
 
 ```javascript
-import { FlashDatabase, FlashGraphQL } from 'flash-zk';
+import { FlashClient, FlashGraphQL } from "flash-zk";
 
-const db = new FlashDatabase('app_db', { storagePath: './data' });
-const gql = new FlashGraphQL(db);
+const client = new FlashClient({
+  secretKey: "your-long-random-passphrase",
+  storagePath: "./data",
+});
+const gql = new FlashGraphQL(client);
 
 const response = await gql.execute(`
   {

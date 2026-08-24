@@ -9,12 +9,14 @@ export default defineConfig({
     logo: "/logo.svg",
     siteTitle: "FLASH DB",
     nav: [
+      { text: "What's new in 1.2.0", link: "/guide/whats-new" },
       {
         text: "📖 Guide",
         items: [
           { text: "Positioning & Identity", link: "/guide/positioning" },
           { text: "Why Server-Blind AI", link: "/guide/why-server-blind-ai" },
           { text: "Getting Started", link: "/guide/getting-started" },
+          { text: "What's New (1.2.0)", link: "/guide/whats-new" },
           { text: "Release Notes", link: "/guide/release-notes" },
           { text: "Universal Foundations", link: "/guide/foundations" },
           { text: "Buffer Pipeline", link: "/guide/buffer-pipeline" },
@@ -128,7 +130,10 @@ export default defineConfig({
           { text: "Key Rotation & ORE", link: "/guide/key-rotation-ore" },
           { text: "Encrypted Fuzzy Search", link: "/guide/fuzzy-search" },
           { text: "Homomorphic Math ($sum)", link: "/guide/homomorphic-math" },
-          { text: "Post-Quantum Crypto (PQC)", link: "/guide/post-quantum" },
+          {
+            text: "Key Hardening (scrypt + ECDH)",
+            link: "/guide/post-quantum",
+          },
           { text: "Merkle Integrity Proofs", link: "/guide/merkle-integrity" },
           { text: "Schema Validation Rules", link: "/guide/schema-validation" },
         ],
@@ -153,6 +158,7 @@ export default defineConfig({
             { text: "Positioning & Identity", link: "/guide/positioning" },
             { text: "Why Server-Blind AI", link: "/guide/why-server-blind-ai" },
             { text: "Getting Started", link: "/guide/getting-started" },
+            { text: "What's New (1.2.0)", link: "/guide/whats-new" },
             { text: "Release Notes", link: "/guide/release-notes" },
             { text: "Universal Foundations", link: "/guide/foundations" },
             { text: "Buffer Pipeline", link: "/guide/buffer-pipeline" },
@@ -285,7 +291,10 @@ export default defineConfig({
               text: "Homomorphic Math ($sum)",
               link: "/guide/homomorphic-math",
             },
-            { text: "Post-Quantum Crypto (PQC)", link: "/guide/post-quantum" },
+            {
+              text: "Key Hardening (scrypt + ECDH)",
+              link: "/guide/post-quantum",
+            },
             {
               text: "Merkle Integrity Proofs",
               link: "/guide/merkle-integrity",

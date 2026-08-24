@@ -30,6 +30,7 @@ test("compact storageProfile is much smaller than standard searchable", async ()
       tags: "plaintext",
       views: "exact",
     },
+    allowPlaintextFields: true,
     engineOptions: { compressionLevel: 6 },
   });
 

@@ -1,4 +1,5 @@
 import { reportError } from "../core/report_error.mjs";
+import { collectSecretMistakes } from "../security/trust_guard.mjs";
 
 const CLIENT_ROOT_KEYS = new Set([
   "secretKey",
@@ -14,6 +15,8 @@ const CLIENT_ROOT_KEYS = new Set([
   "storageProfile",
   "engineOptions",
   "salt",
+  "userId",
+  "allowPlaintextFields",
 ]);
 
 const DATABASE_OPTION_KEYS = new Set([
@@ -29,6 +32,8 @@ const SERVER_OPTION_KEYS = new Set([
   "authKey",
   "dbName",
   "engineOptions",
+  "rbac",
+  "allowPublicBind",
 ]);
 
 const ENGINE_OPTION_KEYS = new Set([
@@ -230,14 +235,19 @@ export function collectEngineOptionMistakes(engine, prefix = "engineOptions") {
   return mistakes;
 }
 
-function collectMongoUriMistakes(config) {
+function collectForeignUriMistakes(config) {
   const mistakes = [];
   for (const key of ["uri", "url"]) {
     const value = config[key];
-    if (typeof value === "string" && /^mongodb(\+srv)?:\/\//i.test(value)) {
+    if (typeof value !== "string") continue;
+    if (
+      /^(mongodb(\+srv)?|postgres(?:ql)?|mysql|redis|amqp|kafka):\/\//i.test(
+        value,
+      )
+    ) {
       mistakes.push(
         mistake(
-          `FlashClient.${key} is a FLASH server URL, not a MongoDB connection string`,
+          `FlashClient.${key} must be a FLASH server URL (flash://, http://, or https://)`,
           key,
         ),
       );
@@ -271,7 +281,7 @@ export function assertClientConfig(config = {}) {
 
   assertBoolean(config.inMemory, "inMemory", mistakes);
   assertBoolean(config.pqcHardened, "pqcHardened", mistakes);
-  assertBoolean(config.autoTimestamps, "autoTimestamps", mistakes);
+  assertBoolean(config.allowPlaintextFields, "allowPlaintextFields", mistakes);
   assertEnum(
     config.storageProfile,
     "storageProfile",
@@ -281,9 +291,31 @@ export function assertClientConfig(config = {}) {
 
   if (config.fieldPolicy != null && !isPlainObject(config.fieldPolicy)) {
     mistakes.push(mistake("fieldPolicy must be an object", "fieldPolicy"));
+  } else if (config.fieldPolicy && config.allowPlaintextFields !== true) {
+    for (const [field, policy] of Object.entries(config.fieldPolicy)) {
+      if (policy === "plaintext") {
+        mistakes.push(
+          mistake(
+            `fieldPolicy.${field}=plaintext stores values in the clear; pass allowPlaintextFields: true only if you accept that leak`,
+            "fieldPolicy",
+          ),
+        );
+      }
+    }
   }
 
-  mistakes.push(...collectMongoUriMistakes(config));
+  mistakes.push(...collectSecretMistakes(config.secretKey, "secretKey"));
+  const foreignUri = collectForeignUriMistakes(config);
+  mistakes.push(...foreignUri);
+  if ((config.uri || config.url) && foreignUri.length === 0) {
+    if (!config.authKey) {
+      mistakes.push(
+        mistake("FlashClient.uri requires authKey for the remote FlashServer", "authKey"),
+      );
+    } else {
+      mistakes.push(...collectSecretMistakes(config.authKey, "authKey"));
+    }
+  }
   mistakes.push(...collectEngineOptionMistakes(config.engineOptions));
   throwIfMistakes(mistakes);
 }
@@ -317,6 +349,14 @@ export function assertServerOptions(options = {}) {
   }
   if (options.port != null) {
     assertFiniteNumber(options.port, "port", mistakes, { min: 1, max: 65535 });
+  }
+  assertBoolean(options.allowPublicBind, "allowPublicBind", mistakes);
+  if (!options.authKey) {
+    mistakes.push(
+      mistake("FlashServer requires authKey (do not expose an unauthenticated daemon)", "authKey"),
+    );
+  } else {
+    mistakes.push(...collectSecretMistakes(options.authKey, "authKey"));
   }
   mistakes.push(...collectEngineOptionMistakes(options.engineOptions));
   throwIfMistakes(mistakes);

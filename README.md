@@ -6,14 +6,14 @@
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-3178c6.svg)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/Tests-164%2F164%20Passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-194%2F194%20Passing-brightgreen.svg)]()
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![Docs](https://img.shields.io/badge/Docs-VitePress-blue.svg)](https://moaaz-i.github.io/FLASH/)
 [![npm version](https://img.shields.io/npm/v/flash-zk.svg)](https://www.npmjs.com/package/flash-zk)
 
 _The server never sees your keys, your queries, or your plaintext. Built for private AI, local-first apps, and encrypted intelligence._
 
-**[Release Notes](https://moaaz-i.github.io/FLASH/guide/release-notes)** · **[Universal Foundations](https://moaaz-i.github.io/FLASH/guide/foundations)** · **[Buffer Pipeline](https://moaaz-i.github.io/FLASH/guide/buffer-pipeline)** · **[Positioning & Identity](https://moaaz-i.github.io/FLASH/guide/positioning)** · **[5-Min Intelligence Start](https://moaaz-i.github.io/FLASH/guide/getting-started#intelligence-in-5-minutes)**
+**[What's new in 1.2.0](https://moaaz-i.github.io/FLASH/guide/whats-new)** · **[Release Notes](https://moaaz-i.github.io/FLASH/guide/release-notes)** · **[Universal Foundations](https://moaaz-i.github.io/FLASH/guide/foundations)** · **[Buffer Pipeline](https://moaaz-i.github.io/FLASH/guide/buffer-pipeline)** · **[Positioning & Identity](https://moaaz-i.github.io/FLASH/guide/positioning)** · **[5-Min Intelligence Start](https://moaaz-i.github.io/FLASH/guide/getting-started#intelligence-in-5-minutes)**
 
 </div>
 
@@ -21,7 +21,7 @@ _The server never sees your keys, your queries, or your plaintext. Built for pri
 
 ## What FLASH Is
 
-**FLASH** is a **zero-knowledge document engine** — not a generic cloud database with encryption bolted on.
+**FLASH** is a **zero-knowledge document engine** — a standalone database, not a plugin on top of another store.
 
 | Pillar                     | Meaning                                                                                    |
 | -------------------------- | ------------------------------------------------------------------------------------------ |
@@ -40,6 +40,20 @@ _The server never sees your keys, your queries, or your plaintext. Built for pri
 | `FlashIntegrityProof` | Signed Merkle + invariant manifest for audit                       |
 
 > **FLASH answers one question:** _How do you store, query, and search documents when the engine must remain cryptographically blind?_
+
+---
+
+## What's new in 1.2.0
+
+FLASH **fails closed**. Setups that used to start without keys or with public binds now refuse to start.
+
+- **`FlashServer` / gRPC / replication** require a strong `authKey`. Binding `0.0.0.0` also requires `allowPublicBind: true`. Only `/health` is unauthenticated.
+- **Remote `FlashClient.uri`** requires `authKey`. The Intelligence Console requires `token`. `GET /api/docs` stays off unless `allowDataExplorer: true`.
+- **Weak or short secrets** are rejected. `fieldPolicy: plaintext` needs `allowPlaintextFields: true`.
+- **CLI:** `flash-server` needs `FLASH_AUTH_KEY`; `flash-console` needs `FLASH_MASTER_KEY` and prints `x-flash-token`.
+- From **1.1.0:** `FlashZKKernel` keeps plaintext off the wire; SQL/GraphQL take `FlashClient` only.
+
+[Full announcement](https://moaaz-i.github.io/FLASH/guide/whats-new) · [Release notes](https://moaaz-i.github.io/FLASH/guide/release-notes)
 
 ---
 

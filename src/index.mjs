@@ -3,6 +3,7 @@ export { FlashBlindIndex } from "./crypto/blind_index.mjs";
 export { FlashHomomorphic } from "./crypto/homomorphic.mjs";
 export { FlashMerkle } from "./crypto/merkle.mjs";
 export { FlashPQC } from "./crypto/pqc.mjs";
+export { FlashZKKernel } from "./crypto/zk_kernel.mjs";
 export { FlashFuzzyEngine } from "./crypto/fuzzy_search.mjs";
 export { FlashKeyRotationManager } from "./crypto/key_rotation.mjs";
 export { FlashORE } from "./crypto/ore.mjs";
@@ -103,6 +104,11 @@ export { FlashCostOptimizer } from "./engine/cost_optimizer.mjs";
 export { FlashRateLimiter } from "./scaling/rate_limiter.mjs";
 export { FlashTimeSeriesRollup } from "./plugins/time_series_rollup.mjs";
 export { FlashRBAC } from "./security/rbac.mjs";
+export {
+  timingSafeCompare,
+  assertStrongSecret,
+  createIpRateLimiter,
+} from "./security/trust_guard.mjs";
 export { FlashDistributedLock } from "./scaling/distributed_lock.mjs";
 export { FlashCDC } from "./messaging/cdc_outbox.mjs";
 export { FlashFederation } from "./scaling/federation.mjs";

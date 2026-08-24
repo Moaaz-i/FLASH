@@ -1,9 +1,20 @@
 # Zero-Knowledge Security & Blind Indexing
 
-In traditional databases, database administrators, hosting providers, or memory-dump attackers can easily view all plaintext data stored in RAM and disk.
+**FLASH DB operates on an architectural zero-knowledge model:** the engine and network daemons never receive unencrypted plaintext or decryption keys.
 
-**FLASH DB operates on a 100% Zero-Trust / Zero-Knowledge security model:**
-The database engine and physical storage never receive unencrypted plaintext or decryption keys.
+This is **not** a zk-SNARK circuit system. It is enforced hiding:
+
+| Layer                              | What it is allowed to see                                |
+| ---------------------------------- | -------------------------------------------------------- |
+| `FlashClient`                      | Keys, plaintext, trapdoors (the keyholder)               |
+| `FlashDatabase` / disk             | Sealed envelopes (`_enc`), HMAC trapdoors, Merkle hashes |
+| `FlashServer` / gRPC / replication | Sealed wire records + blind query envelopes only         |
+
+`FlashZKKernel` rejects plaintext inserts and plaintext query fields on every network surface. `FlashSQL` and `FlashGraphQL` require `FlashClient`. `FlashRBAC` can be attached to `FlashServer` so operations are authorized without the server reading document contents.
+
+The Intelligence Console is a **local FlashClient** (it holds the key). It is not a remote blind admin.
+
+Fail-closed defaults (v1.2.0): daemons require `authKey`, the console requires `token`, remote URIs require `authKey`, and `fieldPolicy: plaintext` requires `allowPlaintextFields`. Weak secrets are rejected.
 
 ---
 
@@ -133,7 +144,7 @@ Enable PQC-hardened key derivation for post-quantum protection:
 
 ```js
 const client = new FlashClient({
-  secretKey: "master-key",
+  secretKey: "your-long-random-passphrase",
   pqcHardened: true, // Uses FlashPQC.deriveQuantumHardenedKey()
 });
 ```

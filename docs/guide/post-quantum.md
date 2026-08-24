@@ -1,40 +1,37 @@
-# Post-Quantum Cryptography (PQC)
+# Key Hardening (`pqcHardened`)
 
-Quantum computers pose a severe future threat to classical public-key cryptography. FLASH DB integrates **Post-Quantum Cryptography (PQC)** principles inspired by the latest NIST quantum-resistant standards (**ML-KEM / Kyber & SHA3 / SHAKE-256**).
+FLASH can harden a passphrase with **scrypt → SHA3-256** before AES key use (`pqcHardened: true`).
+
+This is **not** NIST ML-KEM / Kyber. Key agreement in `FlashPQC` uses **ECDH on secp256k1** plus SHA3-256. Treat it as extra passphrase stretching and classical ECDH — not post-quantum confidentiality.
 
 ---
 
-## 1. Enabling Quantum-Hardened Key Expansion
-
-To initialize a client with post-quantum key derivation:
+## Enabling hardened key expansion
 
 ```javascript
-import { FlashClient } from 'flash-zk';
+import { FlashClient } from "flash-zk";
 
 const client = new FlashClient({
-  secretKey: 'quantum_resilient_passphrase_2026',
-  pqcHardened: true // Activates SHA3-512 Quantum Sponge Key Expansion
+  secretKey: "long_passphrase_never_reused",
+  pqcHardened: true,
 });
 ```
 
 ---
 
-## 2. Using the PQC Engine Directly (`FlashPQC`)
-
-FLASH DB exports low-level lattice key exchange utilities:
+## ECDH helpers (`FlashPQC`)
 
 ```javascript
-import { FlashPQC } from 'flash-zk';
+import { FlashPQC } from "flash-zk";
 
-// 1. Generate Quantum-Resistant Key Pair (64-byte Seed expanded via SHA3-512)
 const aliceKeys = FlashPQC.generateKeyPair();
-console.log('Public Key (128 hex chars):', aliceKeys.publicKey);
+const { sharedSecret, ciphertext } = FlashPQC.encapsulateSecret(
+  aliceKeys.publicKey,
+);
+const decryptedSecret = FlashPQC.decapsulateSecret(
+  ciphertext,
+  aliceKeys.secretKey,
+);
 
-// 2. Encapsulate Shared Secret against Public Key
-const { sharedSecret, ciphertext } = FlashPQC.encapsulateSecret(aliceKeys.publicKey);
-
-// 3. Decapsulate Shared Secret using Secret Key
-const decryptedSecret = FlashPQC.decapsulateSecret(ciphertext, aliceKeys.secretKey);
-
-console.log('Secrets Match:', sharedSecret.equals(decryptedSecret)); // true
+console.log("Secrets match:", sharedSecret.equals(decryptedSecret));
 ```

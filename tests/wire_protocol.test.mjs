@@ -6,6 +6,7 @@ import os from "node:os";
 import net from "node:net";
 
 import {
+  FlashClient,
   FlashDatabase,
   FlashWireServer,
   FlashWireClient,
@@ -49,9 +50,20 @@ test("FLASH wire: handshake + find + insert + count", async () => {
     assert.equal(handshake.isWritablePrimary, true);
     assert.equal(handshake.setName, "flash_rs");
 
+    const vault = new FlashClient({
+      secretKey: "wire_zk_client_key_32_chars!!!",
+      inMemory: true,
+      autoTimestamps: false,
+    });
+    const sealed = vault.encryptDocument({
+      _id: "u1",
+      name: "Alice",
+      age: 30,
+    });
+
     const insert = await client.command({
       insert: "users",
-      documents: [{ name: "Alice", age: 30 }],
+      documents: [sealed],
       $db: "wire_test",
     });
     assert.equal(insert.ok, 1);
@@ -59,19 +71,26 @@ test("FLASH wire: handshake + find + insert + count", async () => {
 
     const found = await client.command({
       find: "users",
-      filter: { name: "Alice" },
+      filter: { _id: "u1" },
       $db: "wire_test",
     });
     assert.equal(found.ok, 1);
     assert.equal(found.cursor.firstBatch.length, 1);
-    assert.equal(found.cursor.firstBatch[0].name, "Alice");
+    const opened = vault.decryptDocument(found.cursor.firstBatch[0]);
+    assert.equal(opened.name, "Alice");
+    assert.equal(
+      JSON.stringify(found.cursor.firstBatch).includes("Alice"),
+      false,
+      "wire find must not return plaintext",
+    );
 
     const counted = await client.command({
       count: "users",
-      query: { name: "Alice" },
+      query: {},
       $db: "wire_test",
     });
     assert.equal(counted.n, 1);
+    await vault.close();
   } finally {
     await server.stop();
     await db.close();
@@ -90,24 +109,32 @@ test("FLASH wire: aggregate pipeline", async () => {
     await new Promise((r) => setTimeout(r, 50));
     const client = new FlashWireClient("127.0.0.1", port);
 
+    const vault = new FlashClient({
+      secretKey: "wire_agg_zk_key_32_chars!!!!!!",
+      inMemory: true,
+      autoTimestamps: false,
+    });
     await client.command({
       insert: "scores",
       documents: [
-        { team: "A", pts: 10 },
-        { team: "A", pts: 20 },
-        { team: "B", pts: 5 },
+        vault.encryptDocument({ _id: "s1", team: "A", pts: 10 }),
+        vault.encryptDocument({ _id: "s2", team: "A", pts: 20 }),
+        vault.encryptDocument({ _id: "s3", team: "B", pts: 5 }),
       ],
       $db: "agg_test",
     });
 
     const agg = await client.command({
       aggregate: "scores",
-      pipeline: [{ $match: { team: "A" } }, { $project: { team: 1, pts: 1 } }],
+      pipeline: [{ $limit: 2 }, { $project: { _id: 1, _enc: 1 } }],
       cursor: {},
       $db: "agg_test",
     });
     assert.equal(agg.ok, 1);
     assert.equal(agg.cursor.firstBatch.length, 2);
+    assert.ok(agg.cursor.firstBatch[0]._enc);
+    assert.equal(agg.cursor.firstBatch[0].team, undefined);
+    await vault.close();
   } finally {
     await server.stop();
     await db.close();
@@ -133,11 +160,18 @@ test("Network replication: TCP applyInsert across nodes", async () => {
     await rs.startNetworkNodes();
     rs.electLeader("leader");
 
-    const write = await rs.replicateInsert("events", {
+    const vault = new FlashClient({
+      secretKey: "repl_zk_client_key_32_chars!!!",
+      inMemory: true,
+      autoTimestamps: false,
+    });
+    const sealed = vault.encryptToBuffer({
       _id: "evt-1",
       type: "click",
       value: 42,
     });
+
+    const write = await rs.replicateInsert("events", sealed);
     assert.equal(write.committed, true);
     assert.equal(write.replicated, 1);
 
@@ -147,9 +181,14 @@ test("Network replication: TCP applyInsert across nodes", async () => {
     const raw = await col._getRawDoc("evt-1");
     assert.ok(raw);
 
-    const rpc = new FlashReplicationClient("127.0.0.1", port);
+    const rpc = new FlashReplicationClient(
+      "127.0.0.1",
+      port,
+      rs.replicationAuthKey,
+    );
     const pong = await rpc.ping();
     assert.equal(pong.pong, true);
+    await vault.close();
   } finally {
     await rs.close();
     fs.rmSync(tmpDir, { recursive: true, force: true });
