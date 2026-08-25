@@ -22,38 +22,39 @@ Traditional databases assume the engine can read your data. FLASH assumes the op
 
 ## Five Principles
 
-| #   | Principle                   | Meaning                                                |
-| --- | --------------------------- | ------------------------------------------------------ |
-| 1   | **Server-blind by design**  | Encryption is the foundation — not a plugin            |
-| 2   | **Intelligence-native**     | RAG, agent memory, and semantic search are first-class |
-| 3   | **Local-first sovereignty** | Your key, your disk, your rules                        |
-| 4   | **Honest performance**      | Batch writes, balanced durability — real numbers       |
-| 5   | **Trust you can verify**    | Merkle roots, integrity proofs, sealed vaults          |
+| #   | Principle                   | Meaning                                                                         |
+| --- | --------------------------- | ------------------------------------------------------------------------------- |
+| 1   | **Server-blind by design**  | Encryption is the foundation — not a plugin                                     |
+| 2   | **Intelligence-native**     | RAG, agent memory, and semantic search are first-class                          |
+| 3   | **Local-first sovereignty** | Your key, your disk, your rules                                                 |
+| 4   | **Honest performance**      | Batch writes, balanced durability — real numbers                                |
+| 5   | **Trust you can verify**    | Open source, tests, Merkle proofs — plus an honest [trust model](./trust-model) |
 
 ---
 
 ## When to Use FLASH
 
-| Scenario                               | Why FLASH                                    |
-| -------------------------------------- | -------------------------------------------- |
-| Private RAG over sensitive documents   | Ingest and search without server plaintext   |
-| AI agent memory (local or edge)        | Encrypted episodic recall with TTL           |
-| Sealed secrets vault                   | Passphrase isolation + auto-lock             |
-| Local-first apps with encrypted search | Blind indexes + ORE range queries            |
-| Compliance-heavy workflows             | Integrity proofs, audit streams, GDPR export |
+| Scenario                               | Why FLASH                                            |
+| -------------------------------------- | ---------------------------------------------------- |
+| Private RAG over sensitive documents   | Ingest and search without server plaintext           |
+| AI agent memory (local or edge)        | Encrypted episodic recall with TTL                   |
+| Sealed secrets vault                   | Passphrase isolation + auto-lock                     |
+| Local-first apps with encrypted search | Blind indexes + ORE range queries                    |
+| Compliance-oriented workflows          | Integrity proofs, audit streams, GDPR export helpers |
 
 ---
 
 ## When **Not** to Use FLASH
 
-| Scenario                                            | Better Alternative                                                |
-| --------------------------------------------------- | ----------------------------------------------------------------- |
-| General cloud document DB at massive scale          | A managed general-purpose database                                |
-| Shared multi-tenant SaaS with server-side analytics | Application-layer encryption on SQL                               |
-| Pure key-value cache                                | In-memory cache                                                   |
-| Team already standardized on one SQL stack          | That stack, with FLASH beside it only if you need a private vault |
+| Scenario                                            | Better Alternative                                                 |
+| --------------------------------------------------- | ------------------------------------------------------------------ |
+| You need a completed external crypto audit first    | Wait for [audit roadmap](./trust-model) Phase C, or audit yourself |
+| General cloud document DB at massive scale          | A managed general-purpose database                                 |
+| Shared multi-tenant SaaS with server-side analytics | Application-layer encryption on SQL                                |
+| Pure key-value cache                                | In-memory cache                                                    |
+| Team already standardized on one SQL stack          | That stack, with FLASH beside it only if you need a private vault  |
 
-FLASH owns **private intelligence storage**. It is not a generic cloud document platform.
+FLASH owns **private intelligence storage**. It is not a generic cloud document platform. “Zero-knowledge” means architectural hiding — not zk-SNARKs and not a guarantee of bug-free crypto.
 
 ---
 

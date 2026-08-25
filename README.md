@@ -11,9 +11,9 @@
 [![Docs](https://img.shields.io/badge/Docs-VitePress-blue.svg)](https://moaaz-i.github.io/FLASH/)
 [![npm version](https://img.shields.io/npm/v/flash-zk.svg)](https://www.npmjs.com/package/flash-zk)
 
-_The server never sees your keys, your queries, or your plaintext. Built for private AI, local-first apps, and encrypted intelligence._
+_Architectural zero-knowledge: sealed envelopes and blind indexes so the engine is designed not to hold your keys or plaintext. Built for private AI and local-first apps._
 
-**[What's new in 1.2.0](https://moaaz-i.github.io/FLASH/guide/whats-new)** · **[Release Notes](https://moaaz-i.github.io/FLASH/guide/release-notes)** · **[Universal Foundations](https://moaaz-i.github.io/FLASH/guide/foundations)** · **[Buffer Pipeline](https://moaaz-i.github.io/FLASH/guide/buffer-pipeline)** · **[Positioning & Identity](https://moaaz-i.github.io/FLASH/guide/positioning)** · **[5-Min Intelligence Start](https://moaaz-i.github.io/FLASH/guide/getting-started#intelligence-in-5-minutes)**
+**[What's new in 1.2.0](https://moaaz-i.github.io/FLASH/guide/whats-new)** · **[Trust model & audit roadmap](https://moaaz-i.github.io/FLASH/guide/trust-model)** · **[Release Notes](https://moaaz-i.github.io/FLASH/guide/release-notes)** · **[Positioning](https://moaaz-i.github.io/FLASH/guide/positioning)** · **[5-Min Start](https://moaaz-i.github.io/FLASH/guide/getting-started#intelligence-in-5-minutes)**
 
 </div>
 
@@ -30,16 +30,18 @@ _The server never sees your keys, your queries, or your plaintext. Built for pri
 | **Local-first**            | Embedded in-process or over the FLASH wire protocol — your data stays under your key       |
 | **FLASH formats**          | `FlashBinary`, `.farc` WAL, `.flog` oplog — purpose-built, zero-copy, LSM-backed           |
 
-### FLASH-Exclusive (no other DB offers this stack)
+### FLASH-Exclusive (this stack in one engine)
 
 | Module                | Purpose                                                            |
 | --------------------- | ------------------------------------------------------------------ |
 | `FlashPrivateRAG`     | Encrypted ingest → chunk → embed → ask — private RAG, server-blind |
 | `FlashAgentMemory`    | AI agent episodic memory — semantic recall, TTL, importance        |
 | `FlashSealedVault`    | Passphrase vault with auto-lock — isolated secret domain           |
-| `FlashIntegrityProof` | Signed Merkle + invariant manifest for audit                       |
+| `FlashIntegrityProof` | Signed Merkle + invariant manifest for integrity checks            |
 
 > **FLASH answers one question:** _How do you store, query, and search documents when the engine must remain cryptographically blind?_
+
+> **Honesty:** “Zero-knowledge” here means **architectural hiding**, not zk-SNARKs and not a completed external audit. See [Trust Model](https://moaaz-i.github.io/FLASH/guide/trust-model).
 
 ---
 
@@ -57,23 +59,24 @@ FLASH **fails closed**. Setups that used to start without keys or with public bi
 
 ---
 
-## 🚀 Key Highlights
+## Key Highlights
 
-- **🛡️ 100% Zero-Knowledge Privacy**: Complete client-side envelope encryption. The database server and disk storage **never see plaintext keys, values, or queries**.
-- **⚡ 1M+ Ops/Sec Zero-Copy Binary Format**: `FlashBinary` layout with $O(1)$ constant-time field offset lookups without JSON parsing overhead.
-- **🧬 32x Vector Quantization (SQ8 & 1-Bit Binary)**: Store millions of high-dimensional vectors in minimal RAM with single-cycle bitwise Hamming distance math.
-- **🌐 Universal Polyglot Query Engine**: Zero-shot natural language query compiler for **ANY language or script** (Arabic, English, Chinese, French, Spanish, Russian, Hindi...).
-- **🤖 Autonomous AI Agent Tools & Function Calling**: Standardized Tool Calling registry with automated multi-turn execution loops over local collections and external APIs.
-- **🎯 RAG Context Optimizer & Reciprocal Rank Fusion (RRF)**: Merges Vector & BM25 search ranks and trims context to save **60-80% LLM token costs**.
-- **⚡ Multi-Tier Semantic Cache (`< 0.05ms`)**: Dual-tier L1 In-Memory + L2 Persistent Disk Cache saving up to **90% in LLM API bills**.
-- **🧠 High-Dimensional AI Vector Search (HNSW)**: $O(\log N)$ Approximate Nearest Neighbor (ANN) search for private RAG and LLM embeddings.
-- **🔍 Searchable Encrypted Blind Indexing**: Query over encrypted data using exact trapdoors, substring N-grams, and Order-Revealing Encryption (**ORE**) range filters (`$gt`, `$lt`).
-- **🧮 Homomorphic Aggregation**: Execute `$sum` and `$inc` calculations directly over ciphertexts on the server without decrypting.
-- **💾 Modern LSM-Tree Engine**: Lock-Free SkipList MemTable + `.farc` durability archive + Bloom-Filtered compressed SSTable segments + Tiered Compactor.
-- **🔄 ACID Transactions & Snapshot Isolation**: Multi-Version Concurrency Control (**MVCC**) + Distributed **Two-Phase Commit (2PC)** across sharded clusters.
-- **📊 Built-in Observability & ETL**: Live Prometheus `/metrics` telemetry endpoint and streaming `NDJSON` / `CSV` export & import tools.
-- **🔴 Real-Time Infrastructure**: Zero-dependency WebSocket server with rooms/channels, presence tracking, LRU cache, and enhanced pub/sub with wildcards.
-- **📘 Full TypeScript Definitions**: First-class `index.d.ts` with IntelliSense autocompletion and generic collection typing.
+- **Architectural zero-knowledge**: Client-side AES-256-GCM envelopes; storage and network daemons are designed to hold ciphertext, trapdoors, and ORE tokens — not your `secretKey` or plaintext. Limits and leakage: [Trust Model](https://moaaz-i.github.io/FLASH/guide/trust-model).
+- **Fail-closed defaults (1.2.0)**: Strong `authKey` / console `token`, weak-secret rejection, plaintext fields and public bind only via explicit opt-in.
+- **Fast binary path**: `FlashBinary` zero-copy field lookups (see [benchmarks](https://moaaz-i.github.io/FLASH/api/benchmarks) — not the same as full encrypted write throughput).
+- **Vector quantization (SQ8 & 1-bit)**: Compact high-dimensional vectors with Hamming / quantized distance paths.
+- **Polyglot NL query compiler**: Natural-language shaped queries across many scripts (evaluate for your language pair).
+- **AI agent tools & function calling**: Tool registry with multi-turn loops over collections and external APIs.
+- **RAG context optimizer & RRF**: Merge vector + BM25 ranks and trim context for lower token use.
+- **Semantic cache**: L1 memory + L2 disk tiers for repeated embedding/query workloads.
+- **HNSW vector search**: Approximate nearest neighbor for private RAG embeddings.
+- **Searchable encrypted indexes**: Exact trapdoors, substring n-grams, and ORE / bucketed range filters (`$gt`, `$lt`) — with known SSE leakage trade-offs.
+- **Homomorphic-style aggregates**: `$sum` / `$inc` over sealed numeric fields without server plaintext.
+- **LSM-tree engine**: SkipList memtable + `.farc` durability + bloom-filtered SSTables + tiered compaction.
+- **ACID & snapshot isolation**: MVCC; distributed 2PC available for sharded setups.
+- **Observability & ETL**: Prometheus `/metrics`, NDJSON / CSV import & export.
+- **Realtime helpers**: WebSocket rooms, presence, pub/sub wildcards.
+- **TypeScript definitions**: First-class `index.d.ts` and generic collections.
 
 ---
 
@@ -124,14 +127,22 @@ console.log(
   `Inserted ID: ${result.insertedId} | State Root: ${result.merkleRoot}`,
 );
 
-// 3. Search Over Encrypted Blind Indexes (Server remains 100% blind)
+// 3. Search over encrypted blind indexes (engine sees trapdoors, not plaintext values)
 const found = await users.find({ email: "ada@computing-pioneer.org" });
 console.log(found[0].name); // 'Ada Lovelace'
 ```
 
 ---
 
-## 🧠 AI Vector Search & Private RAG (HNSW)
+## Trust & audits
+
+FLASH is open source and fail-closed by default. It does **not** yet have a published independent security audit. Known limits (SSE leakage, client-as-root-of-trust, no zk-SNARKs) and the public roadmap live here:
+
+**[Trust Model & Audit Roadmap](https://moaaz-i.github.io/FLASH/guide/trust-model)**
+
+---
+
+## AI Vector Search & Private RAG (HNSW)
 
 ```typescript
 import { FlashHNSWIndex } from "flash-zk";
@@ -172,13 +183,13 @@ FlashDatabase Engine
 
 ---
 
-## 🧪 Running Tests & Benchmarks
+## Running Tests & Benchmarks
 
 ```bash
-# Run comprehensive test suite (136 tests)
+# Run the test suite
 npm test
 
-# Run performance benchmarks (insertOne ~330/s, insertMany ~2,650/s)
+# Run performance benchmarks (see docs for workload notes)
 npm run benchmark
 
 # Bootstrap intelligence workspace

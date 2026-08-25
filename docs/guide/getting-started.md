@@ -2,9 +2,9 @@
 
 **FLASH** is a zero-knowledge encrypted intelligence database — server-blind by architecture, local-first by default, and built for private AI workloads.
 
-It is **not** a generic document store with encryption added later. Every layer — storage (`.farc`, `FlashBinary`), indexing (blind trapdoors, ORE), and query — assumes the engine never sees plaintext.
+It is **not** a generic document store with encryption added later. Every layer — storage (`.farc`, `FlashBinary`), indexing (blind trapdoors, ORE), and query — is designed so the engine holds sealed data rather than plaintext.
 
-> **Latest: [What's new in 1.2.0](/guide/whats-new)** — fail-closed `authKey` / `token`, no weak secrets, plaintext fields opt-in. Full log: [Release Notes](/guide/release-notes). Also: [Positioning](/guide/positioning) and [Why Server-Blind AI Storage](/guide/why-server-blind-ai).
+> **Latest: [What's new in 1.2.0](/guide/whats-new)** — fail-closed `authKey` / `token`, no weak secrets, plaintext fields opt-in. Read [Trust Model](/guide/trust-model) before production. Also: [Positioning](/guide/positioning) and [Why Server-Blind AI Storage](/guide/why-server-blind-ai).
 
 ---
 

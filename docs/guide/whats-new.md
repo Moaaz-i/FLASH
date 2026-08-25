@@ -10,16 +10,16 @@ Full changelog: [Release Notes](/guide/release-notes).
 
 The engine no longer hopes you notice a missing key or an open bind. It stops.
 
-| If you…                                              | FLASH now…                                                                 |
-| ---------------------------------------------------- | -------------------------------------------------------------------------- |
-| Start `FlashServer` without `authKey`                | Refuses to start                                                           |
-| Bind `0.0.0.0` without `allowPublicBind: true`       | Refuses to start                                                           |
-| Connect with `uri` and no `authKey`                  | Refuses to construct the client                                            |
-| Open the Intelligence Console without `token`        | Refuses to start the UI                                                    |
-| Use `fieldPolicy: plaintext` without opt-in          | Refuses — set `allowPlaintextFields: true` only if you accept that leak    |
-| Use a short or well-known `secretKey` / `authKey`    | Refuses (16+ bytes in apps; common weak strings are blocked)               |
-| Hit HTTP routes other than `/health`                 | Requires header `x-flash-server-key`                                       |
-| Call `GET /api/docs` on the console                  | Requires `allowDataExplorer: true` (off by default)                        |
+| If you…                                           | FLASH now…                                                              |
+| ------------------------------------------------- | ----------------------------------------------------------------------- |
+| Start `FlashServer` without `authKey`             | Refuses to start                                                        |
+| Bind `0.0.0.0` without `allowPublicBind: true`    | Refuses to start                                                        |
+| Connect with `uri` and no `authKey`               | Refuses to construct the client                                         |
+| Open the Intelligence Console without `token`     | Refuses to start the UI                                                 |
+| Use `fieldPolicy: plaintext` without opt-in       | Refuses — set `allowPlaintextFields: true` only if you accept that leak |
+| Use a short or well-known `secretKey` / `authKey` | Refuses (16+ bytes in apps; common weak strings are blocked)            |
+| Hit HTTP routes other than `/health`              | Requires header `x-flash-server-key`                                    |
+| Call `GET /api/docs` on the console               | Requires `allowDataExplorer: true` (off by default)                     |
 
 gRPC and replication daemons also require `authKey`. Replica sets mint a cluster key automatically.
 
@@ -83,4 +83,4 @@ client.openDashboard({
 
 Remote clients must send the same `authKey` used by the daemon (`x-flash-server-key` on HTTP).
 
-This is fail-closed engineering, not a zk-SNARK suite or an external pentest. Limits are listed in [Zero-Knowledge Security](/guide/zero-knowledge-security).
+This is fail-closed engineering, not a zk-SNARK suite or an external pentest. Limits and the public audit roadmap: [Trust Model](/guide/trust-model). Related primitives: [Zero-Knowledge Security](/guide/zero-knowledge-security).

@@ -5,15 +5,47 @@ export default defineConfig({
   description:
     "Zero-knowledge encrypted intelligence database — local-first, AI-native, server-blind",
   base: "/FLASH/",
+  appearance: "dark",
+  markdown: {
+    theme: {
+      light: "github-light",
+      dark: "nord",
+    },
+  },
+  head: [
+    [
+      "link",
+      {
+        rel: "preconnect",
+        href: "https://fonts.googleapis.com",
+      },
+    ],
+    [
+      "link",
+      {
+        rel: "preconnect",
+        href: "https://fonts.gstatic.com",
+        crossorigin: "",
+      },
+    ],
+    [
+      "meta",
+      {
+        name: "theme-color",
+        content: "#07090e",
+      },
+    ],
+  ],
   themeConfig: {
     logo: "/logo.svg",
     siteTitle: "FLASH DB",
     nav: [
-      { text: "What's new in 1.2.0", link: "/guide/whats-new" },
+      { text: "What's new", link: "/guide/whats-new" },
       {
-        text: "📖 Guide",
+        text: "Guide",
         items: [
           { text: "Positioning & Identity", link: "/guide/positioning" },
+          { text: "Trust Model & Audit Roadmap", link: "/guide/trust-model" },
           { text: "Why Server-Blind AI", link: "/guide/why-server-blind-ai" },
           { text: "Getting Started", link: "/guide/getting-started" },
           { text: "What's New (1.2.0)", link: "/guide/whats-new" },
@@ -46,7 +78,7 @@ export default defineConfig({
         ],
       },
       {
-        text: "⚡ FLASH Exclusive",
+        text: "Exclusive",
         items: [
           { text: "Exclusive Stack Overview", link: "/guide/flash-exclusive" },
           { text: "Private RAG & Agent Memory", link: "/guide/private-rag" },
@@ -60,7 +92,7 @@ export default defineConfig({
         ],
       },
       {
-        text: "🧠 AI & Next-Gen",
+        text: "AI",
         items: [
           { text: "🤖 FlashAIDatabase (ChatGPT Suite)", link: "/ai-database" },
           {
@@ -93,7 +125,7 @@ export default defineConfig({
       },
 
       {
-        text: "🌐 Distributed & Storage",
+        text: "Scale",
         items: [
           { text: "Raft High-Availability", link: "/guide/raft-consensus" },
           {
@@ -117,11 +149,15 @@ export default defineConfig({
         ],
       },
       {
-        text: "🛡️ Security",
+        text: "Security",
         items: [
           {
             text: "Zero-Knowledge Security",
             link: "/guide/zero-knowledge-security",
+          },
+          {
+            text: "Trust Model & Audit Roadmap",
+            link: "/guide/trust-model",
           },
           {
             text: "Security, RBAC & Audit",
@@ -139,7 +175,7 @@ export default defineConfig({
         ],
       },
       {
-        text: "⚡ API & Benchmarks",
+        text: "API",
         items: [
           { text: "FlashClient SDK Reference", link: "/api/flash-client" },
           { text: "FlashCollection & Queries", link: "/api/collection" },
@@ -156,6 +192,7 @@ export default defineConfig({
           collapsed: false,
           items: [
             { text: "Positioning & Identity", link: "/guide/positioning" },
+            { text: "Trust Model & Audit Roadmap", link: "/guide/trust-model" },
             { text: "Why Server-Blind AI", link: "/guide/why-server-blind-ai" },
             { text: "Getting Started", link: "/guide/getting-started" },
             { text: "What's New (1.2.0)", link: "/guide/whats-new" },
@@ -282,6 +319,10 @@ export default defineConfig({
               link: "/guide/zero-knowledge-security",
             },
             {
+              text: "Trust Model & Audit Roadmap",
+              link: "/guide/trust-model",
+            },
+            {
               text: "Security, RBAC & Audit",
               link: "/guide/security-compliance",
             },
@@ -321,9 +362,17 @@ export default defineConfig({
         },
       ],
     },
-    socialLinks: [{ icon: "github", link: "https://github.com" }],
+    socialLinks: [
+      {
+        icon: {
+          svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>',
+        },
+        link: "https://github.com/Moaaz-i/FLASH",
+        ariaLabel: "GitHub",
+      },
+    ],
     footer: {
-      message: "Released under the Apache 2.0 License.",
+      message: "Zero-knowledge encrypted intelligence · Apache 2.0",
       copyright: "Copyright © 2026 FLASH Team",
     },
     search: {

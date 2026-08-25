@@ -16,6 +16,10 @@ The Intelligence Console is a **local FlashClient** (it holds the key). It is no
 
 Fail-closed defaults (v1.2.0): daemons require `authKey`, the console requires `token`, remote URIs require `authKey`, and `fieldPolicy: plaintext` requires `allowPlaintextFields`. Weak secrets are rejected.
 
+::: warning Trust boundary
+Architectural blindness is not a substitute for an independent audit. Limits, leakage, and the public audit roadmap are documented in [Trust Model & Audit Roadmap](/guide/trust-model).
+:::
+
 ---
 
 ## The Cryptographic Primitives

@@ -1,12 +1,14 @@
-# Enterprise Security, RBAC & Compliance
+# Enterprise Security, RBAC & Compliance Tools
 
-**FLASH DB** delivers military-grade governance and compliance tools (SOC2, HIPAA, GDPR).
+**FLASH DB** ships governance helpers for access control, audit trails, and PII masking. These are **application controls**, not a claim that your deployment is SOC 2, HIPAA, or GDPR certified.
+
+For what FLASH cryptographically promises — and does not — see [Trust Model & Audit Roadmap](/guide/trust-model).
 
 ---
 
 ## 1. Cryptographic Audit Vault (`FlashAuditVault`)
 
-Tamper-proof, HMAC-chained append-only logs for all sensitive database events:
+HMAC-chained append-only logs for sensitive database events (tamper-evident within the vault’s threat model):
 
 ```javascript
 import { FlashAuditVault } from "flash-zk";
@@ -18,15 +20,12 @@ vault.log("dr_smith", "READ", "patient_record_456", { ip: "10.0.0.1" });
 
 // Verify cryptographic chain
 const check = vault.verifyChain();
-console.log(check.valid); // true!
+console.log(check.valid); // true
 ```
 
 ---
 
 ## 2. Role-Based Access Control (`FlashRBAC`)
-
-````javascript
-import { FlashRBAC } from 'flash-zk';
 
 Pass the same instance into `FlashServer` so network operations are authorized without the server reading documents:
 
@@ -42,7 +41,7 @@ FlashServer.start({
   rbac,
 });
 // Clients send header x-flash-user: user_123 (and x-flash-server-key)
-````
+```
 
 ---
 

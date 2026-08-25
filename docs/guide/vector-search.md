@@ -2,7 +2,7 @@
 
 With the explosion of Generative AI and Large Language Models (LLMs), Vector Databases have become essential. However, traditional vector databases store embeddings in cleartext, creating immense data leak risks.
 
-**FLASH DB provides native Vector Semantic Search directly on encrypted documents for 100% Private RAG (Retrieval-Augmented Generation).**
+**FLASH DB provides native vector semantic search over sealed documents for private RAG** — embeddings and documents stay under your key. This is architectural privacy, not a formal proof; see [Trust Model](/guide/trust-model).
 
 ---
 
@@ -11,17 +11,17 @@ With the explosion of Generative AI and Large Language Models (LLMs), Vector Dat
 When inserting a document, simply supply a numerical embedding array in the `$vector` field:
 
 ```javascript
-import { FlashClient } from 'flash-zk';
+import { FlashClient } from "flash-zk";
 
-const client = new FlashClient({ secretKey: 'ai_master_key' });
-const articles = client.collection('articles');
+const client = new FlashClient({ secretKey: "ai_master_key" });
+const articles = client.collection("articles");
 
 // Insert document with an OpenAI / Gemini / Ollama vector embedding
 await articles.insertOne({
-  title: 'Quantum Key Distribution & Zero Knowledge',
-  category: 'cybersecurity',
-  content: 'Sensitive intelligence report...',
-  $vector: [0.124, 0.892, -0.451, 0.038, 0.771] // Arbitrary dimension array
+  title: "Quantum Key Distribution & Zero Knowledge",
+  category: "cybersecurity",
+  content: "Sensitive intelligence report...",
+  $vector: [0.124, 0.892, -0.451, 0.038, 0.771], // Arbitrary dimension array
 });
 ```
 
@@ -33,18 +33,19 @@ You can query nearest neighbors using Cosine Similarity, with optional metadata 
 
 ```javascript
 // Query embedding generated from user prompt
-const queryVector = [0.119, 0.885, -0.440, 0.040, 0.760];
+const queryVector = [0.119, 0.885, -0.44, 0.04, 0.76];
 
 const similarReports = await articles.vectorSearch({
   vector: queryVector,
-  topK: 3,                                // Number of top results
-  filter: { category: 'cybersecurity' }   // Optional metadata filter
+  topK: 3, // Number of top results
+  filter: { category: "cybersecurity" }, // Optional metadata filter
 });
 
 console.log(similarReports);
 ```
 
 ### Output:
+
 ```json
 [
   {
@@ -56,4 +57,5 @@ console.log(similarReports);
   }
 ]
 ```
+
 The resulting `_score` is the normalized Cosine Similarity (ranging from `0.0` to `1.0`).
