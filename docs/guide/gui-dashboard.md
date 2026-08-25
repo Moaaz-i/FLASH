@@ -8,7 +8,7 @@ FLASH DB ships **FLASH Intelligence Console** — a local web UI for encrypted i
 
 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 2rem 0; width: 100%;">
   <video width="100%" style="max-width: 800px; aspect-ratio: 16 / 9; border-radius: 12px; border: 1px solid var(--vp-c-divider); box-shadow: 0 8px 24px rgba(0,0,0,0.1); outline: none; background: #05080f;" controls autoplay muted loop playsinline preload="metadata">
-    <source src="/FLASH/FLASH_DB.mp4" type="video/mp4">
+    <source src="/FLASH_DB.mp4" type="video/mp4">
     Your browser does not support the video tag.
   </video>
 </div>
