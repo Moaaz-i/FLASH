@@ -6,18 +6,27 @@ const args = process.argv.slice(2);
 let port = 3456;
 let storagePath = "./flash_data";
 let secretKey = process.env.FLASH_MASTER_KEY || null;
+let wrapKeyDir = process.cwd();
 let token = process.env.FLASH_CONSOLE_TOKEN || null;
 
 for (let i = 0; i < args.length; i++) {
   if (args[i] === "--port" && args[i + 1]) port = Number(args[++i]);
-  if (args[i] === "--storage" && args[i + 1]) storagePath = args[++i];
-  if (args[i] === "--key" && args[i + 1]) secretKey = args[++i];
-  if (args[i] === "--token" && args[i + 1]) token = args[++i];
+  else if (args[i] === "--storage" && args[i + 1]) storagePath = args[++i];
+  else if (args[i] === "--key" && args[i + 1]) secretKey = args[++i];
+  else if (args[i] === "--dir" && args[i + 1]) wrapKeyDir = args[++i];
+  else if (args[i] === "--token" && args[i + 1]) token = args[++i];
 }
 
-if (!secretKey) {
+const clientOpts = { storagePath, wrapKeyDir };
+if (secretKey) clientOpts.secretKey = secretKey;
+
+let client;
+try {
+  client = new FlashClient(clientOpts);
+} catch (err) {
   console.error(
-    "Set FLASH_MASTER_KEY or pass --key. The default console key was removed.",
+    err.message ||
+      "Could not open FlashClient. Run flashsh wrap-key, or set FLASH_MASTER_KEY / --key.",
   );
   process.exit(1);
 }
@@ -25,8 +34,6 @@ if (!secretKey) {
 if (!token) {
   token = crypto.randomBytes(24).toString("hex");
 }
-
-const client = new FlashClient({ secretKey, storagePath });
 
 console.log(`
 ⚡ FLASH Intelligence Console

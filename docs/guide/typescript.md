@@ -21,7 +21,6 @@ interface UserProfile {
 }
 
 const client = new FlashClient({
-  secretKey: process.env.FLASH_SECRET_KEY,
   storagePath: "./data",
 });
 
@@ -76,7 +75,7 @@ import {
   FlashCollection,
 } from "flash-zk";
 
-const client = new FlashClient({ secretKey: "key", storagePath: "./data" });
+const client = new FlashClient({ storagePath: "./data" });
 
 // Client boundary — objects
 const buf: Buffer = client.encryptToBuffer({ name: "Ada" });

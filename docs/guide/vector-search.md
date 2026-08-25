@@ -13,7 +13,7 @@ When inserting a document, simply supply a numerical embedding array in the `$ve
 ```javascript
 import { FlashClient } from "flash-zk";
 
-const client = new FlashClient({ secretKey: "ai_master_key" });
+const client = new FlashClient({ storagePath: "./flash_data" });
 const articles = client.collection("articles");
 
 // Insert document with an OpenAI / Gemini / Ollama vector embedding

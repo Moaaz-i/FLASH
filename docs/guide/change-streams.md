@@ -9,7 +9,7 @@ FLASH DB enables building real-time collaboration apps, chat systems, and reacti
 ```javascript
 import { FlashClient } from 'flash-zk';
 
-const client = new FlashClient({ secretKey: 'chat_secret_key' });
+const client = new FlashClient({ storagePath: "./flash_data" });
 const messages = client.collection('messages');
 
 // 1. Subscribe to all changes (or with a predicate filter)

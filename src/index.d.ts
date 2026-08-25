@@ -79,7 +79,10 @@ export interface FlashRestoreResult {
 }
 
 export interface FlashClientOptions {
-  secretKey: string | Buffer;
+  /** Master secret. Omit when `.flash-take` + `.flash-wrap` / `FLASH_WRAP_KEY` are present (1.3.0). */
+  secretKey?: string | Buffer;
+  /** Directory for `.flash-take` / `.flash-wrap` (default: process.cwd()). */
+  wrapKeyDir?: string;
   dbName?: string;
   storagePath?: string;
   /** Pure in-memory engine — no filesystem I/O. Also enabled when storagePath is ':memory:' */

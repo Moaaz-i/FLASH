@@ -10,6 +10,7 @@ import { FlashClient } from "../../src/index.mjs";
 
 const storagePath = fs.mkdtempSync(path.join(os.tmpdir(), "flash-vault-ex-"));
 
+// Demo-only inline key. Apps: flashsh wrap-key → new FlashClient({ storagePath })
 const client = new FlashClient({
   secretKey: "example_vault_key_32_chars_min!",
   storagePath,

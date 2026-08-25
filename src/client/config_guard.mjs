@@ -17,6 +17,7 @@ const CLIENT_ROOT_KEYS = new Set([
   "salt",
   "userId",
   "allowPlaintextFields",
+  "wrapKeyDir",
 ]);
 
 const DATABASE_OPTION_KEYS = new Set([

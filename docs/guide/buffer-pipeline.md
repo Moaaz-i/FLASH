@@ -29,7 +29,7 @@ Benefits:
 ```javascript
 import { FlashClient } from "flash-zk";
 
-const client = new FlashClient({ secretKey: "key", storagePath: "./data" });
+const client = new FlashClient({ storagePath: "./data" });
 const col = client.collection("users");
 
 // Normal — buffer conversion is automatic
@@ -63,7 +63,7 @@ Exported from the main package for tools, replication, and custom storage layers
 ```javascript
 import { FlashClient, FlashRecordCodec, FlashBinary } from "flash-zk";
 
-const client = new FlashClient({ secretKey: "key" });
+const client = new FlashClient({ storagePath: "./flash_data" });
 
 // Encode
 const buf = FlashRecordCodec.toBuffer(client, { name: "Test" });

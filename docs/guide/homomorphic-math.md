@@ -36,7 +36,7 @@ $$\text{PlainSum} = \left( C_{\text{total}} - \sum_{i=1}^{N} \text{Mask}_i \righ
 import { FlashClient } from 'flash-zk';
 
 const client = new FlashClient({
-  secretKey: 'your-long-random-passphrase',
+  storagePath: "./flash_data",
   fieldPolicy: {
     balance: 'counter'
   }

@@ -10,7 +10,6 @@ FLASH v1.2.5+ exposes **`engineOptions`** on `FlashClient` and `FlashDatabase` f
 import { FlashClient } from "flash-zk";
 
 const client = new FlashClient({
-  secretKey: "your-long-random-passphrase",
   storagePath: "./flash_data",
   engineOptions: {
     durability: "balanced", // strict | balanced | throughput

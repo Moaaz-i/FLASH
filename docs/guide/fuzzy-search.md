@@ -11,7 +11,7 @@ Search records even when user queries have spelling mistakes or typos:
 ```javascript
 import { FlashClient } from 'flash-zk';
 
-const client = new FlashClient({ secretKey: 'master_key' });
+const client = new FlashClient({ storagePath: "./flash_data" });
 const users = client.collection('users');
 
 // User typed "Alen Turing" with a typo

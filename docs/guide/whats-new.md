@@ -1,86 +1,72 @@
-# What's New in FLASH 1.2.0
+# What's New in FLASH 1.3.0
 
-**FLASH `1.2.0` is the current release.** It is fail-closed: insecure defaults that used to start anyway now refuse to start.
+**FLASH `1.3.0` is the current release.** It adds **developer-owned key wrapping**, an **honest trust model**, and refreshed docs — without changing the crypto primitives from 1.2.0.
 
 Full changelog: [Release Notes](/guide/release-notes).
 
----
-
-## Trust by default
-
-The engine no longer hopes you notice a missing key or an open bind. It stops.
-
-| If you…                                           | FLASH now…                                                              |
-| ------------------------------------------------- | ----------------------------------------------------------------------- |
-| Start `FlashServer` without `authKey`             | Refuses to start                                                        |
-| Bind `0.0.0.0` without `allowPublicBind: true`    | Refuses to start                                                        |
-| Connect with `uri` and no `authKey`               | Refuses to construct the client                                         |
-| Open the Intelligence Console without `token`     | Refuses to start the UI                                                 |
-| Use `fieldPolicy: plaintext` without opt-in       | Refuses — set `allowPlaintextFields: true` only if you accept that leak |
-| Use a short or well-known `secretKey` / `authKey` | Refuses (16+ bytes in apps; common weak strings are blocked)            |
-| Hit HTTP routes other than `/health`              | Requires header `x-flash-server-key`                                    |
-| Call `GET /api/docs` on the console               | Requires `allowDataExplorer: true` (off by default)                     |
-
-gRPC and replication daemons also require `authKey`. Replica sets mint a cluster key automatically.
-
-CLI:
-
-- `flash-server` listens on `127.0.0.1` and exits without `FLASH_AUTH_KEY` or `--authKey`.
-- `flash-console` requires `FLASH_MASTER_KEY` or `--key`, then prints a dashboard token (`x-flash-token`).
-
-Blind additive counters now carry an HMAC tag so tampered hex is not mixed into sums blindly.
+::: warning Security remains yours
+Key wrapping and docs do **not** move security responsibility to FLASH. There is still **no external audit**. Read [Trust Model & Audit Roadmap](/guide/trust-model) before production.
+:::
 
 ---
 
-## Speed (without weaker crypto)
+## Key wrapping (`flashsh wrap-key`)
 
-AES-256-GCM, AAD binding, and PBKDF2 (100000 iterations) are unchanged. FLASH got faster by not repeating work:
+Seal your master `secretKey` so `.flash-take` can live in git while `.flash-wrap` stays local:
 
-- **Key derivation cache** — the same passphrase + salt is stretched once per process.
-- **Lazy trash / deletion-log ciphers** — PBKDF2 for those vaults runs on first archive, not on every `FlashClient` construct.
-- **Sealed-record checks** look up `_enc` in the binary table without JSON-parsing ciphertext.
-- **New `.farc` frames (`FAR2`)** use CRC-32 for crash-recovery checksums. Document authenticity is still AES-GCM. Legacy `FARC` files still replay.
+```bash
+flashsh wrap-key
+# Done. — secrets are not printed
+```
 
----
+| File | Role |
+| ---- | ---- |
+| `.flash-wrap` | `flash_wrap_…` — **you** gitignore this in your app repo |
+| `.flash-take` | `FLASHTAKE1` + sealed master — safe to commit without the wrap file |
 
-## Still new if you are on 1.0.x — architectural zero-knowledge (1.1.0)
-
-These landed in **1.1.0** and remain the core of 1.2.0:
-
-- **`FlashZKKernel`** — network daemons reject unsealed records and plaintext query fields. The server never takes `secretKey`.
-- **SQL and GraphQL** run only through `FlashClient`. The storage engine does not evaluate those languages over plaintext.
-- **`FlashRBAC`** on `FlashServer` (`x-flash-user`) authorizes operations without reading document contents.
-- FLASH is a **standalone** encrypted database — not a sidecar to another store. `FlashClient.uri` accepts only `flash://`, `http://`, and `https://`.
-- Example: `examples/standalone-vault`.
-
-**Breaking from 1.0:** `FlashSQL.execute` and `FlashGraphQL` no longer accept `FlashDatabase`. Pass `FlashClient`.
+`FlashClient` with no `secretKey` unseals automatically when both files (or `FLASH_WRAP_KEY` + `.flash-take`) are present. **Only `FLASHTAKE1` is supported in 1.3.x.** Details: [flashsh CLI](/guide/flashsh-cli).
 
 ---
 
-## Upgrade checklist
+## Honest trust & documentation
+
+- New [Trust Model & Audit Roadmap](/guide/trust-model) — limits, SSE leakage, audit phases A→E
+- Tighter README / home copy — no “100% zero-knowledge” marketing; architectural ZK explained
+- VitePress theme refresh (server-blind branding, showcase, dark-mode fixes)
+- **198/198** tests including `key_wrap` coverage
+
+---
+
+## Still in effect from 1.2.0
+
+Fail-closed defaults unchanged:
+
+- `FlashServer` / remote `FlashClient` require strong `authKey`
+- Console requires `token`; plaintext fields require `allowPlaintextFields: true`
+- Weak secrets rejected; public bind is opt-in
+
+See [Release Notes — v1.2.0](/guide/release-notes#v1-2-0-trust-defaults-fail-closed) for the full list.
+
+---
+
+## Upgrade from 1.2.0
+
+No breaking API changes. Optional:
+
+```bash
+flashsh wrap-key --dir ./config
+echo ".flash-wrap" >> .gitignore   # in YOUR project
+```
+
+Existing `secretKey` in env/code continues to work.
 
 ```javascript
-import { FlashClient, FlashServer } from "flash-zk";
+import { FlashClient } from "flash-zk";
 
 const client = new FlashClient({
-  secretKey: process.env.FLASH_MASTER_SECRET, // 16+ unique bytes
   storagePath: "./flash_data",
-});
-
-const server = FlashServer.start({
-  port: 6742,
-  host: "127.0.0.1",
-  storagePath: "/var/data/flash",
-  authKey: process.env.FLASH_AUTH_KEY, // required
-});
-
-client.openDashboard({
-  port: 3456,
-  token: process.env.FLASH_CONSOLE_TOKEN, // required
-  // allowDataExplorer: true, // only if you need HTTP document listing
+  wrapKeyDir: "./config", // optional
 });
 ```
 
-Remote clients must send the same `authKey` used by the daemon (`x-flash-server-key` on HTTP).
-
-This is fail-closed engineering, not a zk-SNARK suite or an external pentest. Limits and the public audit roadmap: [Trust Model](/guide/trust-model). Related primitives: [Zero-Knowledge Security](/guide/zero-knowledge-security).
+Limits and audit roadmap: [Trust Model](/guide/trust-model).

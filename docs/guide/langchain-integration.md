@@ -18,7 +18,6 @@ npm install flash-zk
 import { FlashClient } from "flash-zk";
 
 const client = new FlashClient({
-  secretKey: process.env.FLASH_MASTER_KEY,
   storagePath: "./flash_data",
 });
 
@@ -119,7 +118,7 @@ Bulk document ingest benefits from batch durability:
 
 ```javascript
 const client = new FlashClient({
-  secretKey: "key",
+  storagePath: "./flash_data",
   engineOptions: {
     durability: "balanced",
   },

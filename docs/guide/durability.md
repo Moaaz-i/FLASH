@@ -37,7 +37,7 @@ Client Request → WAL Frame(s) → fsync (mode-dependent) → MemTable Update �
 import { FlashClient } from "flash-zk";
 
 const client = new FlashClient({
-  secretKey: "your-key",
+  storagePath: "./flash_data",
   engineOptions: { durability: "strict" }, // max safety
 });
 

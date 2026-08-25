@@ -1,21 +1,24 @@
 # FLASH Examples
 
-FLASH is a **standalone** zero-knowledge encrypted intelligence database. These examples use only FLASH — no other database product.
+Runnable demos use **inline demo keys** so you can copy-paste without setup.
 
-| Example                                         | What it demonstrates                          |
-| ----------------------------------------------- | --------------------------------------------- |
-| [standalone-vault](./standalone-vault/)         | Local sealed vault; engine never sees secrets |
-| [private-rag-cli](./private-rag-cli/)           | Ingest text → semantic ask (server-blind RAG) |
-| [agent-memory-bot](./agent-memory-bot/)         | Encrypted episodic agent memory               |
-| [sealed-vault-secrets](./sealed-vault-secrets/) | Passphrase-sealed secret vault                |
-
-## Run from repo root
+**In your app (1.3.0+):** do not hardcode secrets — use:
 
 ```bash
-node examples/standalone-vault/index.mjs
-node examples/private-rag-cli/index.mjs
-node examples/agent-memory-bot/index.mjs
-node examples/sealed-vault-secrets/index.mjs
+flashsh wrap-key
 ```
 
-Each example uses a temp directory and cleans up on exit.
+```javascript
+import { FlashClient } from "flash-zk";
+
+const client = new FlashClient({ storagePath: "./flash_data" });
+```
+
+See [flashsh CLI](https://moaaz-i.github.io/FLASH/guide/flashsh-cli) and [Trust Model](https://moaaz-i.github.io/FLASH/guide/trust-model).
+
+| Example                                         | Run                                            |
+| ----------------------------------------------- | ---------------------------------------------- |
+| [private-rag-cli](./private-rag-cli/)           | `node examples/private-rag-cli/index.mjs`      |
+| [agent-memory-bot](./agent-memory-bot/)         | `node examples/agent-memory-bot/index.mjs`     |
+| [sealed-vault-secrets](./sealed-vault-secrets/) | `node examples/sealed-vault-secrets/index.mjs` |
+| [standalone-vault](./standalone-vault/)         | `node examples/standalone-vault/index.mjs`     |

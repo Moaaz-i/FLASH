@@ -2,9 +2,24 @@
 
 What changed in recent FLASH releases and how to adopt it in your apps.
 
-**Current version:** `1.2.0` · **Tests:** 194/194
+**Current version:** `1.3.0` · **Tests:** 198/198
 
-**[What's new in 1.2.0](/guide/whats-new)** — fail-closed auth, bind, console, and plaintext policy. If you are upgrading from 1.0.x, also read the 1.1.0 kernel changes below.
+**[What's new in 1.3.0](/guide/whats-new)** — key wrapping (`FLASHTAKE1`), trust model, docs refresh. Previous: [v1.2.0 fail-closed defaults](#v1-2-0-trust-defaults-fail-closed).
+
+---
+
+## v1.3.0 — Key wrapping & earned trust
+
+Developer-owned secret handling and honest public positioning — **no change to AES-256-GCM / PBKDF2 / fail-closed server defaults from 1.2.0**.
+
+- **`flashsh wrap-key`** — generates `flash_wrap_…` → `.flash-wrap`, seals master → `.flash-take` (`FLASHTAKE1` only). Secrets never printed.
+- **`FlashClient`** — optional auto-unseal via `.flash-take` + `.flash-wrap` or `FLASH_WRAP_KEY` (`wrapKeyDir` option).
+- **`src/security/key_wrap.mjs`** — seal/unseal API exported from `flash-zk`.
+- **[Trust Model](/guide/trust-model)** — limits, SSE leakage, public audit roadmap (Phases A→E).
+- **Docs** — tightened marketing claims; VitePress theme; [flashsh CLI](/guide/flashsh-cli) key-format spec.
+- **Tests:** 198/198 (includes `tests/key_wrap.test.mjs`).
+
+Security responsibility remains with the integrator. Key wrapping is operational convenience, not a certification.
 
 ---
 
@@ -18,7 +33,7 @@ Network and key handling now refuse insecure configurations instead of hoping th
 - **Intelligence Console requires `token`.** Document explorer (`GET /api/docs`) is off unless `allowDataExplorer: true`.
 - **`fieldPolicy: plaintext` requires `allowPlaintextFields: true`.**
 - **gRPC and replication daemons require `authKey`.** Replica sets generate a cluster key automatically.
-- **CLI**: `flash-server` defaults to `127.0.0.1` and exits without `FLASH_AUTH_KEY` / `--authKey`. `flash-console` requires `FLASH_MASTER_KEY` and prints a dashboard token.
+- **CLI**: `flash-server` defaults to `127.0.0.1` and exits without `FLASH_AUTH_KEY` / `--authKey`. `flash-console` accepts `flashsh wrap-key` files or `FLASH_MASTER_KEY` / `--key`, then prints a dashboard token.
 - Blind counters carry an HMAC tag so tampered hex is not mixed into sums blindly.
 - **Performance (crypto unchanged):** in-process PBKDF2 cache, lazy trash/deletion ciphers, `_enc` checks without JSON-parsing ciphertext, FAR2 CRC-32 WAL checksums (AES-GCM still authenticates records). Legacy FARC files still recover.
 
@@ -197,7 +212,7 @@ Minimal on-disk footprint — use for bulk archives and non-searchable payloads:
 
 ```javascript
 const client = new FlashClient({
-  secretKey: "key",
+  storagePath: "./flash_data",
   storageProfile: "compact",
   fieldPolicy: {
     title: "exact", // equality search only
@@ -293,22 +308,27 @@ See [Positioning & Identity](/guide/positioning).
 4. **Enable timestamps**: default on — pass `autoTimestamps: false` to disable.
 5. **Run tests** after upgrade; 146 tests cover buffer + remote + foundations paths.
 
-### Recommended client setup (2026)
+### Recommended client setup (1.3.0)
+
+```bash
+flashsh wrap-key
+```
 
 ```javascript
 import { FlashClient } from "flash-zk";
 
 const client = new FlashClient({
-  secretKey: process.env.FLASH_SECRET_KEY,
   storagePath: "./data",
   engineOptions: { durability: "balanced" },
   autoTimestamps: true,
 });
+```
 
 // Foundations
 client.maintenance({ autoStart: true });
 const log = client.eventLog("events");
 const jobs = client.queue("tasks");
+
 ```
 
 ---
@@ -320,3 +340,4 @@ const jobs = client.queue("tasks");
 - [FlashClient API](/api/flash-client)
 - [Client-Server Mode](/guide/client-server)
 - [TypeScript Support](/guide/typescript)
+```

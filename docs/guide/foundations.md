@@ -10,7 +10,6 @@ FLASH ships **cross-domain primitives** on top of the core database. Use the sam
 import { FlashClient } from "flash-zk";
 
 const client = new FlashClient({
-  secretKey: "your-long-random-passphrase",
   storagePath: "./data",
   engineOptions: { durability: "balanced" },
 });
@@ -188,7 +187,7 @@ Enabled by default (`autoTimestamps: true`):
 
 ```javascript
 // inserts get createdAt + updatedAt automatically
-const client = new FlashClient({ secretKey: "key", autoTimestamps: false });
+const client = new FlashClient({ storagePath: "./flash_data" });
 ```
 
 ---
@@ -217,7 +216,7 @@ For benchmarks, tests, or ephemeral workloads:
 
 ```javascript
 const client = new FlashClient({
-  secretKey: "key",
+  storagePath: "./flash_data",
   inMemory: true, // or storagePath: ':memory:'
   engineOptions: {
     performanceProfile: "turbo", // throughput + large memtable + no Merkle
@@ -245,7 +244,7 @@ Remote server batch insert: `POST /api/v1/insertMany/:collection` with `{ encryp
 
 ```javascript
 const client = new FlashClient({
-  secretKey: "key",
+  storagePath: "./flash_data",
   storageProfile: "compact",
   fieldPolicy: {
     email: "exact",

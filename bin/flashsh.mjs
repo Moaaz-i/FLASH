@@ -2,7 +2,13 @@
 import repl from "node:repl";
 import path from "node:path";
 import fs from "node:fs";
-import { FlashClient, logger } from "../src/index.mjs";
+import {
+  FlashClient,
+  logger,
+  writeWrappedKeyFiles,
+  FLASH_WRAP_FILENAME,
+  FLASH_TAKE_FILENAME,
+} from "../src/index.mjs";
 
 const BANNER = `
 \u001b[35m\u001b[1m
@@ -15,20 +21,25 @@ const BANNER = `
 const args = process.argv.slice(2);
 let uri = null;
 let storagePath = "./flash_data";
-let secretKey = "flash_master_key_default";
+let secretKey = null;
 let quiet = false;
+let force = false;
+let wrapDir = process.cwd();
 let command = null;
 
 for (let i = 0; i < args.length; i++) {
   if (args[i] === "--uri" && args[i + 1]) uri = args[++i];
-  if (args[i] === "--storage" && args[i + 1]) storagePath = args[++i];
-  if (args[i] === "--key" && args[i + 1]) secretKey = args[++i];
-  if (args[i] === "--quiet" || args[i] === "-q") quiet = true;
-  if (
+  else if (args[i] === "--storage" && args[i + 1]) storagePath = args[++i];
+  else if (args[i] === "--key" && args[i + 1]) secretKey = args[++i];
+  else if (args[i] === "--dir" && args[i + 1]) wrapDir = args[++i];
+  else if (args[i] === "--quiet" || args[i] === "-q") quiet = true;
+  else if (args[i] === "--force" || args[i] === "-f") force = true;
+  else if (
     args[i] === "ask" ||
     args[i] === "ingest" ||
     args[i] === "proof" ||
-    args[i] === "init"
+    args[i] === "init" ||
+    args[i] === "wrap-key"
   ) {
     command = args[i];
   }
@@ -38,9 +49,49 @@ if (command || quiet || process.env.FLASH_LOG_LEVEL === undefined) {
   logger.setLevel(process.env.FLASH_LOG_LEVEL || (command ? "error" : "info"));
 }
 
-const client = new FlashClient({ uri, storagePath, secretKey });
+function createClient() {
+  const opts = { uri, storagePath, wrapKeyDir: wrapDir };
+  if (secretKey) opts.secretKey = secretKey;
+  // If no --key, FlashClient resolves .flash-take + .flash-wrap automatically.
+  return new FlashClient(opts);
+}
 
-async function runInit() {
+async function runWrapKey() {
+  const result = writeWrappedKeyFiles({
+    dir: wrapDir,
+    secretKey: secretKey || undefined,
+    force,
+  });
+  console.log("Done.");
+  console.log("");
+  console.log("  SECURITY (v1.3.0): You are fully responsible for key storage,");
+  console.log("  backups, .gitignore, and CI secrets. FLASH does not audit this flow.");
+  console.log("");
+  console.log("  KEY FORMAT (this release only):");
+  console.log(`    ${FLASH_WRAP_FILENAME}  → one line: flash_wrap_<base64url>`);
+  console.log(`    ${FLASH_TAKE_FILENAME}  → line 1: FLASHTAKE1, line 2: sealed blob`);
+  console.log("    Other formats are rejected. Docs: /guide/flashsh-cli");
+  console.log("");
+  console.log("  FILES:");
+  console.log(
+    `    ${FLASH_WRAP_FILENAME}  → keep private (your .gitignore / FLASH_WRAP_KEY)`,
+  );
+  console.log(`    ${FLASH_TAKE_FILENAME}  → sealed master (ok to commit without wrap)`);
+  console.log(`    ${result.wrapPath}`);
+  console.log(`    ${result.takePath}`);
+  if (result.generatedSecretKey) {
+    console.log("");
+    console.log(
+      "  Master secret was generated as flash_master_… and sealed (not printed).",
+    );
+    console.log("  Back up .flash-wrap — lost wrap key = unrecoverable .flash-take.");
+  }
+  console.log("");
+  console.log("  Never print or commit .flash-wrap.");
+  process.exit(0);
+}
+
+async function runInit(client) {
   const resolved = path.resolve(storagePath);
   fs.mkdirSync(resolved, { recursive: true });
 
@@ -75,13 +126,23 @@ Next steps:
 }
 
 async function runCommand() {
+  if (command === "wrap-key") {
+    await runWrapKey();
+    return;
+  }
+
+  const client = createClient();
+
   if (command === "init") {
-    await runInit();
+    await runInit(client);
     return;
   }
 
   if (command === "ask") {
-    const question = args.slice(args.indexOf("ask") + 1).join(" ").trim();
+    const question = args
+      .slice(args.indexOf("ask") + 1)
+      .join(" ")
+      .trim();
     if (!question) {
       console.error('Usage: flashsh ask "your question"');
       console.error("Tip: run flashsh init first, or flashsh ingest mydoc.txt");
@@ -94,11 +155,15 @@ async function runCommand() {
     if (!answer.contextPack || answer.sources.length === 0) {
       console.log("(no matching knowledge found)");
       console.log("");
-      console.log("The private RAG collection is empty or has no relevant chunks.");
+      console.log(
+        "The private RAG collection is empty or has no relevant chunks.",
+      );
       console.log("Add knowledge first:");
       console.log("  flashsh init");
       console.log("  flashsh ingest ./my-notes.txt");
-      console.log("  echo 'FLASH is encrypted intelligence storage' | flashsh ingest -");
+      console.log(
+        "  echo 'FLASH is encrypted intelligence storage' | flashsh ingest -",
+      );
       console.log("");
       console.log(`Storage: ${storagePath}  |  Collection: cli_knowledge`);
       await client.close();
@@ -162,12 +227,13 @@ async function runCommand() {
   console.log(`Connected: ${uri ? `Remote (${uri})` : `Embedded (${storagePath})`}
 
 CLI:
+  flashsh wrap-key               # create .flash-wrap + sealed .flash-take
   flashsh init                   # bootstrap workspace + sample RAG
   flashsh ingest notes.txt       # add knowledge to private RAG
   flashsh ask "your question"    # semantic search over ingested docs
   flashsh proof collectionName   # integrity proof
 
-Options: --storage ./data  --key secret  --quiet
+Options: --storage ./data  --key secret  --dir .  --force  --quiet
 REPL: help() | client.privateRAG() | client.agentMemory()
 `);
 
@@ -190,6 +256,5 @@ REPL: help() | client.privateRAG() | client.agentMemory()
 
 runCommand().catch(async (err) => {
   console.error(err.message || err);
-  await client.close().catch(() => {});
   process.exit(1);
 });

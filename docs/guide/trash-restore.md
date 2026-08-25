@@ -32,7 +32,6 @@ restoreOne(docId)  →  read trash  →  insertOne  →  remove from trash
 import { FlashClient } from "flash-zk";
 
 const client = new FlashClient({
-  secretKey: "your-key",
   storagePath: "./data",
 });
 
@@ -92,7 +91,6 @@ Trash is **enabled by default** on disk-backed databases. Tune limits via `engin
 
 ```javascript
 const client = new FlashClient({
-  secretKey: "your-key",
   storagePath: "./data",
   engineOptions: {
     trash: {
@@ -195,7 +193,6 @@ Enable when you want a durable activity feed without keeping full deleted docume
 
 ```javascript
 const client = new FlashClient({
-  secretKey: "your-key",
   storagePath: "./data",
   engineOptions: {
     deletionLog: {

@@ -42,7 +42,7 @@ export class FlashExplain {
       },
       serverInfo: {
         engine: "FLASH Zero-Knowledge DBMS",
-        version: "1.2.0",
+        version: "1.3.0",
       },
     };
   }

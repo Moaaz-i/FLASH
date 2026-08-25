@@ -21,7 +21,6 @@ FLASH DB ships **FLASH Intelligence Console** — a local web UI for encrypted i
 import { FlashClient } from "flash-zk";
 
 const client = new FlashClient({
-  secretKey: "master_passphrase",
   storagePath: "./flash_data",
 });
 

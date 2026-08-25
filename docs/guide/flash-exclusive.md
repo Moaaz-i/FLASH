@@ -38,7 +38,6 @@ All modules are available from `FlashClient` or direct imports from `flash-zk`.
 import { FlashClient } from 'flash-zk';
 
 const client = new FlashClient({
-  secretKey: 'your-long-random-passphrase',
   storagePath: './flash_data',
 });
 

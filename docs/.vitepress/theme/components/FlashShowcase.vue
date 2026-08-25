@@ -24,9 +24,9 @@ const pillars = [
     linkText: "Private RAG",
   },
   {
-    label: "Fail-closed 1.2.0",
+    label: "Fail-closed 1.3.0",
     title: "Trust by default",
-    body: "authKey, console tokens, and strong secrets are mandatory. Public bind and plaintext fields are explicit opt-ins. No external audit yet — roadmap published.",
+    body: "authKey, console tokens, and strong secrets are mandatory since 1.2.0. Key wrap (FLASHTAKE1) in 1.3.0 — security still on you. No external audit yet.",
     link: "/guide/whats-new",
     linkText: "What's new",
   },
@@ -196,7 +196,7 @@ onUnmounted(() => {
           <a
             class="flash-btn flash-btn--ghost"
             :href="withBase('/guide/whats-new')"
-            >What's New in 1.2.0</a
+            >What's New in 1.3.0</a
           >
         </div>
       </div>

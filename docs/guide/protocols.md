@@ -33,7 +33,6 @@ Execute GraphQL-shaped queries through **FlashClient**. The engine returns seale
 import { FlashClient, FlashGraphQL } from "flash-zk";
 
 const client = new FlashClient({
-  secretKey: "your-long-random-passphrase",
   storagePath: "./data",
 });
 const gql = new FlashGraphQL(client);

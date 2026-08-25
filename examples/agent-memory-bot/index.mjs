@@ -10,6 +10,7 @@ import { FlashClient } from "../../src/index.mjs";
 
 const storagePath = fs.mkdtempSync(path.join(os.tmpdir(), "flash-mem-ex-"));
 
+// Demo-only inline key. Apps: flashsh wrap-key → new FlashClient({ storagePath })
 const client = new FlashClient({
   secretKey: "example_memory_key_32_chars_min!",
   storagePath,
@@ -20,7 +21,10 @@ try {
 
   const memory = client.agentMemory("demo_bot");
 
-  await memory.remember("User name is Moaaz", { importance: 2, tags: ["profile"] });
+  await memory.remember("User name is Moaaz", {
+    importance: 2,
+    tags: ["profile"],
+  });
   await memory.remember("User prefers Arabic for explanations", {
     importance: 2.5,
     tags: ["preference"],
@@ -38,7 +42,9 @@ try {
 
   console.log("Semantic recall for: What language does the user like?\n");
   for (const item of recalled) {
-    console.log(`  • ${item.content} (score: ${item.score?.toFixed(3) ?? "—"})`);
+    console.log(
+      `  • ${item.content} (score: ${item.score?.toFixed(3) ?? "—"})`,
+    );
   }
 } finally {
   await client.close();

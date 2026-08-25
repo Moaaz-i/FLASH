@@ -9,6 +9,7 @@ import path from "node:path";
 import { FlashClient } from "../../src/client/flash_client.mjs";
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "flash-standalone-vault-"));
+// Demo-only inline key. Apps: flashsh wrap-key → new FlashClient({ storagePath })
 const flash = new FlashClient({
   secretKey: "device-only-key-never-leaves-this-process",
   storagePath: tmp,

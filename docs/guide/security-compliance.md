@@ -58,3 +58,23 @@ const masked = FlashDataMasker.maskDocument(
 console.log(masked.email); // 'j******e@company.com'
 console.log(masked.card); // '****-****-****-4444'
 ```
+
+---
+
+## 4. Key wrapping (`.flash-wrap` / `.flash-take`)
+
+Seal the master `secretKey` under a local wrap key so the sealed blob can live in git.
+
+::: warning Your responsibility (v1.3.0)
+Key wrapping is a **developer convenience**, not a security certification. You must gitignore `.flash-wrap` in **your** project, rotate keys, and protect CI secrets. Only format **`FLASHTAKE1`** is supported in this release.
+:::
+
+```bash
+npx flashsh wrap-key
+# Done. — secrets are not printed
+```
+
+- **`.flash-wrap`** — `flash_wrap_…` (keep out of git in **your** project; or `FLASH_WRAP_KEY` in CI)
+- **`.flash-take`** — `FLASHTAKE1` + AES-GCM sealed master — commit-safe without the wrap file
+
+Full CLI flow: [flashsh CLI](/guide/flashsh-cli).

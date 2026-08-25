@@ -6,14 +6,14 @@
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-3178c6.svg)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/Tests-194%2F194%20Passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-198%2F198%20Passing-brightgreen.svg)]()
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![Docs](https://img.shields.io/badge/Docs-VitePress-blue.svg)](https://moaaz-i.github.io/FLASH/)
 [![npm version](https://img.shields.io/npm/v/flash-zk.svg)](https://www.npmjs.com/package/flash-zk)
 
 _Architectural zero-knowledge: sealed envelopes and blind indexes so the engine is designed not to hold your keys or plaintext. Built for private AI and local-first apps._
 
-**[What's new in 1.2.0](https://moaaz-i.github.io/FLASH/guide/whats-new)** · **[Trust model & audit roadmap](https://moaaz-i.github.io/FLASH/guide/trust-model)** · **[Release Notes](https://moaaz-i.github.io/FLASH/guide/release-notes)** · **[Positioning](https://moaaz-i.github.io/FLASH/guide/positioning)** · **[5-Min Start](https://moaaz-i.github.io/FLASH/guide/getting-started#intelligence-in-5-minutes)**
+**[What's new in 1.3.0](https://moaaz-i.github.io/FLASH/guide/whats-new)** · **[Trust model & audit roadmap](https://moaaz-i.github.io/FLASH/guide/trust-model)** · **[Release Notes](https://moaaz-i.github.io/FLASH/guide/release-notes)** · **[Positioning](https://moaaz-i.github.io/FLASH/guide/positioning)** · **[5-Min Start](https://moaaz-i.github.io/FLASH/guide/getting-started#intelligence-in-5-minutes)**
 
 </div>
 
@@ -45,17 +45,21 @@ _Architectural zero-knowledge: sealed envelopes and blind indexes so the engine 
 
 ---
 
-## What's new in 1.2.0
+## What's new in 1.3.0
 
-FLASH **fails closed**. Setups that used to start without keys or with public binds now refuse to start.
+Key wrapping for app repos, honest trust docs, and refreshed VitePress site. **Fail-closed defaults from 1.2.0 unchanged.**
 
-- **`FlashServer` / gRPC / replication** require a strong `authKey`. Binding `0.0.0.0` also requires `allowPublicBind: true`. Only `/health` is unauthenticated.
-- **Remote `FlashClient.uri`** requires `authKey`. The Intelligence Console requires `token`. `GET /api/docs` stays off unless `allowDataExplorer: true`.
-- **Weak or short secrets** are rejected. `fieldPolicy: plaintext` needs `allowPlaintextFields: true`.
-- **CLI:** `flash-server` needs `FLASH_AUTH_KEY`; `flash-console` needs `FLASH_MASTER_KEY` and prints `x-flash-token`.
-- From **1.1.0:** `FlashZKKernel` keeps plaintext off the wire; SQL/GraphQL take `FlashClient` only.
+- **`flashsh wrap-key`** — `.flash-wrap` (local) + `.flash-take` (`FLASHTAKE1`, commit-safe). See [flashsh CLI](https://moaaz-i.github.io/FLASH/guide/flashsh-cli).
+- **[Trust model](https://moaaz-i.github.io/FLASH/guide/trust-model)** — limits, audit roadmap, no absolute marketing claims.
+- **198/198 tests** including key-wrap coverage.
 
-[Full announcement](https://moaaz-i.github.io/FLASH/guide/whats-new) · [Release notes](https://moaaz-i.github.io/FLASH/guide/release-notes)
+Still from **1.2.0:**
+
+- **`FlashServer` / gRPC / replication** require a strong `authKey`. Public bind is opt-in.
+- **Remote `FlashClient.uri`** requires `authKey`. Console requires `token`.
+- **Weak secrets** and accidental plaintext fields are rejected unless explicitly opted in.
+
+[Full 1.2.0 notes](https://moaaz-i.github.io/FLASH/guide/release-notes#v1-2-0-trust-defaults-fail-closed)
 
 ---
 
@@ -96,12 +100,14 @@ npm install flash-zk
 
 ## ⚡ Quick Start
 
+```bash
+flashsh wrap-key   # once — .flash-wrap (local) + .flash-take (commit OK)
+```
+
 ```typescript
 import { FlashClient } from "flash-zk";
 
-// 1. Initialize Client with Master Secret Key
 const client = new FlashClient({
-  secretKey: "quantum_production_passphrase_2026",
   storagePath: "./flash_data",
 });
 

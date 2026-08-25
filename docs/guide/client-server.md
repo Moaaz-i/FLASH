@@ -54,7 +54,6 @@ const client = new FlashClient({
   authKey: "my_cluster_secret_token",
 
   // Master decryption key stays on the client application!
-  secretKey: process.env.FLASH_MASTER_SECRET,
 });
 
 const users = client.collection("users");

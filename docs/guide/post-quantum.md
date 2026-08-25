@@ -12,7 +12,7 @@ This is **not** NIST ML-KEM / Kyber. Key agreement in `FlashPQC` uses **ECDH on 
 import { FlashClient } from "flash-zk";
 
 const client = new FlashClient({
-  secretKey: "long_passphrase_never_reused",
+  storagePath: "./flash_data",
   pqcHardened: true,
 });
 ```

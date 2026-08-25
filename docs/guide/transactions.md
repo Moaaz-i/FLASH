@@ -9,7 +9,7 @@ For mission-critical fintech, banking, and inventory systems, FLASH DB provides 
 ```javascript
 import { FlashClient } from 'flash-zk';
 
-const client = new FlashClient({ secretKey: 'fintech_master_key' });
+const client = new FlashClient({ storagePath: "./flash_data" });
 const accounts = client.collection('accounts');
 const ledger = client.collection('audit_ledger');
 

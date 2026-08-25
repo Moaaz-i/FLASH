@@ -12,6 +12,7 @@ import { FlashClient } from "../../src/index.mjs";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const storagePath = fs.mkdtempSync(path.join(os.tmpdir(), "flash-rag-ex-"));
 
+// Demo-only inline key. Apps: flashsh wrap-key → new FlashClient({ storagePath })
 const client = new FlashClient({
   secretKey: "example_rag_key_32_chars_minimum!",
   storagePath,

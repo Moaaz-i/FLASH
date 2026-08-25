@@ -4,7 +4,37 @@
 
 It is **not** a generic document store with encryption added later. Every layer — storage (`.farc`, `FlashBinary`), indexing (blind trapdoors, ORE), and query — is designed so the engine holds sealed data rather than plaintext.
 
-> **Latest: [What's new in 1.2.0](/guide/whats-new)** — fail-closed `authKey` / `token`, no weak secrets, plaintext fields opt-in. Read [Trust Model](/guide/trust-model) before production. Also: [Positioning](/guide/positioning) and [Why Server-Blind AI Storage](/guide/why-server-blind-ai).
+> **Latest: [What's new in 1.3.0](/guide/whats-new)** — key wrapping (`FLASHTAKE1`), trust model, docs refresh. Fail-closed defaults from 1.2.0 still apply. Read [Trust Model](/guide/trust-model) before production.
+
+---
+
+## Master key (1.3.0 — recommended)
+
+Do **not** paste master secrets in source when you can seal them once:
+
+```bash
+flashsh wrap-key              # .flash-wrap (your .gitignore) + .flash-take (commit OK)
+echo ".flash-wrap" >> .gitignore
+```
+
+```javascript
+import { FlashClient } from "flash-zk";
+
+const client = new FlashClient({
+  storagePath: "./flash_data",
+  // wrapKeyDir: "./config", // optional; default is process.cwd()
+});
+```
+
+**Alternative** — explicit secret (env, secret manager), never hardcoded:
+
+```javascript
+const client = new FlashClient({
+  storagePath: "./flash_data",
+});
+```
+
+Details: [flashsh CLI](/guide/flashsh-cli) · [Trust Model](/guide/trust-model).
 
 ---
 
@@ -12,13 +42,15 @@ It is **not** a generic document store with encryption added later. Every layer 
 
 The fastest path to FLASH's identity — **Private RAG → Agent Memory → Sealed Vault**:
 
+```bash
+flashsh wrap-key    # once, in your project root
+flashsh init
+```
+
 ```javascript
 import { FlashClient } from "flash-zk";
 
-const client = new FlashClient({
-  secretKey: "my_super_secret_master_passphrase_2026",
-  storagePath: "./flash_data",
-});
+const client = new FlashClient({ storagePath: "./flash_data" });
 
 // 1. Private RAG — ingest & ask (server-blind)
 const rag = client.privateRAG("knowledge");
@@ -45,12 +77,13 @@ await client.close();
 **CLI equivalent:**
 
 ```bash
-flashsh init                          # bootstrap local intelligence workspace
-flashsh ingest ./notes.txt            # add to private RAG
-flashsh ask "what did I ingest?"      # semantic retrieval
+flashsh wrap-key                    # seal keys (once)
+flashsh init                        # bootstrap local intelligence workspace
+flashsh ingest ./notes.txt          # add to private RAG
+flashsh ask "what did I ingest?"    # semantic retrieval
 ```
 
-**Web UI:** `FLASH_MASTER_KEY=... npx flash-console` → [Intelligence Console](/guide/intelligence-console) (a dashboard token is printed; send it as `x-flash-token`).
+**Web UI:** run `flashsh wrap-key` first, then `npx flash-console` → [Intelligence Console](/guide/intelligence-console) (dashboard token printed as `x-flash-token`).
 
 ---
 
@@ -58,7 +91,7 @@ flashsh ask "what did I ingest?"      # semantic retrieval
 
 ```javascript
 const client = new FlashClient({
-  secretKey: "key",
+  storagePath: "./flash_data",
   engineOptions: {
     durability: "balanced", // strict | balanced | throughput
     memtableThreshold: 4 * 1024 * 1024,
@@ -90,9 +123,8 @@ Ensure your `package.json` specifies `"type": "module"`.
 import { FlashClient } from "flash-zk";
 
 const client = new FlashClient({
-  secretKey: "my_super_secret_master_passphrase_2026", // Master 256-bit encryption key
-  dbName: "production_db", // Database namespace
-  storagePath: "./flash_data", // Storage directory for WAL & SSTables
+  dbName: "production_db",
+  storagePath: "./flash_data",
 });
 ```
 

@@ -21,7 +21,6 @@ The storage engine never evaluates SQL over plaintext.
 import { FlashClient, FlashSQL } from "flash-zk";
 
 const client = new FlashClient({
-  secretKey: "your-long-random-passphrase",
   storagePath: "./data",
 });
 

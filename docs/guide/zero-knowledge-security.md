@@ -148,7 +148,7 @@ Enable PQC-hardened key derivation for post-quantum protection:
 
 ```js
 const client = new FlashClient({
-  secretKey: "your-long-random-passphrase",
+  storagePath: "./flash_data",
   pqcHardened: true, // Uses FlashPQC.deriveQuantumHardenedKey()
 });
 ```

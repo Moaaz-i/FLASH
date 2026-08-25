@@ -6,10 +6,12 @@ The `FlashClientCollection` class provides a fluent document DB interface for ex
 
 ## Getting a Collection
 
+After `flashsh wrap-key` in your project (recommended), or with `secretKey` / env:
+
 ```javascript
 import { FlashClient } from "flash-zk";
 
-const client = new FlashClient({ secretKey: "your-long-random-passphrase" });
+const client = new FlashClient({ storagePath: "./flash_data" });
 
 // Synchronous creation/access
 const collection = client.collection("collection_name");

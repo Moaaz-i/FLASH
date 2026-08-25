@@ -6,14 +6,15 @@ FLASH aims for **earned trust**, not absolute claims. This page states what the 
 
 ## What you can verify today
 
-| Signal                         | Status                                                                 |
-| ------------------------------ | ---------------------------------------------------------------------- |
-| Open source (Apache-2.0)       | Yes — full engine and crypto path are readable                         |
-| Automated tests                | Yes — run `npm test` (suite size published on the README badge)        |
-| Fail-closed defaults (1.2.0)   | Yes — missing/`weak` secrets, open binds, and plaintext fields refuse  |
+| Signal                         | Status                                                                                       |
+| ------------------------------ | -------------------------------------------------------------------------------------------- |
+| Open source (Apache-2.0)       | Yes — full engine and crypto path are readable                                               |
+| Automated tests                | Yes — run `npm test` (suite size published on the README badge)                              |
+| Fail-closed defaults (since 1.2.0) | Yes — missing/`weak` secrets, open binds, and plaintext fields refuse                        |
+| Key wrapping (`FLASHTAKE1`, 1.3.0) | Yes — `flashsh wrap-key`; security still on the integrator                                   |
 | Architectural blind storage    | Yes — sealed envelopes + trapdoors; see [Zero-Knowledge Security](./zero-knowledge-security) |
-| Independent security audit     | **Not yet** — see roadmap below                                        |
-| Formal zk-SNARK / proof system | **No** — FLASH does not claim circuit proofs                           |
+| Independent security audit     | **Not yet** — see roadmap below                                                              |
+| Formal zk-SNARK / proof system | **No** — FLASH does not claim circuit proofs                                                 |
 
 ---
 
@@ -33,24 +34,25 @@ It does **not** mean:
 
 Be explicit with yourself and your users:
 
-1. **Client compromise = data compromise.** Whoever holds `secretKey` (or a derived tenant key) can decrypt. Protect the keyholder like a root of trust.
+1. **Client compromise = data compromise.** Whoever holds `secretKey` (or a derived tenant key) can decrypt. Protect the keyholder like a root of trust. Prefer sealing the master key with [`flashsh wrap-key`](./flashsh-cli) (`.flash-take` + local `.flash-wrap`) so the wrap secret never ships to npm.
 2. **Searchable encryption leaks patterns.** Exact trapdoors, n-grams, bucket/ORE range tokens, and honey padding reduce — but do not eliminate — frequency and range leakage.
 3. **Metadata is visible.** Record IDs, collection names, sizes, timing, and network auth headers are not hidden by envelope encryption.
 4. **The Intelligence Console holds the key.** It is a local privileged client, not a blind remote admin.
 5. **Opt-in plaintext is possible.** `allowPlaintextFields` and related flags exist for migration — using them weakens the model by design.
 6. **No external audit yet.** Production use with regulated or high-value data should wait for independent review or your own assessment.
-7. **Performance claims are workload-specific.** “1M+ ops/sec” on marketing pages refers to **FlashBinary field lookup** paths — not full encrypted insert+index+fsync. Prefer [Benchmarks](/api/benchmarks).
+7. **Key wrapping is on you.** `flashsh wrap-key` uses **`FLASHTAKE1` only** (see [flashsh CLI](./flashsh-cli)). You must protect `.flash-wrap` / `FLASH_WRAP_KEY` in your project — FLASH does not gitignore it for you.
+8. **Performance claims are workload-specific.** “1M+ ops/sec” on marketing pages refers to **FlashBinary field lookup** paths — not full encrypted insert+index+fsync. Prefer [Benchmarks](/api/benchmarks).
 
 ---
 
 ## Honest positioning for adopters
 
-| Audience                         | Reasonable expectation                                      |
-| -------------------------------- | ----------------------------------------------------------- |
-| Prototypes / local-first apps    | Suitable to evaluate now                                    |
-| Private RAG experiments          | Suitable with known SSE leakage                             |
-| Regulated production (HIPAA/etc.) | Requires your threat model + preferably external audit     |
-| “Guaranteed unbreakable privacy” | **Not** what FLASH claims                                   |
+| Audience                          | Reasonable expectation                                 |
+| --------------------------------- | ------------------------------------------------------ |
+| Prototypes / local-first apps     | Suitable to evaluate now                               |
+| Private RAG experiments           | Suitable with known SSE leakage                        |
+| Regulated production (HIPAA/etc.) | Requires your threat model + preferably external audit |
+| “Guaranteed unbreakable privacy”  | **Not** what FLASH claims                              |
 
 Compliance helper APIs (audit vault, GDPR export, masking) are **tools**, not a certificate that your deployment is SOC 2 or HIPAA compliant.
 
@@ -62,7 +64,7 @@ Compliance helper APIs (audit vault, GDPR export, masking) are **tools**, not a 
 | ----- | -------------------------------------------------------------------- | ----------- |
 | **A** | Threat model doc + this trust page + tightened public claims         | **Current** |
 | **B** | Crypto/surface inventory (cipher, SSE, ORE, network auth, console)   | Planned     |
-| **C** | Independent code review (scoped: crypto + `FlashZKKernel` + server)  | Planned    |
+| **C** | Independent code review (scoped: crypto + `FlashZKKernel` + server)  | Planned     |
 | **D** | Publish findings + remediations; keep an open issues tracker         | Planned     |
 | **E** | Optional formal verification or specialized SSE review for hot paths | Future      |
 
@@ -80,5 +82,5 @@ No timeline dates are promised until a reviewer is engaged. When an audit starts
 
 - [Zero-Knowledge Security](./zero-knowledge-security) — primitives and architecture
 - [Security, RBAC & Audit](./security-compliance) — product controls (not a compliance certificate)
-- [What's New in 1.2.0](./whats-new) — fail-closed defaults
+- [What's New in 1.3.0](./whats-new) — key wrap + trust docs
 - [Positioning](./positioning) — when to use / not use FLASH

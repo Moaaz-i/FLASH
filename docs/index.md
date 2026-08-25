@@ -13,7 +13,7 @@ hero:
       text: Get Started
       link: /guide/getting-started
     - theme: alt
-      text: What's New in 1.2.0
+      text: What's New in 1.3.0
       link: /guide/whats-new
     - theme: alt
       text: Trust Model
@@ -21,7 +21,7 @@ hero:
 
 features:
   - icon: 🔐
-    title: Fail-Closed by Default (1.2.0)
+    title: Fail-Closed by Default (since 1.2.0)
     details: Daemons require authKey. The console requires a token. Weak secrets and accidental plaintext fields are rejected. Public bind is opt-in.
   - icon: 🧱
     title: Universal Foundations
@@ -68,11 +68,12 @@ features:
 
 ## Quick Example
 
+Run once in your project: `flashsh wrap-key` (see [flashsh CLI](/guide/flashsh-cli)).
+
 ```javascript
 import { FlashClient } from "flash-zk";
 
 const client = new FlashClient({
-  secretKey: "quantum_production_passphrase_2026",
   storagePath: "./data",
 });
 

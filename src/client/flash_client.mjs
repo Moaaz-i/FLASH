@@ -67,6 +67,7 @@ import {
   requireTrashVault,
 } from "./config_guard.mjs";
 import { reportError } from "../core/report_error.mjs";
+import { resolveWrappedSecretKey } from "../security/key_wrap.mjs";
 
 /**
  * FLASH Zero-Knowledge Client SDK (FlashClient)
@@ -75,7 +76,8 @@ import { reportError } from "../core/report_error.mjs";
 export class FlashClient {
   /**
    * @param {object} config
-   * @param {string} config.secretKey - Master Secret Key or Passphrase
+   * @param {string} [config.secretKey] - Master secret (optional if `.flash-take` + `.flash-wrap` / `FLASH_WRAP_KEY` exist)
+   * @param {string} [config.wrapKeyDir] - Directory containing `.flash-take` / `.flash-wrap` (default: cwd)
    * @param {string} [config.dbName='flash_db']
    * @param {string} [config.storagePath='./data']
    * @param {string} [config.uri] - Network URI for remote server connection (e.g. 'flash://localhost:6742')
@@ -88,10 +90,21 @@ export class FlashClient {
    */
   constructor(config = {}) {
     reportError.watch();
+    config = { ...config };
+
+    if (!config.secretKey) {
+      const wrapDir =
+        typeof config.wrapKeyDir === "string"
+          ? config.wrapKeyDir
+          : process.cwd();
+      const sealed = resolveWrappedSecretKey(wrapDir);
+      if (sealed) config.secretKey = sealed;
+    }
+
     if (!config.secretKey) {
       throw reportError(
         mistake(
-          "Secret key is required to initialize FlashClient SDK",
+          "Secret key is required to initialize FlashClient SDK (pass secretKey, or provide .flash-take + .flash-wrap)",
           "secretKey",
         ),
       );

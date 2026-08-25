@@ -109,6 +109,15 @@ export {
   assertStrongSecret,
   createIpRateLimiter,
 } from "./security/trust_guard.mjs";
+export {
+  generateFlashSecret,
+  sealSecretKey,
+  unsealSecretKey,
+  writeWrappedKeyFiles,
+  resolveWrappedSecretKey,
+  FLASH_WRAP_FILENAME,
+  FLASH_TAKE_FILENAME,
+} from "./security/key_wrap.mjs";
 export { FlashDistributedLock } from "./scaling/distributed_lock.mjs";
 export { FlashCDC } from "./messaging/cdc_outbox.mjs";
 export { FlashFederation } from "./scaling/federation.mjs";

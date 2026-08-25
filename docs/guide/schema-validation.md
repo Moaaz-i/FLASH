@@ -11,7 +11,7 @@ You can define rules directly when instantiating a collection:
 ```javascript
 import { FlashClient } from 'flash-zk';
 
-const client = new FlashClient({ secretKey: 'master_key' });
+const client = new FlashClient({ storagePath: "./flash_data" });
 
 const users = client.collection('users', {
   schema: {

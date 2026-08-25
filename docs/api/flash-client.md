@@ -41,17 +41,40 @@ reportError.watch();
 
 ### Options
 
-| Parameter        | Type                              | Required | Default                      | Description                                               |
-| :--------------- | :-------------------------------- | :------- | :--------------------------- | :-------------------------------------------------------- |
-| `secretKey`      | `string \| Buffer`                | **Yes**  | —                            | 32-byte secret key or passphrase for AES/HMAC encryption. |
-| `dbName`         | `string`                          | No       | `'flash_db'`                 | Database cluster name.                                    |
-| `storagePath`    | `string`                          | No       | `'./data'`                   | Directory path for persistent WAL and SSTables.           |
-| `uri`            | `string`                          | No       | —                            | Flash Server URI (e.g., `flash://localhost:6742`).        |
-| `authKey`        | `string`                          | No       | —                            | Authentication key for Flash Server connections.          |
-| `pqcHardened`    | `boolean`                         | No       | `false`                      | Enable post-quantum hardened key derivation.              |
-| `autoTimestamps` | `boolean`                         | No       | `true`                       | Auto-set `createdAt` / `updatedAt` on insert/update.      |
-| `engineOptions`  | `FlashEngineOptions`              | No       | `{ durability: 'balanced' }` | Memtable, WAL sync, worker flush tuning.                  |
-| `fieldPolicy`    | `Record<string, FieldPolicyType>` | No       | `{}`                         | Custom per-field encryption policy mappings.              |
+| Parameter        | Type                              | Required | Default                      | Description                                                                                                                    |
+| :--------------- | :-------------------------------- | :------- | :--------------------------- | :----------------------------------------------------------------------------------------------------------------------------- |
+| `secretKey`      | `string \| Buffer`                | No*      | —                            | Master passphrase. *Omit when `.flash-take` + `.flash-wrap` / `FLASH_WRAP_KEY` exist ([flashsh wrap-key](/guide/flashsh-cli)). |
+| `wrapKeyDir`     | `string`                          | No       | `process.cwd()`              | Directory containing `.flash-take` / `.flash-wrap`.                                                                            |
+| `dbName`         | `string`                          | No       | `'flash_db'`                 | Database cluster name.                                                                                                         |
+| `storagePath`    | `string`                          | No       | `'./data'`                   | Directory path for persistent WAL and SSTables.                                                                                |
+| `uri`            | `string`                          | No       | —                            | Flash Server URI (e.g., `flash://localhost:6742`).                                                                             |
+| `authKey`        | `string`                          | No       | —                            | Authentication key for Flash Server connections.                                                                               |
+| `pqcHardened`    | `boolean`                         | No       | `false`                      | Enable post-quantum hardened key derivation.                                                                                   |
+| `autoTimestamps` | `boolean`                         | No       | `true`                       | Auto-set `createdAt` / `updatedAt` on insert/update.                                                                           |
+| `engineOptions`  | `FlashEngineOptions`              | No       | `{ durability: 'balanced' }` | Memtable, WAL sync, worker flush tuning.                                                                                       |
+| `fieldPolicy`    | `Record<string, FieldPolicyType>` | No       | `{}`                         | Custom per-field encryption policy mappings.                                                                                   |
+
+**Recommended setup (1.3.0):**
+
+```bash
+flashsh wrap-key
+```
+
+```javascript
+import { FlashClient } from "flash-zk";
+
+const client = new FlashClient({
+  storagePath: "./flash_data",
+});
+```
+
+**Explicit secret (env / secret manager):**
+
+```javascript
+const client = new FlashClient({
+  storagePath: "./flash_data",
+});
+```
 
 ---
 
@@ -59,7 +82,7 @@ reportError.watch();
 
 ```javascript
 const client = new FlashClient({
-  secretKey: "your-long-random-passphrase",
+  storagePath: "./flash_data",
   fieldPolicy: {
     email: "searchable", // Default: AES-256-GCM + Blind Exact/Ngram trapdoors
     balance: "counter", // Additive homomorphic encryption ($sum/$inc)
