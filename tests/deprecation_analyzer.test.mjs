@@ -75,6 +75,29 @@ test("analyzeDeprecations deprecates predecessor of fix release only", () => {
   assert.ok(!analysis.toDeprecate.some((d) => d.version === "1.3.2"));
 });
 
+test("analyzeDeprecations skips predecessor when next release is docs-only", () => {
+  const dir = mkdtempSync(join(tmpdir(), "flash-analyze-docs-"));
+  const notes = join(dir, "release-notes.md");
+  writeFileSync(
+    notes,
+    `## v1.3.1 — Forward docs only (no extra code)
+
+This version is documentation only.
+
+## v1.3.0 — Key wrapping
+`,
+  );
+
+  const analysis = analyzeDeprecations({
+    pkgName: "flash-zk",
+    recommended: "1.3.1",
+    releaseNotesPath: notes,
+    publishedVersions: ["1.3.0", "1.3.1"],
+  });
+
+  assert.ok(!analysis.toDeprecate.some((d) => d.version === "1.3.0"));
+});
+
 test("engineFixCommitsBetween ignores docs-only noise", () => {
   const commits = engineFixCommitsBetween("1.3.0", "1.3.1");
   assert.ok(Array.isArray(commits));

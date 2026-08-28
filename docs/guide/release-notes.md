@@ -274,7 +274,9 @@ See [Buffer Pipeline](/guide/buffer-pipeline) and [TypeScript Support](/guide/ty
 
 ---
 
-## v1.3.1 — Engine Fixes + Foundations
+## Included in v1.3.0 — Engine fixes + foundations
+
+These landed in **1.3.0**, not in the docs-only **1.3.1**. Kept here so history is searchable.
 
 ### Bug fixes
 

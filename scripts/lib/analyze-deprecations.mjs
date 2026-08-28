@@ -121,6 +121,10 @@ export function parseReleaseNotes(filePath) {
 
     sections.set(version, {
       hasFixSection,
+      docsOnly:
+        /\bno extra code\b|\bdocs-only\b|\bdocumentation-only\b|\bdocumentation only\b/i.test(
+          body,
+        ),
       issues: hasFixSection ? parseIssuesFromBlock(fixBlock) : [],
     });
   }
@@ -220,6 +224,8 @@ export function analyzeDeprecations({
     const older = published[i];
     const newer = published[i + 1];
     const newerNotes = notes.get(newer);
+    if (newerNotes?.docsOnly) continue;
+
     const gitFixes = engineFixCommitsBetween(older, newer);
 
     const notesSayFix = isFixRelease(newer, newerNotes, older, newer);
