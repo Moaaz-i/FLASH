@@ -3,21 +3,21 @@ layout: home
 
 hero:
   name: "FLASH DB"
-  text: "Zero-Knowledge Encrypted Intelligence"
-  tagline: "Server-blind by architecture. Local-first. AI-native. Architectural zero-knowledge — not a zk-SNARK suite. See the trust model."
+  text: "Privacy first, while AI is created"
+  tagline: "The first line of protection for private intelligence worldwide. Default flash-zk is strong. Keep the key. Do not weaken it."
   image:
     src: /logo.svg
     alt: FLASH DB
   actions:
     - theme: brand
-      text: Get Started
-      link: /guide/getting-started
+      text: Mission
+      link: /guide/mission
     - theme: alt
-      text: What's New in 1.3.0
-      link: /guide/whats-new
+      text: Do this first
+      link: /guide/do-this-first
     - theme: alt
-      text: Trust Model
-      link: /guide/trust-model
+      text: Security ahead
+      link: /guide/security-ahead
 
 features:
   - icon: 🔐
@@ -65,6 +65,14 @@ features:
 ---
 
 <div class="flash-doc-home">
+
+## Mission
+
+FLASH is the first line of privacy protection while AI is being built — RAG, agent memory, sealed documents — **anywhere**. By default `flash-zk` is strong. The developer can weaken it. Strength holds when the developer keeps the key and leaves protection on.
+
+**`1.3.1` documents this. There is no extra code** — same engine as `1.3.0`. [What's new](/guide/whats-new)
+
+Read your responsibility: [Mission](/guide/mission) · This week: [Do this first](/guide/do-this-first) · What we will tighten: [Security ahead](/guide/security-ahead)
 
 ## Quick Example
 

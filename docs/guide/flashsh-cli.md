@@ -2,8 +2,8 @@
 
 The `flashsh` command is FLASH's **sovereign zero-knowledge shell** — optimized for private RAG, agent memory, and integrity proofs.
 
-::: warning Security is yours (v1.3.0)
-`flashsh` and key wrapping **do not** transfer security responsibility to FLASH. You choose where keys live, who can read `.flash-wrap`, and whether `.flash-take` is committed. There is **no independent audit** in this release. Read [Trust Model & Audit Roadmap](/guide/trust-model) before production.
+::: warning Keep the key — do not weaken the default
+`flashsh wrap-key` seals the master; FLASH never holds it. **Default `flash-zk` is strong.** You can weaken it by leaking `.flash-wrap` or turning protection off. No independent audit in this release. [Mission](/guide/mission) · [Trust Model](/guide/trust-model).
 :::
 
 ---

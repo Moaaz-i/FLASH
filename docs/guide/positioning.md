@@ -1,8 +1,16 @@
 # FLASH Positioning
 
-**FLASH** is a **standalone Zero-Knowledge Encrypted Intelligence Database** — local-first, server-blind, and built for private AI.
+**FLASH** is the **first line of privacy protection while AI is created** — a standalone zero-knowledge encrypted intelligence database: local-first, server-blind, built so RAG, agent memory, and sealed documents never require a server that can read you.
 
 > _The storage engine never receives your keys, your plaintext, or your raw query values._
+
+---
+
+## Mission
+
+**Privacy first, while AI is built — anywhere in the world.** By default `flash-zk` is strong. The developer can weaken it. It is strongest when the developer keeps the key and leaves protection on. Cloud, network daemons, and assistants own none of the plaintext.
+
+Everyone’s real responsibility is on [Mission & responsibility](/guide/mission). What to do this week: [Do this first](/guide/do-this-first).
 
 ---
 
@@ -26,7 +34,7 @@ Traditional databases assume the engine can read your data. FLASH assumes the op
 | --- | --------------------------- | ------------------------------------------------------------------------------- |
 | 1   | **Server-blind by design**  | Encryption is the foundation — not a plugin                                     |
 | 2   | **Intelligence-native**     | RAG, agent memory, and semantic search are first-class                          |
-| 3   | **Local-first sovereignty** | Your key, your disk, your rules                                                 |
+| 3   | **Local-first sovereignty** | Your key, your disk — FLASH does not become the keyholder                       |
 | 4   | **Honest performance**      | Batch writes, balanced durability — real numbers                                |
 | 5   | **Trust you can verify**    | Open source, tests, Merkle proofs — plus an honest [trust model](./trust-model) |
 
@@ -54,7 +62,7 @@ Traditional databases assume the engine can read your data. FLASH assumes the op
 | Pure key-value cache                                | In-memory cache                                                    |
 | Team already standardized on one SQL stack          | That stack, with FLASH beside it only if you need a private vault  |
 
-FLASH owns **private intelligence storage**. It is not a generic cloud document platform. “Zero-knowledge” means architectural hiding — not zk-SNARKs and not a guarantee of bug-free crypto.
+FLASH owns **private intelligence storage** — the first line of protection while you build AI. It is not a generic cloud document platform. “Zero-knowledge” means architectural hiding — not zk-SNARKs and not a guarantee of bug-free crypto. Who owes what: [Mission](/guide/mission).
 
 ---
 
@@ -91,6 +99,9 @@ See the [standalone vault example](https://github.com/Moaaz-i/FLASH/tree/main/ex
 
 ## Next Steps
 
+- [Mission & responsibility](/guide/mission)
+- [Do this first (this week)](/guide/do-this-first)
+- [Security ahead](/guide/security-ahead) — planned protection raises; no surprise
 - [5-Minute Intelligence Quick Start](/guide/getting-started#intelligence-in-5-minutes)
 - [Zero-Knowledge Security](/guide/zero-knowledge-security)
 - [FLASH-Exclusive Stack](/guide/flash-exclusive)

@@ -2,7 +2,9 @@
 
 # ⚡ FLASH DB
 
-**Zero-Knowledge Encrypted Intelligence Database — Local-First, AI-Native, Server-Blind**
+**First-line privacy while AI is created — worldwide.**
+
+Zero-knowledge encrypted intelligence database. Local-first. Server-blind. Default `flash-zk` is strong. Keep the key. Do not weaken it.
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-3178c6.svg)](https://www.typescriptlang.org/)
@@ -11,9 +13,9 @@
 [![Docs](https://img.shields.io/badge/Docs-VitePress-blue.svg)](https://moaaz-i.github.io/FLASH/)
 [![npm version](https://img.shields.io/npm/v/flash-zk.svg)](https://www.npmjs.com/package/flash-zk)
 
-_Architectural zero-knowledge: sealed envelopes and blind indexes so the engine is designed not to hold your keys or plaintext. Built for private AI and local-first apps._
+_The engine never holds your keys or plaintext. Built so creating AI does not require surrendering the documents, memory, and prompts that feed it._
 
-**[What's new in 1.3.0](https://moaaz-i.github.io/FLASH/guide/whats-new)** · **[Trust model & audit roadmap](https://moaaz-i.github.io/FLASH/guide/trust-model)** · **[Release Notes](https://moaaz-i.github.io/FLASH/guide/release-notes)** · **[Positioning](https://moaaz-i.github.io/FLASH/guide/positioning)** · **[5-Min Start](https://moaaz-i.github.io/FLASH/guide/getting-started#intelligence-in-5-minutes)**
+**[Mission](https://moaaz-i.github.io/FLASH/guide/mission)** · **[Do this first](https://moaaz-i.github.io/FLASH/guide/do-this-first)** · **[Security ahead](https://moaaz-i.github.io/FLASH/guide/security-ahead)** · **[Trust model](https://moaaz-i.github.io/FLASH/guide/trust-model)**
 
 </div>
 
@@ -21,7 +23,9 @@ _Architectural zero-knowledge: sealed envelopes and blind indexes so the engine 
 
 ## What FLASH Is
 
-**FLASH** is a **zero-knowledge document engine** — a standalone database, not a plugin on top of another store.
+**FLASH’s mission** is to be the **first line of privacy protection while AI is being built** — private RAG, agent memory, sealed documents — not a plugin added after the model ships.
+
+**FLASH** is a **zero-knowledge document engine** — a standalone database, not a plugin on top of another store. By default `flash-zk` is strong; the developer can weaken it. It is strongest when the developer keeps the key and leaves protection on. [Full split](https://moaaz-i.github.io/FLASH/guide/mission).
 
 | Pillar                     | Meaning                                                                                    |
 | -------------------------- | ------------------------------------------------------------------------------------------ |
@@ -45,21 +49,15 @@ _Architectural zero-knowledge: sealed envelopes and blind indexes so the engine 
 
 ---
 
-## What's new in 1.3.0
+## What's new in 1.3.1
 
-Key wrapping for app repos, honest trust docs, and refreshed VitePress site. **Fail-closed defaults from 1.2.0 unchanged.**
+**Documentation only — no extra code.** This release states the mission, that protection is first, and the real split: default `flash-zk` is strong; the developer can weaken it; it stays strongest when the key is kept.
 
-- **`flashsh wrap-key`** — `.flash-wrap` (local) + `.flash-take` (`FLASHTAKE1`, commit-safe). See [flashsh CLI](https://moaaz-i.github.io/FLASH/guide/flashsh-cli).
-- **[Trust model](https://moaaz-i.github.io/FLASH/guide/trust-model)** — limits, audit roadmap, no absolute marketing claims.
-- **198/198 tests** including key-wrap coverage.
+Engine, crypto, and APIs are unchanged from **1.3.0**. You do not need to change application code.
 
-Still from **1.2.0:**
+- **[Mission](https://moaaz-i.github.io/FLASH/guide/mission)** · **[What's new](https://moaaz-i.github.io/FLASH/guide/whats-new)** · **[Do this first](https://moaaz-i.github.io/FLASH/guide/do-this-first)** · **[Security ahead](https://moaaz-i.github.io/FLASH/guide/security-ahead)** — planned refuses, written now so you are not surprised.
 
-- **`FlashServer` / gRPC / replication** require a strong `authKey`. Public bind is opt-in.
-- **Remote `FlashClient.uri`** requires `authKey`. Console requires `token`.
-- **Weak secrets** and accidental plaintext fields are rejected unless explicitly opted in.
-
-[Full 1.2.0 notes](https://moaaz-i.github.io/FLASH/guide/release-notes#v1-2-0-trust-defaults-fail-closed)
+Still from **1.3.0 / 1.2.0:** `flashsh wrap-key`, fail-closed `authKey` / console `token`, weak secrets rejected. [1.3.0 notes](https://moaaz-i.github.io/FLASH/guide/release-notes#v1-3-0--key-wrapping--earned-trust)
 
 ---
 

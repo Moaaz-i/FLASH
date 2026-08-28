@@ -1,8 +1,8 @@
 # Why Server-Blind AI Storage?
 
-Most “AI databases” store **embeddings in the cloud** and send **prompts to remote LLMs**. The server — or the vendor — can see your documents, queries, and agent memory.
+FLASH’s mission is to be the **first line of privacy protection while AI is created**. Most “AI databases” store **embeddings in the cloud** and send **prompts to remote LLMs**. The server — or the vendor — can see your documents, queries, and agent memory.
 
-FLASH inverts this model.
+FLASH inverts this model. **Default `flash-zk` is strong.** You keep the key; you can weaken the engine if you choose to. [Mission & responsibility](/guide/mission).
 
 ---
 
@@ -84,7 +84,9 @@ await vault.put("openai_key", { value: "sk-..." });
 
 ## Get Started
 
-1. [Positioning](/guide/positioning) — when to choose FLASH
-2. [Private RAG](/guide/private-rag) — ingest + ask workflow
-3. [LangChain Integration](/guide/langchain-integration) — connect AI frameworks
-4. [Intelligence Console](/guide/intelligence-console) — local web UI
+1. [Mission & responsibility](/guide/mission) — who owns protection, the app, and the key
+2. [Do this first](/guide/do-this-first) — seal the key this week
+3. [Positioning](/guide/positioning) — when to choose FLASH
+4. [Private RAG](/guide/private-rag) — ingest + ask workflow
+5. [LangChain Integration](/guide/langchain-integration) — connect AI frameworks
+6. [Intelligence Console](/guide/intelligence-console) — local web UI

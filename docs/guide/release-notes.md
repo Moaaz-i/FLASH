@@ -2,9 +2,24 @@
 
 What changed in recent FLASH releases and how to adopt it in your apps.
 
-**Current version:** `1.3.0` · **Tests:** 198/198
+**Current version:** `1.3.1` · **Tests:** 198/198 · **This release is documentation only — no extra code.**
 
-**[What's new in 1.3.0](/guide/whats-new)** — key wrapping (`FLASHTAKE1`), trust model, docs refresh. Previous: [v1.2.0 fail-closed defaults](#v1-2-0-trust-defaults-fail-closed).
+**This week:** [Do this first](/guide/do-this-first) — keep the key; do not weaken the default.
+
+**[What's new in 1.3.1](/guide/whats-new)** — mission, responsibility, protection first. Engine unchanged from 1.3.0. Previous: [v1.3.0 key wrapping](#v1-3-0--key-wrapping--earned-trust) · [v1.2.0 fail-closed](#v1-2-0-trust-defaults-fail-closed).
+
+---
+
+## v1.3.1 — Forward docs only (no extra code)
+
+This version **only** publishes what FLASH is for, who is responsible, and that **protection is the priority**. It does **not** add engine, crypto, CLI, or API code.
+
+- **[Mission & responsibility](/guide/mission)** — first-line privacy while AI is built; default `flash-zk` is strong; the developer can weaken it; strongest when the key is kept.
+- **[Do this first](/guide/do-this-first)** — what to do this week on the existing `1.3.0` runtime.
+- **[Security ahead](/guide/security-ahead)** — what FLASH will refuse and raise next, written now so you are not surprised.
+- Home, README, trust model, positioning — same split, said in the open.
+
+**Upgrade:** none. Install `1.3.1` or stay on `1.3.0` for behavior; read the docs either way.
 
 ---
 
@@ -19,7 +34,7 @@ Developer-owned secret handling and honest public positioning — **no change to
 - **Docs** — tightened marketing claims; VitePress theme; [flashsh CLI](/guide/flashsh-cli) key-format spec.
 - **Tests:** 198/198 (includes `tests/key_wrap.test.mjs`).
 
-Security responsibility remains with the integrator. Key wrapping is operational convenience, not a certification.
+Security: default `flash-zk` is strong; the wrap secret stays with the keyholder. The developer can weaken the model. Key wrapping is operational sealing, not a certification. [Mission](/guide/mission).
 
 ---
 

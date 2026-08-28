@@ -84,10 +84,10 @@ const client = new FlashClient({
 const client = new FlashClient({
   storagePath: "./flash_data",
   fieldPolicy: {
-    email: "searchable", // Default: AES-256-GCM + Blind Exact/Ngram trapdoors
+    email: "searchable", // AES-256-GCM + blind exact/ngram trapdoors
     balance: "counter", // Additive homomorphic encryption ($sum/$inc)
-    status: "plaintext", // Unencrypted fast-path metadata
-    ssn: "zk-secret", // Pure randomized encryption without indexes
+    status: "exact", // Encrypted exact-match trapdoor — not plaintext
+    ssn: "zk-secret", // Randomized encryption without indexes
   },
 });
 ```

@@ -1,10 +1,10 @@
 # Getting Started with FLASH DB
 
-**FLASH** is a zero-knowledge encrypted intelligence database — server-blind by architecture, local-first by default, and built for private AI workloads.
+**FLASH** is a zero-knowledge encrypted intelligence database — the first line of privacy protection while AI is built: server-blind by architecture, local-first by default.
 
 It is **not** a generic document store with encryption added later. Every layer — storage (`.farc`, `FlashBinary`), indexing (blind trapdoors, ORE), and query — is designed so the engine holds sealed data rather than plaintext.
 
-> **Latest: [What's new in 1.3.0](/guide/whats-new)** — key wrapping (`FLASHTAKE1`), trust model, docs refresh. Fail-closed defaults from 1.2.0 still apply. Read [Trust Model](/guide/trust-model) before production.
+> **`1.3.1` is docs only — no extra code.** [What's new](/guide/whats-new). **This week:** [Do this first](/guide/do-this-first). **Later engine (announced now):** [Security ahead](/guide/security-ahead). [Mission](/guide/mission) · [Trust Model](/guide/trust-model).
 
 ---
 

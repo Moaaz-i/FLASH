@@ -65,8 +65,8 @@ console.log(masked.card); // '****-****-****-4444'
 
 Seal the master `secretKey` under a local wrap key so the sealed blob can live in git.
 
-::: warning Your responsibility (v1.3.0)
-Key wrapping is a **developer convenience**, not a security certification. You must gitignore `.flash-wrap` in **your** project, rotate keys, and protect CI secrets. Only format **`FLASHTAKE1`** is supported in this release.
+::: warning Keep the key (v1.3.0)
+Key wrapping is sealing, not a certification. Default `flash-zk` is strong **if** you gitignore `.flash-wrap`, rotate keys, and protect CI. Leaking the wrap file weakens FLASH. Only format **`FLASHTAKE1`** is supported in this release.
 :::
 
 ```bash

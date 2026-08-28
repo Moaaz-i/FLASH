@@ -224,11 +224,11 @@ const client = new FlashClient({
 });
 ```
 
-| Profile   | Durability   | Merkle | Memtable |
-| --------- | ------------ | ------ | -------- |
-| `strict`  | fsync each   | on     | 4 MB     |
-| `balanced`| batched sync | on     | 4 MB     |
-| `turbo`   | no fsync     | off    | 64 MB    |
+| Profile    | Durability   | Merkle | Memtable |
+| ---------- | ------------ | ------ | -------- |
+| `strict`   | fsync each   | on     | 4 MB     |
+| `balanced` | batched sync | on     | 4 MB     |
+| `turbo`    | no fsync     | off    | 64 MB    |
 
 **Lazy field decrypt** — `.select('name email')` decrypts only those columns (AES skipped for the rest):
 
@@ -249,41 +249,41 @@ const client = new FlashClient({
   fieldPolicy: {
     email: "exact",
     body: "encrypted",
-    tags: "plaintext",
+    tags: "searchable",
   },
 });
 ```
 
-| Policy | Search | Size |
-|--------|--------|------|
-| `encrypted` | decrypt client-side only | smallest |
-| `exact` | `find({ field: value })` | small |
-| `searchable` | fuzzy / regex / range | largest |
+| Policy       | Search                   | Size     |
+| ------------ | ------------------------ | -------- |
+| `encrypted`  | decrypt client-side only | smallest |
+| `exact`      | `find({ field: value })` | small    |
+| `searchable` | fuzzy / regex / range    | largest  |
 
 ---
 
 ## Pattern matrix
 
-| Need                | API                                     |
-| ------------------- | --------------------------------------- |
-| CRUD                | `collection()`                          |
-| Large lists         | `paginate()`                            |
-| Old data cleanup    | `lifecycle()`                           |
-| Background ops      | `maintenance()`                         |
-| Bulk IO             | `pipeline()`                            |
-| React to writes     | `events()` / `watch()`                  |
-| Shared hooks        | `use()`                                 |
-| Isolated users      | `tenant()`                              |
-| Bulk mutations      | `bulkWrite()`                           |
-| Time-ordered stream | `eventLog()`                            |
-| Metrics / IDs       | `counter()`                             |
-| Background jobs     | `queue()`                               |
-| Ops visibility      | `health()`                              |
-| Backup / migrate    | `snapshot()`                            |
-| High-perf bytes     | `encryptToBuffer()` / `decryptFromBuffer()` |
+| Need                | API                                              |
+| ------------------- | ------------------------------------------------ |
+| CRUD                | `collection()`                                   |
+| Large lists         | `paginate()`                                     |
+| Old data cleanup    | `lifecycle()`                                    |
+| Background ops      | `maintenance()`                                  |
+| Bulk IO             | `pipeline()`                                     |
+| React to writes     | `events()` / `watch()`                           |
+| Shared hooks        | `use()`                                          |
+| Isolated users      | `tenant()`                                       |
+| Bulk mutations      | `bulkWrite()`                                    |
+| Time-ordered stream | `eventLog()`                                     |
+| Metrics / IDs       | `counter()`                                      |
+| Background jobs     | `queue()`                                        |
+| Ops visibility      | `health()`                                       |
+| Backup / migrate    | `snapshot()`                                     |
+| High-perf bytes     | `encryptToBuffer()` / `decryptFromBuffer()`      |
 | Max throughput      | `engineOptions: { performanceProfile: 'turbo' }` |
-| Ephemeral / RAM     | `inMemory: true`                            |
-| Realtime wire       | WebSocket / PubSub (see Real-Time docs) |
+| Ephemeral / RAM     | `inMemory: true`                                 |
+| Realtime wire       | WebSocket / PubSub (see Real-Time docs)          |
 
 ---
 

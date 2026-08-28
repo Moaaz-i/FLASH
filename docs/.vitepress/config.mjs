@@ -3,7 +3,7 @@ import { defineConfig } from "vitepress";
 export default defineConfig({
   title: "FLASH DB",
   description:
-    "Zero-knowledge encrypted intelligence database — local-first, AI-native, server-blind",
+    "First-line privacy while AI is built — server-blind encrypted intelligence database. Default flash-zk is strong; keep the key.",
   base: "/FLASH/",
   appearance: "dark",
   markdown: {
@@ -40,15 +40,21 @@ export default defineConfig({
     logo: "/logo.svg",
     siteTitle: "FLASH DB",
     nav: [
+      { text: "Mission", link: "/guide/mission" },
+      { text: "Do this first", link: "/guide/do-this-first" },
+      { text: "Security ahead", link: "/guide/security-ahead" },
       { text: "What's new", link: "/guide/whats-new" },
       {
         text: "Guide",
         items: [
+          { text: "Mission & responsibility", link: "/guide/mission" },
+          { text: "Do this first (this week)", link: "/guide/do-this-first" },
+          { text: "Security ahead (no surprises)", link: "/guide/security-ahead" },
           { text: "Positioning & Identity", link: "/guide/positioning" },
           { text: "Trust Model & Audit Roadmap", link: "/guide/trust-model" },
           { text: "Why Server-Blind AI", link: "/guide/why-server-blind-ai" },
           { text: "Getting Started", link: "/guide/getting-started" },
-          { text: "What's New (1.3.0)", link: "/guide/whats-new" },
+          { text: "What's New (1.3.1)", link: "/guide/whats-new" },
           { text: "Release Notes", link: "/guide/release-notes" },
           { text: "Universal Foundations", link: "/guide/foundations" },
           { text: "Buffer Pipeline", link: "/guide/buffer-pipeline" },
@@ -191,11 +197,14 @@ export default defineConfig({
           text: "Getting Started & Architecture",
           collapsed: false,
           items: [
+            { text: "Mission & responsibility", link: "/guide/mission" },
+            { text: "Do this first (this week)", link: "/guide/do-this-first" },
+            { text: "Security ahead (no surprises)", link: "/guide/security-ahead" },
             { text: "Positioning & Identity", link: "/guide/positioning" },
             { text: "Trust Model & Audit Roadmap", link: "/guide/trust-model" },
             { text: "Why Server-Blind AI", link: "/guide/why-server-blind-ai" },
             { text: "Getting Started", link: "/guide/getting-started" },
-            { text: "What's New (1.3.0)", link: "/guide/whats-new" },
+            { text: "What's New (1.3.1)", link: "/guide/whats-new" },
             { text: "Release Notes", link: "/guide/release-notes" },
             { text: "Universal Foundations", link: "/guide/foundations" },
             { text: "Buffer Pipeline", link: "/guide/buffer-pipeline" },
@@ -314,6 +323,18 @@ export default defineConfig({
           text: "Zero-Knowledge Security",
           collapsed: false,
           items: [
+            {
+              text: "Mission & responsibility",
+              link: "/guide/mission",
+            },
+            {
+              text: "Do this first (this week)",
+              link: "/guide/do-this-first",
+            },
+            {
+              text: "Security ahead (no surprises)",
+              link: "/guide/security-ahead",
+            },
             {
               text: "Zero-Knowledge Security",
               link: "/guide/zero-knowledge-security",

@@ -52,7 +52,7 @@ client.openDashboard({ port: 3456, token: "console-token-at-least-16" });
 - Binds **127.0.0.1** by default.
 - Requires a dashboard **`token`** (`x-flash-token` header).
 - **`GET /api/docs`** is off unless `allowDataExplorer: true`.
-- The console is a **local FlashClient** — it holds the master key after unsealing `.flash-take`. Security remains your responsibility: [Trust Model](/guide/trust-model).
+- The console is a **local FlashClient** — it holds the master key after unsealing `.flash-take`. You are the keyholder. Default `flash-zk` stays strong only while that key stays with you. [Mission](/guide/mission) · [Trust Model](/guide/trust-model).
 
 ---
 

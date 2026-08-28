@@ -1,7 +1,7 @@
 {
   "name": "flash-zk",
-  "version": "1.3.0",
-  "description": "Zero-knowledge encrypted intelligence database — local-first, AI-native, server-blind document engine",
+  "version": "1.3.1",
+  "description": "First-line privacy while AI is built — server-blind zero-knowledge encrypted intelligence database. Default flash-zk is strong; keep the key.",
   "type": "module",
   "main": "src/index.mjs",
   "types": "./src/index.d.ts",
